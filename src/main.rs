@@ -1,7 +1,7 @@
 extern crate byteorder;
 
 use std::fmt;
-use std::io::{Cursor, Read};
+use std::io::{Cursor, Read, Seek, SeekFrom};
 use std::fs::File;
 use byteorder::{LittleEndian, ReadBytesExt};
 
@@ -55,10 +55,7 @@ fn read_string(reader: &mut ReaderCursor) -> String {
     let mut bytes = vec![0u8; length as usize];
     reader.read_exact(&mut bytes).expect("Could not read string");
 
-    match std::str::from_utf8(&bytes) {
-        Ok(data) => data,
-        Err(_) => panic!("String could not be read"),
-    }.to_owned()
+    std::str::from_utf8(&bytes).unwrap().to_owned()
 }
 
 #[allow(dead_code)]
@@ -232,14 +229,152 @@ impl Newable for FPackageFileSummary {
     }
 }
 
+#[allow(dead_code)]
+struct FNameEntrySerialized {
+    data: String,
+    non_case_preserving_hash: u16,
+    case_preserving_hash: u16,
+}
+
+impl Newable for FNameEntrySerialized {
+    fn new(reader: &mut ReaderCursor) -> Self {
+        let mut length = reader.read_i32::<LittleEndian>().unwrap();
+        let mut fstr;
+
+        if length < 0 {
+            length *= -1;
+            let mut bytes = vec![0u8; (length * 2) as usize];
+            reader.read_exact(&mut bytes).expect("Could not read wide string");
+            let mut slice = &bytes[..];
+            let mut u16bytes = Vec::new();
+            for i in 0..length {
+                let val = slice.read_u16::<LittleEndian>().unwrap();
+                u16bytes[i as usize] = val;
+            }
+            fstr = String::from_utf16(&u16bytes).expect("String parse failed");
+        } else {
+            let mut bytes = vec![0u8; length as usize];
+            reader.read_exact(&mut bytes).expect("Could not read string");
+            fstr = std::str::from_utf8(&bytes).unwrap().to_owned();
+        }
+
+        Self {
+            data: fstr,
+            non_case_preserving_hash: reader.read_u16::<LittleEndian>().unwrap(),
+            case_preserving_hash: reader.read_u16::<LittleEndian>().unwrap(),
+        }
+    }
+}
+
+type NameMap = Vec<FNameEntrySerialized>;
+
+trait NewableWithNameMap {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap) -> Self;
+}
+
+fn read_fname(reader: &mut ReaderCursor, name_map: &NameMap) -> String {
+    let name_index = reader.read_i32::<LittleEndian>().unwrap();
+    reader.read_i32::<LittleEndian>().unwrap(); // name_number ?
+    name_map[name_index as usize].data.to_owned()
+}
+
+struct FPackageIndex {
+    index: i32,
+}
+
+impl FPackageIndex {
+    fn is_import(&self) -> bool {
+        self.index < 0
+    }
+
+    fn is_export(&self) -> bool {
+        self.index > 0
+    }
+
+    fn is_null(&self) -> bool {
+        self.index == 0
+    }
+
+    fn to_import(&self) -> i32 {
+        self.index * -1 - 1
+    }
+
+    fn to_export(&self) -> i32 {
+        self.index - 1
+    }
+}
+
+impl Newable for FPackageIndex {
+    fn new(reader: &mut ReaderCursor) -> Self {
+        Self {
+            index: reader.read_i32::<LittleEndian>().unwrap(),
+        }
+    }
+}
+
+struct FObjectImport {
+    class_package: String,
+    class_name: String,
+    outer_index: FPackageIndex,
+    object_name: String,
+}
+
+impl NewableWithNameMap for FObjectImport {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap) -> Self {
+        Self {
+            class_package: read_fname(reader, name_map),
+            class_name: read_fname(reader, name_map),
+            outer_index: FPackageIndex::new(reader),
+            object_name: read_fname(reader, name_map),
+        }
+    }
+}
+
+type ImportMap = Vec<FObjectImport>;
+
+#[allow(dead_code)]
+struct Package {
+    summary: FPackageFileSummary,
+    name_map: NameMap,
+    import_map: ImportMap,
+}
+
+impl Package {
+    fn new(asset_file: &str) -> Self {
+        let mut asset = File::open(asset_file).unwrap();
+        let mut buffer = Vec::new();
+
+        asset.read_to_end(&mut buffer).expect("Could not read file");
+        let mut cursor = ReaderCursor::new(buffer);
+        let summary = FPackageFileSummary::new(&mut cursor);
+
+        let mut name_map = Vec::new();
+        cursor.seek(SeekFrom::Start(summary.name_offset as u64)).unwrap();
+        for _i in 0..summary.name_count {
+            name_map.push(FNameEntrySerialized::new(&mut cursor));
+        }
+
+        let mut import_map = Vec::new();
+        cursor.seek(SeekFrom::Start(summary.import_offset as u64)).unwrap();
+        for _i in 0..summary.import_count {
+            import_map.push(FObjectImport::new(&mut cursor, &name_map));
+        }
+
+
+        Self {
+            summary: summary,
+            name_map: name_map,
+            import_map: import_map,
+        }
+    }
+}
+
 
 fn main() {
-    let mut asset = File::open("bid_024_space.uasset").unwrap();
-    let mut buffer = Vec::new();
+    let test_package = Package::new("bid_024_space.uasset");
 
-    asset.read_to_end(&mut buffer).expect("Could not read file");
-    let mut cursor = ReaderCursor::new(buffer);
-    let summary = FPackageFileSummary::new(&mut cursor);
+    for name in test_package.import_map {
+        println!("Name: {}", name.class_name);
+    }
 
-    println!("Guid: {}", summary.guid);   
 }
