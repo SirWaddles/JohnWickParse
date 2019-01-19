@@ -105,26 +105,16 @@ fn read_tarray<S>(reader: &mut ReaderCursor) -> Vec<S> where S: Newable {
     container
 }
 
-fn read_tarray_string(reader: &mut ReaderCursor) -> Vec<String> {
-    let length = reader.read_u32::<LittleEndian>().unwrap();
-    let mut container = Vec::new();
-
-    for _i in 0..length {
-        container.push(read_string(reader));
+impl Newable for String {
+    fn new(reader: &mut ReaderCursor) -> Self {
+        read_string(reader)
     }
-
-    container
 }
 
-fn read_tarray_i32(reader: &mut ReaderCursor) -> Vec<i32> {
-    let length = reader.read_u32::<LittleEndian>().unwrap();
-    let mut container = Vec::new();
-
-    for _i in 0..length {
-        container.push(reader.read_i32::<LittleEndian>().unwrap());
+impl Newable for i32 {
+    fn new(reader: &mut ReaderCursor) -> Self {
+        reader.read_i32::<LittleEndian>().unwrap()
     }
-
-    container
 }
 
 #[allow(dead_code)]
@@ -218,11 +208,11 @@ impl Newable for FPackageFileSummary {
             compression_flags: reader.read_u32::<LittleEndian>().unwrap(),
             compressed_chunks: read_tarray(reader),
             package_source: reader.read_u32::<LittleEndian>().unwrap(),
-            additional_packages_to_cook: read_tarray_string(reader),
+            additional_packages_to_cook: read_tarray(reader),
             asset_registry_data_offset: reader.read_i32::<LittleEndian>().unwrap(),
             buld_data_start_offset: reader.read_i32::<LittleEndian>().unwrap(),
             world_tile_info_data_offset: reader.read_i32::<LittleEndian>().unwrap(),
-            chunk_ids: read_tarray_i32(reader),
+            chunk_ids: read_tarray(reader),
             preload_dependency_count: reader.read_i32::<LittleEndian>().unwrap(),
             preload_dependency_offset: reader.read_i32::<LittleEndian>().unwrap(),
         }
@@ -243,12 +233,9 @@ impl Newable for FNameEntrySerialized {
 
         if length < 0 {
             length *= -1;
-            let mut bytes = vec![0u8; (length * 2) as usize];
-            reader.read_exact(&mut bytes).expect("Could not read wide string");
-            let mut slice = &bytes[..];
-            let mut u16bytes = Vec::new();
+            let mut u16bytes = vec![0u16; length as usize];
             for i in 0..length {
-                let val = slice.read_u16::<LittleEndian>().unwrap();
+                let val = reader.read_u16::<LittleEndian>().unwrap();
                 u16bytes[i as usize] = val;
             }
             fstr = String::from_utf16(&u16bytes).expect("String parse failed");
@@ -256,6 +243,7 @@ impl Newable for FNameEntrySerialized {
             let mut bytes = vec![0u8; length as usize];
             reader.read_exact(&mut bytes).expect("Could not read string");
             fstr = std::str::from_utf8(&bytes).unwrap().to_owned();
+            fstr.pop();
         }
 
         Self {
@@ -302,6 +290,14 @@ impl FPackageIndex {
     fn to_export(&self) -> i32 {
         self.index - 1
     }
+
+    fn get_package<'a>(&self, import_map: &'a ImportMap) -> &'a FObjectImport {
+        if self.is_import() {
+            return import_map.get(self.to_import() as usize).unwrap();
+        } else {
+            return import_map.get(self.to_export() as usize).unwrap();
+        }
+    }
 }
 
 impl Newable for FPackageIndex {
@@ -312,6 +308,7 @@ impl Newable for FPackageIndex {
     }
 }
 
+#[allow(dead_code)]
 struct FObjectImport {
     class_package: String,
     class_name: String,
@@ -333,18 +330,252 @@ impl NewableWithNameMap for FObjectImport {
 type ImportMap = Vec<FObjectImport>;
 
 #[allow(dead_code)]
+struct FObjectExport {
+    class_index: FPackageIndex,
+    super_index: FPackageIndex,
+    template_index: FPackageIndex,
+    outer_index: FPackageIndex,
+    object_name: String,
+    save: u32,
+    serial_size: i64,
+    serial_offset: i64,
+    forced_export: bool,
+    not_for_client: bool,
+    not_for_server: bool,
+    package_guid: FGuid,
+    package_flags: u32,
+    not_always_loaded_for_editor_game: bool,
+    is_asset: bool,
+    first_export_dependency: i32,
+    serialization_before_serialization_dependencies: bool,
+    create_before_serialization_dependencies: bool,
+    serialization_before_create_dependencies: bool,
+    create_before_create_dependencies: bool,
+}
+
+impl NewableWithNameMap for FObjectExport {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap) -> Self {
+        Self {
+            class_index: FPackageIndex::new(reader),
+            super_index: FPackageIndex::new(reader),
+            template_index: FPackageIndex::new(reader),
+            outer_index: FPackageIndex::new(reader),
+            object_name: read_fname(reader, name_map),
+            save: reader.read_u32::<LittleEndian>().unwrap(),
+            serial_size: reader.read_i64::<LittleEndian>().unwrap(),
+            serial_offset: reader.read_i64::<LittleEndian>().unwrap(),
+            forced_export: reader.read_i32::<LittleEndian>().unwrap() != 0,
+            not_for_client: reader.read_i32::<LittleEndian>().unwrap() != 0,
+            not_for_server: reader.read_i32::<LittleEndian>().unwrap() != 0,
+            package_guid: FGuid::new(reader),
+            package_flags: reader.read_u32::<LittleEndian>().unwrap(),
+            not_always_loaded_for_editor_game: reader.read_i32::<LittleEndian>().unwrap() != 0,
+            is_asset: reader.read_i32::<LittleEndian>().unwrap() != 0,
+            first_export_dependency: reader.read_i32::<LittleEndian>().unwrap(),
+            serialization_before_serialization_dependencies: reader.read_i32::<LittleEndian>().unwrap() != 0,
+            create_before_serialization_dependencies: reader.read_i32::<LittleEndian>().unwrap() != 0,
+            serialization_before_create_dependencies: reader.read_i32::<LittleEndian>().unwrap() != 0,
+            create_before_create_dependencies: reader.read_i32::<LittleEndian>().unwrap() != 0,
+        }
+    }
+}
+
+#[allow(dead_code)]
+struct FText {
+    flags: u32,
+    history_type: i8,
+    namespace: String,
+    key: String,
+    source_string: String,
+}
+
+impl Newable for FText {
+    fn new(reader: &mut ReaderCursor) -> Self {
+        let flags = reader.read_u32::<LittleEndian>().unwrap();
+        let history_type = reader.read_i8().unwrap();
+        if history_type != 0 {
+            panic!("Could not read history type (FText): {}", history_type);
+        }
+
+        Self {
+            flags,
+            history_type,
+            namespace: read_string(reader),
+            key: read_string(reader),
+            source_string: read_string(reader),
+        }
+    }
+}
+
+#[allow(dead_code)]
+struct FSoftObjectPath {
+    asset_path_name: String,
+    sub_path_string: String,
+}
+
+impl NewableWithNameMap for FSoftObjectPath {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap) -> Self {
+        Self {
+            asset_path_name: read_fname(reader, name_map),
+            sub_path_string: read_string(reader),
+        }
+    }
+}
+
+enum FPropertyTagData {
+    StructProperty (String, FGuid),
+    BoolProperty (bool),
+    ByteProperty (String),
+    EnumProperty (String),
+    ArrayProperty (String),
+    NoData,
+}
+
+enum FPropertyTagType {
+    BoolProperty(bool),
+    StructProperty,
+    ObjectProperty(FPackageIndex),
+    FloatProperty(f32),
+    TextProperty(FText),
+    NameProperty(String),
+    IntProperty(i32),
+    ArrayProperty,
+    ByteProperty(u8),
+    EnumProperty(Option<String>),
+    SoftObjectProperty(FSoftObjectPath),
+}
+
+impl FPropertyTagType {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, property_type: &str, tag_data: &FPropertyTagData) -> Self {
+        match property_type {
+            "BoolProperty" => FPropertyTagType::BoolProperty(
+                match tag_data {
+                    FPropertyTagData::BoolProperty(val) => val.clone(),
+                    _ => panic!("Bool property does not have bool data"),
+                }
+            ),
+            "StructProperty" => FPropertyTagType::StructProperty,
+            "ObjectProperty" => FPropertyTagType::ObjectProperty(FPackageIndex::new(reader)),
+            "FloatProperty" =>  FPropertyTagType::FloatProperty(reader.read_f32::<LittleEndian>().unwrap()),
+            "TextProperty" => FPropertyTagType::TextProperty(FText::new(reader)),
+            "NameProperty" => FPropertyTagType::NameProperty(read_fname(reader, name_map)),
+            "IntProperty" => FPropertyTagType::IntProperty(reader.read_i32::<LittleEndian>().unwrap()),
+            "ArrayProperty" => FPropertyTagType::ArrayProperty,
+            "ByteProperty" => FPropertyTagType::ByteProperty(reader.read_u8().unwrap()),
+            "EnumProperty" => FPropertyTagType::EnumProperty(
+                match tag_data {
+                    FPropertyTagData::EnumProperty(val) => {
+                        if val == "None" { None } else { Some(read_fname(reader, name_map)) }
+                    },
+                    _ => panic!("Enum property does not have enum data"),
+                }
+            ),
+            "SoftObjectProperty" => FPropertyTagType::SoftObjectProperty(FSoftObjectPath::new(reader, name_map)),
+            _ => panic!("Could not read property type: {}", property_type),
+        }
+    }
+}
+
+#[allow(dead_code)]
+struct FPropertyTag {
+    name: String,
+    property_type: String,
+    tag_data: FPropertyTagData,
+    size: i32,
+    array_index: i32,
+    property_guid: Option<FGuid>,
+    tag: FPropertyTagType,
+}
+
+fn read_property_tag(reader: &mut ReaderCursor, name_map: &NameMap) -> Option<FPropertyTag> {
+    let name = read_fname(reader, name_map);
+    if name == "None" {
+        return None;
+    }
+
+    let property_type = read_fname(reader, name_map).trim().to_owned();
+    let size = reader.read_i32::<LittleEndian>().unwrap();
+    let array_index = reader.read_i32::<LittleEndian>().unwrap();
+
+    println!("Reading property: {} {}", property_type, name);
+
+    let tag_data = match property_type.as_ref() {
+        "StructProperty" => FPropertyTagData::StructProperty(read_fname(reader, name_map), FGuid::new(reader)),
+        "BoolProperty" => FPropertyTagData::BoolProperty(reader.read_u8().unwrap() != 0),
+        "EnumProperty" => FPropertyTagData::EnumProperty(read_fname(reader, name_map)),
+        "ByteProperty" => FPropertyTagData::ByteProperty(read_fname(reader, name_map)),
+        "ArrayProperty" => FPropertyTagData::ArrayProperty(read_fname(reader, name_map)),
+        _ => FPropertyTagData::NoData,
+    };
+
+    let has_property_guid = reader.read_u8().unwrap() != 0;
+    let property_guid = match has_property_guid {
+        true => Some(FGuid::new(reader)),
+        false => None,
+    };
+
+    let pos = reader.position();
+    let tag = FPropertyTagType::new(reader, name_map, property_type.as_ref(), &tag_data);
+    let final_pos = pos + (size as u64);
+    println!("Seeking from {} to {}", reader.position(), final_pos);
+    reader.seek(SeekFrom::Start(final_pos as u64)).expect("Could not seek to size");
+
+    Some(FPropertyTag {
+        name,
+        property_type,
+        tag_data,
+        size,
+        array_index,
+        property_guid,
+        tag
+    })
+}
+
+#[allow(dead_code)]
+struct UObject {
+    export_type: String,
+    properties: Vec<FPropertyTag>,
+}
+
+impl UObject {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, export_type: &str) -> Option<Self> {
+        println!("Export type: {}", export_type);
+        let mut properties = Vec::new();
+        loop {
+            let tag = read_property_tag(reader, name_map);
+            let tag = match tag {
+                Some(data) => data,
+                None => break,
+            };
+
+            properties.push(tag);
+        }
+
+        Some(Self {
+            properties: properties,
+            export_type: export_type.to_owned(),
+        })
+    }
+}
+
+#[allow(dead_code)]
 struct Package {
     summary: FPackageFileSummary,
     name_map: NameMap,
     import_map: ImportMap,
+    export_map: Vec<FObjectExport>,
+    asset_file_size: usize,
+    exports: Vec<UObject>,
 }
 
 impl Package {
-    fn new(asset_file: &str) -> Self {
+    fn new(asset_file: &str, uexp_file: &str) -> Self {
+        // read asset file
         let mut asset = File::open(asset_file).unwrap();
         let mut buffer = Vec::new();
 
         asset.read_to_end(&mut buffer).expect("Could not read file");
+        let asset_length = buffer.len();
         let mut cursor = ReaderCursor::new(buffer);
         let summary = FPackageFileSummary::new(&mut cursor);
 
@@ -360,21 +591,35 @@ impl Package {
             import_map.push(FObjectImport::new(&mut cursor, &name_map));
         }
 
+        let mut export_map = Vec::new();
+        cursor.seek(SeekFrom::Start(summary.export_offset as u64)).unwrap();
+        for _i in 0..summary.export_count {
+            export_map.push(FObjectExport::new(&mut cursor, &name_map));
+        }
+
+        // read uexp file
+        let mut uexp = File::open(uexp_file).unwrap();
+        let mut buffer = Vec::new();
+        uexp.read_to_end(&mut buffer).expect("Could not read uexp file");
+        let mut cursor = ReaderCursor::new(buffer);
+
+        let export_type = &export_map.get(0).unwrap().class_index.get_package(&import_map).object_name;
+        let export = UObject::new(&mut cursor, &name_map, export_type);
+        let exports = vec![export.unwrap()];
+
 
         Self {
             summary: summary,
             name_map: name_map,
             import_map: import_map,
+            export_map: export_map,
+            asset_file_size: asset_length,
+            exports: exports,
         }
     }
 }
 
 
 fn main() {
-    let test_package = Package::new("bid_024_space.uasset");
-
-    for name in test_package.import_map {
-        println!("Name: {}", name.class_name);
-    }
-
+    let test_package = Package::new("bid_024_space.uasset", "bid_024_space.uexp");
 }
