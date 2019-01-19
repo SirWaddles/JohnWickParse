@@ -11,6 +11,7 @@ trait Newable {
     fn new(reader: &mut ReaderCursor) -> Self;
 }
 
+#[derive(Debug)]
 struct FGuid {
     a: u32,
     b: u32,
@@ -36,6 +37,7 @@ impl fmt::Display for FGuid {
 }
 
 #[allow(dead_code)]
+#[derive(Debug)]
 struct FCustomVersion {
     key: FGuid,
     version: i32,
@@ -54,11 +56,13 @@ fn read_string(reader: &mut ReaderCursor) -> String {
     let length = reader.read_i32::<LittleEndian>().unwrap();
     let mut bytes = vec![0u8; length as usize];
     reader.read_exact(&mut bytes).expect("Could not read string");
+    bytes.pop();
 
     std::str::from_utf8(&bytes).unwrap().to_owned()
 }
 
 #[allow(dead_code)]
+#[derive(Debug)]
 struct FGenerationInfo {
     export_count: i32,
     name_count: i32,
@@ -74,6 +78,7 @@ impl Newable for FGenerationInfo {
 }
 
 #[allow(dead_code)]
+#[derive(Debug)]
 struct FEngineVersion {
     major: u16,
     minor: u16,
@@ -118,6 +123,7 @@ impl Newable for i32 {
 }
 
 #[allow(dead_code)]
+#[derive(Debug)]
 struct FCompressedChunk {
     uncompressed_offset: i32,
     uncompressed_size: i32,
@@ -137,6 +143,7 @@ impl Newable for FCompressedChunk {
 }
 
 #[allow(dead_code)]
+#[derive(Debug)]
 struct FPackageFileSummary {
     tag: i32,
     legacy_file_version: i32,
@@ -220,6 +227,7 @@ impl Newable for FPackageFileSummary {
 }
 
 #[allow(dead_code)]
+#[derive(Debug)]
 struct FNameEntrySerialized {
     data: String,
     non_case_preserving_hash: u16,
@@ -256,8 +264,9 @@ impl Newable for FNameEntrySerialized {
 
 type NameMap = Vec<FNameEntrySerialized>;
 
-trait NewableWithNameMap {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap) -> Self;
+trait NewableWithNameMap: std::fmt::Debug {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap) -> Self
+    where Self: Sized;
 }
 
 fn read_fname(reader: &mut ReaderCursor, name_map: &NameMap) -> String {
@@ -266,6 +275,7 @@ fn read_fname(reader: &mut ReaderCursor, name_map: &NameMap) -> String {
     name_map[name_index as usize].data.to_owned()
 }
 
+#[derive(Debug)]
 struct FPackageIndex {
     index: i32,
 }
@@ -279,10 +289,6 @@ impl FPackageIndex {
         self.index > 0
     }
 
-    fn is_null(&self) -> bool {
-        self.index == 0
-    }
-
     fn to_import(&self) -> i32 {
         self.index * -1 - 1
     }
@@ -294,9 +300,11 @@ impl FPackageIndex {
     fn get_package<'a>(&self, import_map: &'a ImportMap) -> &'a FObjectImport {
         if self.is_import() {
             return import_map.get(self.to_import() as usize).unwrap();
-        } else {
+        }
+        if self.is_export() {
             return import_map.get(self.to_export() as usize).unwrap();
         }
+        panic!("???");
     }
 }
 
@@ -309,6 +317,7 @@ impl Newable for FPackageIndex {
 }
 
 #[allow(dead_code)]
+#[derive(Debug)]
 struct FObjectImport {
     class_package: String,
     class_name: String,
@@ -330,6 +339,7 @@ impl NewableWithNameMap for FObjectImport {
 type ImportMap = Vec<FObjectImport>;
 
 #[allow(dead_code)]
+#[derive(Debug)]
 struct FObjectExport {
     class_index: FPackageIndex,
     super_index: FPackageIndex,
@@ -381,6 +391,7 @@ impl NewableWithNameMap for FObjectExport {
 }
 
 #[allow(dead_code)]
+#[derive(Debug)]
 struct FText {
     flags: u32,
     history_type: i8,
@@ -408,6 +419,7 @@ impl Newable for FText {
 }
 
 #[allow(dead_code)]
+#[derive(Debug)]
 struct FSoftObjectPath {
     asset_path_name: String,
     sub_path_string: String,
@@ -422,6 +434,49 @@ impl NewableWithNameMap for FSoftObjectPath {
     }
 }
 
+#[allow(dead_code)]
+#[derive(Debug)]
+struct FGameplayTagContainer {
+    gameplay_tags: Vec<String>,
+}
+
+impl NewableWithNameMap for FGameplayTagContainer {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap) -> Self {
+        let length = reader.read_u32::<LittleEndian>().unwrap();
+        let mut container = Vec::new();
+
+        for _i in 0..length {
+            container.push(read_fname(reader, name_map));
+        }
+
+        Self {
+            gameplay_tags: container,
+        }
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Debug)]
+struct UScriptStruct {
+    struct_name: String,
+    struct_type: Box<NewableWithNameMap>,
+}
+
+impl UScriptStruct {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, struct_name: &str) -> Self {
+        println!("Struct name: {}", struct_name);
+        let struct_type = match struct_name {
+            "GameplayTagContainer" => FGameplayTagContainer::new(reader, name_map),
+            _ => panic!("Could not read struct: {}", struct_name),
+        };
+        Self {
+            struct_name: struct_name.to_owned(),
+            struct_type: Box::new(struct_type),
+        }
+    }
+}
+
+#[derive(Debug)]
 enum FPropertyTagData {
     StructProperty (String, FGuid),
     BoolProperty (bool),
@@ -431,9 +486,10 @@ enum FPropertyTagData {
     NoData,
 }
 
+#[derive(Debug)]
 enum FPropertyTagType {
     BoolProperty(bool),
-    StructProperty,
+    StructProperty(UScriptStruct),
     ObjectProperty(FPackageIndex),
     FloatProperty(f32),
     TextProperty(FText),
@@ -454,7 +510,12 @@ impl FPropertyTagType {
                     _ => panic!("Bool property does not have bool data"),
                 }
             ),
-            "StructProperty" => FPropertyTagType::StructProperty,
+            "StructProperty" => FPropertyTagType::StructProperty(
+                match tag_data {
+                    FPropertyTagData::StructProperty(name, _guid) => UScriptStruct::new(reader, name_map, name),
+                    _ => panic!("Struct does not have struct data"),
+                }
+            ),
             "ObjectProperty" => FPropertyTagType::ObjectProperty(FPackageIndex::new(reader)),
             "FloatProperty" =>  FPropertyTagType::FloatProperty(reader.read_f32::<LittleEndian>().unwrap()),
             "TextProperty" => FPropertyTagType::TextProperty(FText::new(reader)),
@@ -477,6 +538,7 @@ impl FPropertyTagType {
 }
 
 #[allow(dead_code)]
+#[derive(Debug)]
 struct FPropertyTag {
     name: String,
     property_type: String,
@@ -532,6 +594,7 @@ fn read_property_tag(reader: &mut ReaderCursor, name_map: &NameMap) -> Option<FP
 }
 
 #[allow(dead_code)]
+#[derive(Debug)]
 struct UObject {
     export_type: String,
     properties: Vec<FPropertyTag>,
@@ -559,6 +622,7 @@ impl UObject {
 }
 
 #[allow(dead_code)]
+#[derive(Debug)]
 struct Package {
     summary: FPackageFileSummary,
     name_map: NameMap,
@@ -622,4 +686,5 @@ impl Package {
 
 fn main() {
     let test_package = Package::new("bid_024_space.uasset", "bid_024_space.uexp");
+    println!("Package: {:#?}", test_package);
 }
