@@ -28,6 +28,12 @@ impl Newable for FGuid {
     }
 }
 
+impl NewableWithNameMap for FGuid {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap) -> Self {
+        FGuid::new(reader)
+    }
+}
+
 impl fmt::Display for FGuid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:08x}{:08x}{:08x}{:08x}", self.a, self.b, self.c, self.d)
@@ -263,7 +269,7 @@ impl Newable for FNameEntrySerialized {
 type NameMap = Vec<FNameEntrySerialized>;
 
 trait NewableWithNameMap: std::fmt::Debug {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap) -> Self
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap) -> Self
     where Self: Sized;
 }
 
@@ -278,6 +284,7 @@ struct FPackageIndex {
     index: i32,
 }
 
+#[allow(dead_code)]
 impl FPackageIndex {
     fn is_import(&self) -> bool {
         self.index < 0
@@ -324,7 +331,7 @@ struct FObjectImport {
 }
 
 impl NewableWithNameMap for FObjectImport {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap) -> Self {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap) -> Self {
         Self {
             class_package: read_fname(reader, name_map),
             class_name: read_fname(reader, name_map),
@@ -362,7 +369,7 @@ struct FObjectExport {
 }
 
 impl NewableWithNameMap for FObjectExport {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap) -> Self {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap) -> Self {
         Self {
             class_index: FPackageIndex::new(reader),
             super_index: FPackageIndex::new(reader),
@@ -424,7 +431,7 @@ struct FSoftObjectPath {
 }
 
 impl NewableWithNameMap for FSoftObjectPath {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap) -> Self {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap) -> Self {
         Self {
             asset_path_name: read_fname(reader, name_map),
             sub_path_string: read_string(reader),
@@ -439,7 +446,7 @@ struct FGameplayTagContainer {
 }
 
 impl NewableWithNameMap for FGameplayTagContainer {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap) -> Self {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap) -> Self {
         let length = reader.read_u32::<LittleEndian>().unwrap();
         let mut container = Vec::new();
 
@@ -453,6 +460,21 @@ impl NewableWithNameMap for FGameplayTagContainer {
     }
 }
 
+#[derive(Debug)]
+struct FIntPoint {
+    x: u32,
+    y: u32,
+}
+
+impl NewableWithNameMap for FIntPoint {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap) -> Self {
+        Self {
+            x: reader.read_u32::<LittleEndian>().unwrap(),
+            y: reader.read_u32::<LittleEndian>().unwrap(),
+        }
+    }
+}
+
 #[allow(dead_code)]
 #[derive(Debug)]
 struct UScriptStruct {
@@ -460,21 +482,25 @@ struct UScriptStruct {
     struct_type: Box<NewableWithNameMap>,
 }
 
+#[allow(dead_code)]
 impl UScriptStruct {
     fn new(reader: &mut ReaderCursor, name_map: &NameMap, struct_name: &str) -> Self {
         println!("Struct name: {}", struct_name);
-        let struct_type = match struct_name {
-            "GameplayTagContainer" => FGameplayTagContainer::new(reader, name_map),
+        let struct_type: Box<NewableWithNameMap> = match struct_name {
+            "GameplayTagContainer" => Box::new(FGameplayTagContainer::new_n(reader, name_map)),
+            "IntPoint" => Box::new(FIntPoint::new_n(reader, name_map)),
+            "Guid" => Box::new(FGuid::new(reader)),
             _ => panic!("Could not read struct: {}", struct_name),
         };
         Self {
             struct_name: struct_name.to_owned(),
-            struct_type: Box::new(struct_type),
+            struct_type: struct_type,
         }
     }
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 enum FPropertyTagData {
     StructProperty (String, FGuid),
     BoolProperty (bool),
@@ -485,6 +511,7 @@ enum FPropertyTagData {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 enum FPropertyTagType {
     BoolProperty(bool),
     StructProperty(UScriptStruct),
@@ -499,6 +526,7 @@ enum FPropertyTagType {
     SoftObjectProperty(FSoftObjectPath),
 }
 
+#[allow(dead_code)]
 impl FPropertyTagType {
     fn new(reader: &mut ReaderCursor, name_map: &NameMap, property_type: &str, tag_data: &FPropertyTagData) -> Self {
         match property_type {
@@ -529,7 +557,7 @@ impl FPropertyTagType {
                     _ => panic!("Enum property does not have enum data"),
                 }
             ),
-            "SoftObjectProperty" => FPropertyTagType::SoftObjectProperty(FSoftObjectPath::new(reader, name_map)),
+            "SoftObjectProperty" => FPropertyTagType::SoftObjectProperty(FSoftObjectPath::new_n(reader, name_map)),
             _ => panic!("Could not read property type: {}", property_type),
         }
     }
@@ -547,6 +575,7 @@ struct FPropertyTag {
     tag: FPropertyTagType,
 }
 
+#[allow(dead_code)]
 fn read_property_tag(reader: &mut ReaderCursor, name_map: &NameMap) -> Option<FPropertyTag> {
     let name = read_fname(reader, name_map);
     if name == "None" {
@@ -593,11 +622,130 @@ fn read_property_tag(reader: &mut ReaderCursor, name_map: &NameMap) -> Option<FP
 
 #[allow(dead_code)]
 #[derive(Debug)]
+struct FStripDataFlags {
+    global_strip_flags: u8,
+    class_strip_flags: u8,
+}
+
+impl Newable for FStripDataFlags {
+    fn new(reader: &mut ReaderCursor) -> Self {
+        Self {
+            global_strip_flags: reader.read_u8().unwrap(),
+            class_strip_flags: reader.read_u8().unwrap(),
+        }
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Debug)]
+struct FByteBulkDataHeader {
+    bulk_data_flags: i32,
+    element_count: i32,
+    size_on_disk: i32,
+    offset_in_file: i64,
+}
+
+impl Newable for FByteBulkDataHeader {
+    fn new(reader: &mut ReaderCursor) -> Self {
+        Self {
+            bulk_data_flags: reader.read_i32::<LittleEndian>().unwrap(),
+            element_count: reader.read_i32::<LittleEndian>().unwrap(),
+            size_on_disk: reader.read_i32::<LittleEndian>().unwrap(),
+            offset_in_file: reader.read_i64::<LittleEndian>().unwrap(),
+        }
+    }
+}
+
+#[allow(dead_code)]
+struct FByteBulkData {
+    header: FByteBulkDataHeader,
+    data: Vec<u8>
+}
+
+impl std::fmt::Debug for FByteBulkData {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Header: {:?} {}", self.header, self.data.len())
+    }
+}
+
+impl Newable for FByteBulkData {
+    fn new(reader: &mut ReaderCursor) -> Self {
+        let header = FByteBulkDataHeader::new(reader);
+        let mut data: Vec<u8> = Vec::new();
+
+        if header.bulk_data_flags & 0x0040 != 0 {
+            data.resize(header.element_count as usize, 0u8);
+            reader.read_exact(&mut data).unwrap();
+        }
+
+        Self {
+            header, data
+        }
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Debug)]
+struct FTexture2DMipMap {
+    data: FByteBulkData,
+    size_x: i32,
+    size_y: i32,
+    size_z: i32,
+}
+
+impl Newable for FTexture2DMipMap {
+    fn new(reader: &mut ReaderCursor) -> Self {
+        let cooked = reader.read_i32::<LittleEndian>().unwrap();
+        let data = FByteBulkData::new(reader);
+        let size_x = reader.read_i32::<LittleEndian>().unwrap();
+        let size_y = reader.read_i32::<LittleEndian>().unwrap();
+        let size_z = reader.read_i32::<LittleEndian>().unwrap();
+        if cooked != 1 {
+            read_string(reader);
+        }
+
+        Self {
+            data, size_x, size_y, size_z
+        }
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Debug)]
+struct FTexturePlatformData {
+    size_x: i32,
+    size_y: i32,
+    num_slices: i32,
+    pixel_format: String,
+    first_mip: i32,
+    mips: Vec<FTexture2DMipMap>,
+}
+
+impl Newable for FTexturePlatformData {
+    fn new(reader: &mut ReaderCursor) -> Self {
+        Self {
+            size_x: reader.read_i32::<LittleEndian>().unwrap(),
+            size_y: reader.read_i32::<LittleEndian>().unwrap(),
+            num_slices: reader.read_i32::<LittleEndian>().unwrap(),
+            pixel_format: read_string(reader),
+            first_mip: reader.read_i32::<LittleEndian>().unwrap(),
+            mips: read_tarray(reader),
+        }
+    }
+}
+
+pub trait PackageExport: std::fmt::Debug {
+    fn get_export_type(&self) -> &str;
+}
+
+#[allow(dead_code)]
+#[derive(Debug)]
 struct UObject {
     export_type: String,
     properties: Vec<FPropertyTag>,
 }
 
+#[allow(dead_code)]
 impl UObject {
     fn new(reader: &mut ReaderCursor, name_map: &NameMap, export_type: &str) -> Option<Self> {
         println!("Export type: {}", export_type);
@@ -619,19 +767,74 @@ impl UObject {
     }
 }
 
+impl PackageExport for UObject {
+    fn get_export_type(&self) -> &str {
+        &self.export_type
+    }
+}
+
 #[allow(dead_code)]
 #[derive(Debug)]
-struct Package {
+struct Texture2D {
+    base_object: UObject,
+    cooked: u32,
+    textures: Vec<FTexturePlatformData>,
+}
+
+impl Texture2D {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, asset_file_size: usize) -> Self {
+        let object = UObject::new(reader, name_map, "Texture2D").unwrap();
+        let serialize_guid = reader.read_u32::<LittleEndian>().unwrap();
+        if serialize_guid != 0 {
+            let _object_guid = FGuid::new(reader);
+        }
+
+        FStripDataFlags::new(reader); // still no idea
+        FStripDataFlags::new(reader); // why there are two
+
+        let mut textures: Vec<FTexturePlatformData> = Vec::new();
+        let cooked = reader.read_u32::<LittleEndian>().unwrap();
+        if cooked == 1 {
+            let mut pixel_format = read_fname(reader, name_map);
+            while pixel_format != "None" {
+                let skip_offset = reader.read_i64::<LittleEndian>().unwrap();
+                let texture = FTexturePlatformData::new(reader);
+                if reader.position() + asset_file_size as u64 != skip_offset as u64 {
+                    panic!("Texture read incorrectly {} {}", reader.position() + asset_file_size as u64, skip_offset);
+                }
+                textures.push(texture);
+                pixel_format = read_fname(reader, name_map);
+            }
+        }
+
+        Self {
+            base_object: object,
+            cooked: cooked,
+            textures: textures,
+        }
+    }
+}
+
+impl PackageExport for Texture2D {
+    fn get_export_type(&self) -> &str {
+        "Texture2D"
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Debug)]
+pub struct Package {
     summary: FPackageFileSummary,
     name_map: NameMap,
     import_map: ImportMap,
     export_map: Vec<FObjectExport>,
     asset_file_size: usize,
-    exports: Vec<UObject>,
+    exports: Vec<Box<PackageExport>>,
 }
 
+#[allow(dead_code)]
 impl Package {
-    fn new(asset_file: &str, uexp_file: &str) -> Self {
+    pub fn new(asset_file: &str, uexp_file: &str) -> Self {
         // read asset file
         let mut asset = File::open(asset_file).unwrap();
         let mut buffer = Vec::new();
@@ -650,13 +853,13 @@ impl Package {
         let mut import_map = Vec::new();
         cursor.seek(SeekFrom::Start(summary.import_offset as u64)).unwrap();
         for _i in 0..summary.import_count {
-            import_map.push(FObjectImport::new(&mut cursor, &name_map));
+            import_map.push(FObjectImport::new_n(&mut cursor, &name_map));
         }
 
         let mut export_map = Vec::new();
         cursor.seek(SeekFrom::Start(summary.export_offset as u64)).unwrap();
         for _i in 0..summary.export_count {
-            export_map.push(FObjectExport::new(&mut cursor, &name_map));
+            export_map.push(FObjectExport::new_n(&mut cursor, &name_map));
         }
 
         // read uexp file
@@ -666,8 +869,11 @@ impl Package {
         let mut cursor = ReaderCursor::new(buffer);
 
         let export_type = &export_map.get(0).unwrap().class_index.get_package(&import_map).object_name;
-        let export = UObject::new(&mut cursor, &name_map, export_type);
-        let exports = vec![export.unwrap()];
+        let export: Box<PackageExport> = match export_type.as_ref() {
+            "Texture2D" => Box::new(Texture2D::new(&mut cursor, &name_map, asset_length)),
+            _ => Box::new(UObject::new(&mut cursor, &name_map, export_type).unwrap()),
+        };
+        let exports: Vec<Box<PackageExport>> = vec![export];
 
 
         Self {
