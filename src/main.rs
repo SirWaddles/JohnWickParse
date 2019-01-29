@@ -1,6 +1,8 @@
 extern crate byteorder;
 extern crate hex;
 
+use std::any::Any;
+
 mod rijndael;
 mod assets;
 mod archives;
@@ -14,5 +16,6 @@ fn main() {
     file.write_all(file_list.as_bytes()).unwrap();*/
 
     let package = assets::Package::new("t-featured-glider-teddybear.uasset", "t-featured-glider-teddybear.uexp");
-    println!("{:#?}", package);
+    let texture = package.get_export().downcast_ref::<assets::Texture2D>().unwrap();
+    println!("{:#?}", texture);
 }

@@ -1,6 +1,7 @@
 use std::fmt;
 use std::io::{Cursor, Read, Seek, SeekFrom};
 use std::fs::File;
+use std::any::Any;
 use byteorder::{LittleEndian, ReadBytesExt};
 
 pub type ReaderCursor = Cursor<Vec<u8>>;
@@ -775,7 +776,7 @@ impl PackageExport for UObject {
 
 #[allow(dead_code)]
 #[derive(Debug)]
-struct Texture2D {
+pub struct Texture2D {
     base_object: UObject,
     cooked: u32,
     textures: Vec<FTexturePlatformData>,
@@ -829,7 +830,7 @@ pub struct Package {
     import_map: ImportMap,
     export_map: Vec<FObjectExport>,
     asset_file_size: usize,
-    exports: Vec<Box<PackageExport>>,
+    exports: Vec<Box<Any>>,
 }
 
 #[allow(dead_code)]
@@ -869,12 +870,11 @@ impl Package {
         let mut cursor = ReaderCursor::new(buffer);
 
         let export_type = &export_map.get(0).unwrap().class_index.get_package(&import_map).object_name;
-        let export: Box<PackageExport> = match export_type.as_ref() {
+        let export: Box<dyn Any> = match export_type.as_ref() {
             "Texture2D" => Box::new(Texture2D::new(&mut cursor, &name_map, asset_length)),
             _ => Box::new(UObject::new(&mut cursor, &name_map, export_type).unwrap()),
         };
-        let exports: Vec<Box<PackageExport>> = vec![export];
-
+        let exports: Vec<Box<dyn Any>> = vec![export];
 
         Self {
             summary: summary,
@@ -884,5 +884,9 @@ impl Package {
             asset_file_size: asset_length,
             exports: exports,
         }
+    }
+
+    pub fn get_export(&self) -> &dyn Any {
+        self.exports.get(0).unwrap().as_ref()
     }
 }
