@@ -2,6 +2,8 @@ use std::fmt;
 use std::io::{Cursor, Read, Seek, SeekFrom};
 use std::fs::File;
 use std::any::Any;
+use serde::ser::{Serialize, Serializer, SerializeMap, SerializeSeq};
+use erased_serde::{Serialize as TraitSerialize};
 use byteorder::{LittleEndian, ReadBytesExt};
 
 pub type ReaderCursor = Cursor<Vec<u8>>;
@@ -10,7 +12,7 @@ pub trait Newable {
     fn new(reader: &mut ReaderCursor) -> Self;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct FGuid {
     a: u32,
     b: u32,
@@ -30,7 +32,7 @@ impl Newable for FGuid {
 }
 
 impl NewableWithNameMap for FGuid {
-    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap) -> Self {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> Self {
         FGuid::new(reader)
     }
 }
@@ -268,11 +270,14 @@ impl Newable for FNameEntrySerialized {
 }
 
 type NameMap = Vec<FNameEntrySerialized>;
+type ImportMap = Vec<FObjectImport>;
 
-trait NewableWithNameMap: std::fmt::Debug {
-    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap) -> Self
+trait NewableWithNameMap: std::fmt::Debug + TraitSerialize {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> Self
     where Self: Sized;
 }
+
+serialize_trait_object!(NewableWithNameMap);
 
 fn read_fname(reader: &mut ReaderCursor, name_map: &NameMap) -> String {
     let name_index = reader.read_i32::<LittleEndian>().unwrap();
@@ -283,42 +288,39 @@ fn read_fname(reader: &mut ReaderCursor, name_map: &NameMap) -> String {
 #[derive(Debug)]
 struct FPackageIndex {
     index: i32,
+    import: String,
 }
 
 #[allow(dead_code)]
 impl FPackageIndex {
-    fn is_import(&self) -> bool {
-        self.index < 0
-    }
-
-    fn is_export(&self) -> bool {
-        self.index > 0
-    }
-
-    fn to_import(&self) -> i32 {
-        self.index * -1 - 1
-    }
-
-    fn to_export(&self) -> i32 {
-        self.index - 1
-    }
-
-    fn get_package<'a>(&self, import_map: &'a ImportMap) -> &'a FObjectImport {
-        if self.is_import() {
-            return import_map.get(self.to_import() as usize).unwrap();
+    fn get_package<'a>(index: i32, import_map: &'a ImportMap) -> Option<&'a FObjectImport> {
+        if index < 0 {
+            return import_map.get((index * -1 - 1) as usize);
         }
-        if self.is_export() {
-            return import_map.get(self.to_export() as usize).unwrap();
+        if index > 0 {
+            return import_map.get((index - 1) as usize);
         }
-        panic!("???");
+        None
     }
 }
 
-impl Newable for FPackageIndex {
-    fn new(reader: &mut ReaderCursor) -> Self {
+impl NewableWithNameMap for FPackageIndex {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, import_map: &ImportMap) -> Self {
+        let index = reader.read_i32::<LittleEndian>().unwrap();
+        let import = match FPackageIndex::get_package(index, import_map) {
+            Some(data) => data.object_name.clone(),
+            None => "None".to_owned(),
+        };
         Self {
-            index: reader.read_i32::<LittleEndian>().unwrap(),
+            index,
+            import,
         }
+    }
+}
+
+impl Serialize for FPackageIndex {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        serializer.serialize_str(&self.import)
     }
 }
 
@@ -332,17 +334,21 @@ struct FObjectImport {
 }
 
 impl NewableWithNameMap for FObjectImport {
-    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap) -> Self {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> Self {
         Self {
             class_package: read_fname(reader, name_map),
             class_name: read_fname(reader, name_map),
-            outer_index: FPackageIndex::new(reader),
+            outer_index: FPackageIndex::new_n(reader, name_map, import_map),
             object_name: read_fname(reader, name_map),
         }
     }
 }
 
-type ImportMap = Vec<FObjectImport>;
+impl Serialize for FObjectImport {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        serializer.serialize_str(&self.object_name)
+    }
+}
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -370,12 +376,12 @@ struct FObjectExport {
 }
 
 impl NewableWithNameMap for FObjectExport {
-    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap) -> Self {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> Self {
         Self {
-            class_index: FPackageIndex::new(reader),
-            super_index: FPackageIndex::new(reader),
-            template_index: FPackageIndex::new(reader),
-            outer_index: FPackageIndex::new(reader),
+            class_index: FPackageIndex::new_n(reader, name_map, import_map),
+            super_index: FPackageIndex::new_n(reader, name_map, import_map),
+            template_index: FPackageIndex::new_n(reader, name_map, import_map),
+            outer_index: FPackageIndex::new_n(reader, name_map, import_map),
             object_name: read_fname(reader, name_map),
             save: reader.read_u32::<LittleEndian>().unwrap(),
             serial_size: reader.read_i64::<LittleEndian>().unwrap(),
@@ -393,6 +399,12 @@ impl NewableWithNameMap for FObjectExport {
             serialization_before_create_dependencies: reader.read_i32::<LittleEndian>().unwrap() != 0,
             create_before_create_dependencies: reader.read_i32::<LittleEndian>().unwrap() != 0,
         }
+    }
+}
+
+impl Serialize for FObjectExport {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        serializer.serialize_str(&self.object_name)
     }
 }
 
@@ -424,15 +436,21 @@ impl Newable for FText {
     }
 }
 
+impl Serialize for FText {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        serializer.serialize_str(&self.source_string)
+    }
+}
+
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 struct FSoftObjectPath {
     asset_path_name: String,
     sub_path_string: String,
 }
 
 impl NewableWithNameMap for FSoftObjectPath {
-    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap) -> Self {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, _import_map: &ImportMap) -> Self {
         Self {
             asset_path_name: read_fname(reader, name_map),
             sub_path_string: read_string(reader),
@@ -441,13 +459,13 @@ impl NewableWithNameMap for FSoftObjectPath {
 }
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 struct FGameplayTagContainer {
     gameplay_tags: Vec<String>,
 }
 
 impl NewableWithNameMap for FGameplayTagContainer {
-    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap) -> Self {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, _import_map: &ImportMap) -> Self {
         let length = reader.read_u32::<LittleEndian>().unwrap();
         let mut container = Vec::new();
 
@@ -461,18 +479,86 @@ impl NewableWithNameMap for FGameplayTagContainer {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 struct FIntPoint {
     x: u32,
     y: u32,
 }
 
 impl NewableWithNameMap for FIntPoint {
-    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap) -> Self {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> Self {
         Self {
             x: reader.read_u32::<LittleEndian>().unwrap(),
             y: reader.read_u32::<LittleEndian>().unwrap(),
         }
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FVector2D {
+    x: f32,
+    y: f32,
+}
+
+impl NewableWithNameMap for FVector2D {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> Self {
+        Self {
+            x: reader.read_f32::<LittleEndian>().unwrap(),
+            y: reader.read_f32::<LittleEndian>().unwrap(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FLinearColor {
+    r: f32,
+    g: f32,
+    b: f32,
+    a: f32,
+}
+
+impl NewableWithNameMap for FLinearColor {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> Self {
+        Self {
+            r: reader.read_f32::<LittleEndian>().unwrap(),
+            g: reader.read_f32::<LittleEndian>().unwrap(),
+            b: reader.read_f32::<LittleEndian>().unwrap(),
+            a: reader.read_f32::<LittleEndian>().unwrap(),
+        }
+    }
+}
+
+#[derive(Debug)]
+struct FStructFallback {
+    properties: Vec<FPropertyTag>,
+}
+
+impl NewableWithNameMap for FStructFallback {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> Self {
+        let mut properties = Vec::new();
+        loop {
+            let tag = read_property_tag(reader, name_map, import_map);
+            let tag = match tag {
+                Some(data) => data,
+                None => break,
+            };
+
+            properties.push(tag);
+        }
+        
+        Self {
+            properties: properties,
+        }
+    }
+}
+
+impl Serialize for FStructFallback {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        let mut map = serializer.serialize_map(Some(self.properties.len()))?;
+        for property in &self.properties {
+            map.serialize_entry(&property.name, &property.tag)?;
+        }
+        map.end()
     }
 }
 
@@ -485,18 +571,25 @@ struct UScriptStruct {
 
 #[allow(dead_code)]
 impl UScriptStruct {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap, struct_name: &str) -> Self {
-        println!("Struct name: {}", struct_name);
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, struct_name: &str) -> Self {
         let struct_type: Box<NewableWithNameMap> = match struct_name {
-            "GameplayTagContainer" => Box::new(FGameplayTagContainer::new_n(reader, name_map)),
-            "IntPoint" => Box::new(FIntPoint::new_n(reader, name_map)),
+            "Vector2D" => Box::new(FVector2D::new_n(reader, name_map, import_map)),
+            "LinearColor" => Box::new(FLinearColor::new_n(reader, name_map, import_map)),
+            "GameplayTagContainer" => Box::new(FGameplayTagContainer::new_n(reader, name_map, import_map)),
+            "IntPoint" => Box::new(FIntPoint::new_n(reader, name_map, import_map)),
             "Guid" => Box::new(FGuid::new(reader)),
-            _ => panic!("Could not read struct: {}", struct_name),
+            _ => Box::new(FStructFallback::new_n(reader, name_map, import_map)),
         };
         Self {
             struct_name: struct_name.to_owned(),
             struct_type: struct_type,
         }
+    }
+}
+
+impl Serialize for UScriptStruct {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        self.struct_type.serialize(serializer)
     }
 }
 
@@ -511,7 +604,8 @@ enum FPropertyTagData {
     NoData,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
+#[serde(untagged)]
 #[allow(dead_code)]
 enum FPropertyTagType {
     BoolProperty(bool),
@@ -529,7 +623,8 @@ enum FPropertyTagType {
 
 #[allow(dead_code)]
 impl FPropertyTagType {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap, property_type: &str, tag_data: &FPropertyTagData) -> Self {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, 
+                    property_type: &str, tag_data: &FPropertyTagData) -> Self {
         match property_type {
             "BoolProperty" => FPropertyTagType::BoolProperty(
                 match tag_data {
@@ -539,11 +634,11 @@ impl FPropertyTagType {
             ),
             "StructProperty" => FPropertyTagType::StructProperty(
                 match tag_data {
-                    FPropertyTagData::StructProperty(name, _guid) => UScriptStruct::new(reader, name_map, name),
+                    FPropertyTagData::StructProperty(name, _guid) => UScriptStruct::new(reader, name_map, import_map, name),
                     _ => panic!("Struct does not have struct data"),
                 }
             ),
-            "ObjectProperty" => FPropertyTagType::ObjectProperty(FPackageIndex::new(reader)),
+            "ObjectProperty" => FPropertyTagType::ObjectProperty(FPackageIndex::new_n(reader, name_map, import_map)),
             "FloatProperty" =>  FPropertyTagType::FloatProperty(reader.read_f32::<LittleEndian>().unwrap()),
             "TextProperty" => FPropertyTagType::TextProperty(FText::new(reader)),
             "NameProperty" => FPropertyTagType::NameProperty(read_fname(reader, name_map)),
@@ -558,7 +653,7 @@ impl FPropertyTagType {
                     _ => panic!("Enum property does not have enum data"),
                 }
             ),
-            "SoftObjectProperty" => FPropertyTagType::SoftObjectProperty(FSoftObjectPath::new_n(reader, name_map)),
+            "SoftObjectProperty" => FPropertyTagType::SoftObjectProperty(FSoftObjectPath::new_n(reader, name_map, import_map)),
             _ => panic!("Could not read property type: {}", property_type),
         }
     }
@@ -577,7 +672,7 @@ struct FPropertyTag {
 }
 
 #[allow(dead_code)]
-fn read_property_tag(reader: &mut ReaderCursor, name_map: &NameMap) -> Option<FPropertyTag> {
+fn read_property_tag(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> Option<FPropertyTag> {
     let name = read_fname(reader, name_map);
     if name == "None" {
         return None;
@@ -605,9 +700,8 @@ fn read_property_tag(reader: &mut ReaderCursor, name_map: &NameMap) -> Option<FP
     };
 
     let pos = reader.position();
-    let tag = FPropertyTagType::new(reader, name_map, property_type.as_ref(), &tag_data);
+    let tag = FPropertyTagType::new(reader, name_map, import_map, property_type.as_ref(), &tag_data);
     let final_pos = pos + (size as u64);
-    println!("Seeking from {} to {}", reader.position(), final_pos);
     reader.seek(SeekFrom::Start(final_pos as u64)).expect("Could not seek to size");
 
     Some(FPropertyTag {
@@ -748,11 +842,11 @@ struct UObject {
 
 #[allow(dead_code)]
 impl UObject {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap, export_type: &str) -> Option<Self> {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, export_type: &str) -> Option<Self> {
         println!("Export type: {}", export_type);
         let mut properties = Vec::new();
         loop {
-            let tag = read_property_tag(reader, name_map);
+            let tag = read_property_tag(reader, name_map, import_map);
             let tag = match tag {
                 Some(data) => data,
                 None => break,
@@ -765,6 +859,16 @@ impl UObject {
             properties: properties,
             export_type: export_type.to_owned(),
         })
+    }
+}
+
+impl Serialize for UObject {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        let mut map = serializer.serialize_map(Some(self.properties.len()))?;
+        for property in &self.properties {
+            map.serialize_entry(&property.name, &property.tag)?;
+        }
+        map.end()
     }
 }
 
@@ -783,8 +887,8 @@ pub struct Texture2D {
 }
 
 impl Texture2D {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap, asset_file_size: usize) -> Self {
-        let object = UObject::new(reader, name_map, "Texture2D").unwrap();
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, asset_file_size: usize) -> Self {
+        let object = UObject::new(reader, name_map, import_map, "Texture2D").unwrap();
         let serialize_guid = reader.read_u32::<LittleEndian>().unwrap();
         if serialize_guid != 0 {
             let _object_guid = FGuid::new(reader);
@@ -835,7 +939,9 @@ pub struct Package {
 
 #[allow(dead_code)]
 impl Package {
-    pub fn new(asset_file: &str, uexp_file: &str) -> Self {
+    pub fn new(file_path: &str) -> Self {
+        let asset_file = file_path.to_owned() + ".uasset";
+        let uexp_file = file_path.to_owned() + ".uexp";
         // read asset file
         let mut asset = File::open(asset_file).unwrap();
         let mut buffer = Vec::new();
@@ -854,13 +960,13 @@ impl Package {
         let mut import_map = Vec::new();
         cursor.seek(SeekFrom::Start(summary.import_offset as u64)).unwrap();
         for _i in 0..summary.import_count {
-            import_map.push(FObjectImport::new_n(&mut cursor, &name_map));
+            import_map.push(FObjectImport::new_n(&mut cursor, &name_map, &import_map));
         }
 
         let mut export_map = Vec::new();
         cursor.seek(SeekFrom::Start(summary.export_offset as u64)).unwrap();
         for _i in 0..summary.export_count {
-            export_map.push(FObjectExport::new_n(&mut cursor, &name_map));
+            export_map.push(FObjectExport::new_n(&mut cursor, &name_map, &import_map));
         }
 
         // read uexp file
@@ -869,12 +975,20 @@ impl Package {
         uexp.read_to_end(&mut buffer).expect("Could not read uexp file");
         let mut cursor = ReaderCursor::new(buffer);
 
-        let export_type = &export_map.get(0).unwrap().class_index.get_package(&import_map).object_name;
-        let export: Box<dyn Any> = match export_type.as_ref() {
-            "Texture2D" => Box::new(Texture2D::new(&mut cursor, &name_map, asset_length)),
-            _ => Box::new(UObject::new(&mut cursor, &name_map, export_type).unwrap()),
-        };
-        let exports: Vec<Box<dyn Any>> = vec![export];
+        let exports: Vec<Box<dyn Any>> = (&export_map).into_iter().map(|v| {
+            let export_type = &v.class_index.import;
+            let position = v.serial_offset as u64 - asset_length as u64;
+            cursor.seek(SeekFrom::Start(position)).unwrap();
+            let export: Box<dyn Any> = match export_type.as_ref() {
+                "Texture2D" => Box::new(Texture2D::new(&mut cursor, &name_map, &import_map, asset_length)),
+                _ => Box::new(UObject::new(&mut cursor, &name_map, &import_map, export_type).unwrap()),
+            };
+            let _zero = cursor.read_u32::<LittleEndian>().unwrap();
+            if cursor.position() != position + v.serial_size as u64 {
+                println!("Did not read {} correctly", export_type);
+            }
+            export
+        }).collect();
 
         Self {
             summary: summary,
@@ -888,5 +1002,20 @@ impl Package {
 
     pub fn get_export(&self) -> &dyn Any {
         self.exports.get(0).unwrap().as_ref()
+    }
+}
+
+impl Serialize for Package {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        let mut seq = serializer.serialize_seq(Some(self.summary.export_count as usize))?;
+        for e in &self.exports {
+            if let Some(obj) = e.downcast_ref::<UObject>() {
+                seq.serialize_element(obj)?;
+            }
+            if let Some(texture) = e.downcast_ref::<Texture2D>() {
+                seq.serialize_element(&texture.base_object)?;
+            }
+        }
+        seq.end()
     }
 }

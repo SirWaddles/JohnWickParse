@@ -83,6 +83,7 @@ pub struct FPakEntry {
     struct_size: u64,
 }
 
+#[allow(dead_code)]
 impl FPakEntry {
     fn new(reader: &mut ReaderCursor, filename: String) -> Self {
         let seek_point = reader.position();
@@ -122,7 +123,7 @@ impl FPakIndex {
         let file_count = reader.read_u32::<LittleEndian>().unwrap();
         println!("Reading {} files", file_count);
         let mut index_entries = Vec::new();
-        for i in 0..file_count {
+        for _i in 0..file_count {
             let filename = read_string(reader);
             index_entries.push(FPakEntry::new(reader, filename));
         }
