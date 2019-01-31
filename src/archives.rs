@@ -55,6 +55,7 @@ fn get_index(header: &FPakInfo, reader: &mut BufReader<File>, key: &str) -> Vec<
 }
 
 #[allow(dead_code)]
+#[derive(Clone)]
 struct FPakCompressedBlock {
     compressed_start: i64,
     compressed_end: i64,
@@ -70,6 +71,7 @@ impl Newable for FPakCompressedBlock {
 }
 
 #[allow(dead_code)]
+#[derive(Clone)]
 pub struct FPakEntry {
     filename: String,
     position: i64,
