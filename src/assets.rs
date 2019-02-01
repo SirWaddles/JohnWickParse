@@ -537,7 +537,7 @@ impl NewableWithNameMap for FStructFallback {
     fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> Self {
         let mut properties = Vec::new();
         loop {
-            let tag = read_property_tag(reader, name_map, import_map);
+            let tag = read_property_tag(reader, name_map, import_map, true);
             let tag = match tag {
                 Some(data) => data,
                 None => break,
@@ -593,6 +593,42 @@ impl Serialize for UScriptStruct {
     }
 }
 
+struct UScriptArray {
+    tag: Option<FPropertyTag>,
+    data: Vec<FPropertyTagType>,
+}
+
+impl UScriptArray {
+    fn new(reader: &mut ReaderCursor, tag: &FPropertyTag, name_map: &NameMap, import_map: &ImportMap) -> Self {
+        let element_count = reader.read_u32::<LittleEndian>().unwrap();
+        let inner_type = match tag.tag_data {
+            FPropertyTagData::ArrayProperty(val) => val,
+            _ => panic!("Could not read array data from non-array"),
+        };
+        let array_tag: Option<FPropertyTag> = None;
+        if inner_type == "StructProperty" || inner_type == "ArrayProperty" {
+            array_tag = match read_property_tag(reader, name_map, import_map, false) {
+                Some(data) => Some(data),
+                None => panic!("Could not read file"),
+            };
+        }
+        let inner_tag_data = match array_tag {
+            Some(data) => Some(data.tag_data),
+            None => None,
+        };
+
+        let mut contents: Vec<FPropertyTagType> = Vec::new();
+        for _i in 0..element_count {
+            contents.push(FPropertyTagType::new(reader, name_map, import_map, &inner_type, inner_tag_data));
+        }
+
+        Self {
+            tag: array_tag,
+            data: contents,
+        }
+    }
+}
+
 #[derive(Debug)]
 #[allow(dead_code)]
 enum FPropertyTagData {
@@ -624,16 +660,16 @@ enum FPropertyTagType {
 #[allow(dead_code)]
 impl FPropertyTagType {
     fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, 
-                    property_type: &str, tag_data: &FPropertyTagData) -> Self {
+                    property_type: &str, tag_data: Option<&FPropertyTagData>) -> Self {
         match property_type {
             "BoolProperty" => FPropertyTagType::BoolProperty(
-                match tag_data {
+                match tag_data.unwrap() {
                     FPropertyTagData::BoolProperty(val) => val.clone(),
                     _ => panic!("Bool property does not have bool data"),
                 }
             ),
             "StructProperty" => FPropertyTagType::StructProperty(
-                match tag_data {
+                match tag_data.unwrap() {
                     FPropertyTagData::StructProperty(name, _guid) => UScriptStruct::new(reader, name_map, import_map, name),
                     _ => panic!("Struct does not have struct data"),
                 }
@@ -644,9 +680,14 @@ impl FPropertyTagType {
             "NameProperty" => FPropertyTagType::NameProperty(read_fname(reader, name_map)),
             "IntProperty" => FPropertyTagType::IntProperty(reader.read_i32::<LittleEndian>().unwrap()),
             "ArrayProperty" => FPropertyTagType::ArrayProperty,
-            "ByteProperty" => FPropertyTagType::ByteProperty(reader.read_u8().unwrap()),
+            "ByteProperty" => match tag_data.unwrap() {
+                FPropertyTagData::ByteProperty(name) => {
+                    if name == "None" { FPropertyTagType::ByteProperty(reader.read_u8().unwrap()) } else { FPropertyTagType::NameProperty(read_fname(reader, name_map)) }
+                },
+                _ => panic!("Byte needs byte data"),
+            },
             "EnumProperty" => FPropertyTagType::EnumProperty(
-                match tag_data {
+                match tag_data.unwrap() {
                     FPropertyTagData::EnumProperty(val) => {
                         if val == "None" { None } else { Some(read_fname(reader, name_map)) }
                     },
@@ -668,11 +709,11 @@ struct FPropertyTag {
     size: i32,
     array_index: i32,
     property_guid: Option<FGuid>,
-    tag: FPropertyTagType,
+    tag: Option<FPropertyTagType>,
 }
 
 #[allow(dead_code)]
-fn read_property_tag(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> Option<FPropertyTag> {
+fn read_property_tag(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, read_data: bool) -> Option<FPropertyTag> {
     let name = read_fname(reader, name_map);
     if name == "None" {
         return None;
@@ -700,7 +741,10 @@ fn read_property_tag(reader: &mut ReaderCursor, name_map: &NameMap, import_map: 
     };
 
     let pos = reader.position();
-    let tag = FPropertyTagType::new(reader, name_map, import_map, property_type.as_ref(), &tag_data);
+    let tag = match read_data {
+        true => Some(FPropertyTagType::new(reader, name_map, import_map, property_type.as_ref(), Some(&tag_data))),
+        false => None,
+    };
     let final_pos = pos + (size as u64);
     reader.seek(SeekFrom::Start(final_pos as u64)).expect("Could not seek to size");
 
@@ -711,7 +755,7 @@ fn read_property_tag(reader: &mut ReaderCursor, name_map: &NameMap, import_map: 
         size,
         array_index,
         property_guid,
-        tag
+        tag,
     })
 }
 
@@ -864,7 +908,7 @@ impl UObject {
         println!("Export type: {}", export_type);
         let mut properties = Vec::new();
         loop {
-            let tag = read_property_tag(reader, name_map, import_map);
+            let tag = read_property_tag(reader, name_map, import_map, true);
             let tag = match tag {
                 Some(data) => data,
                 None => break,
