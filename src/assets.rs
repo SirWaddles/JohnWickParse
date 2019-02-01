@@ -593,27 +593,24 @@ impl Serialize for UScriptStruct {
     }
 }
 
+#[derive(Debug)]
 struct UScriptArray {
-    tag: Option<FPropertyTag>,
+    tag: Option<Box<FPropertyTag>>,
     data: Vec<FPropertyTagType>,
 }
 
 impl UScriptArray {
-    fn new(reader: &mut ReaderCursor, tag: &FPropertyTag, name_map: &NameMap, import_map: &ImportMap) -> Self {
+    fn new(reader: &mut ReaderCursor, inner_type: &str, name_map: &NameMap, import_map: &ImportMap) -> Self {
         let element_count = reader.read_u32::<LittleEndian>().unwrap();
-        let inner_type = match tag.tag_data {
-            FPropertyTagData::ArrayProperty(val) => val,
-            _ => panic!("Could not read array data from non-array"),
-        };
-        let array_tag: Option<FPropertyTag> = None;
+        let mut array_tag: Option<Box<FPropertyTag>> = None;
         if inner_type == "StructProperty" || inner_type == "ArrayProperty" {
             array_tag = match read_property_tag(reader, name_map, import_map, false) {
-                Some(data) => Some(data),
+                Some(data) => Some(Box::new(data)),
                 None => panic!("Could not read file"),
             };
         }
-        let inner_tag_data = match array_tag {
-            Some(data) => Some(data.tag_data),
+        let inner_tag_data = match &array_tag {
+            Some(data) => Some(&data.tag_data),
             None => None,
         };
 
@@ -626,6 +623,16 @@ impl UScriptArray {
             tag: array_tag,
             data: contents,
         }
+    }
+}
+
+impl Serialize for UScriptArray {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        let mut seq = serializer.serialize_seq(Some(self.data.len()))?;
+        for e in &self.data {
+            seq.serialize_element(e)?;
+        }
+        seq.end()
     }
 }
 
@@ -651,7 +658,7 @@ enum FPropertyTagType {
     TextProperty(FText),
     NameProperty(String),
     IntProperty(i32),
-    ArrayProperty,
+    ArrayProperty(UScriptArray),
     ByteProperty(u8),
     EnumProperty(Option<String>),
     SoftObjectProperty(FSoftObjectPath),
@@ -679,7 +686,12 @@ impl FPropertyTagType {
             "TextProperty" => FPropertyTagType::TextProperty(FText::new(reader)),
             "NameProperty" => FPropertyTagType::NameProperty(read_fname(reader, name_map)),
             "IntProperty" => FPropertyTagType::IntProperty(reader.read_i32::<LittleEndian>().unwrap()),
-            "ArrayProperty" => FPropertyTagType::ArrayProperty,
+            "ArrayProperty" => match tag_data.unwrap() {
+                FPropertyTagData::ArrayProperty(inner_type) => FPropertyTagType::ArrayProperty(
+                    UScriptArray::new(reader, inner_type, name_map, import_map)
+                ),
+                _ => panic!("Could not read array from non-array"),
+            },
             "ByteProperty" => match tag_data.unwrap() {
                 FPropertyTagData::ByteProperty(name) => {
                     if name == "None" { FPropertyTagType::ByteProperty(reader.read_u8().unwrap()) } else { FPropertyTagType::NameProperty(read_fname(reader, name_map)) }
@@ -723,8 +735,6 @@ fn read_property_tag(reader: &mut ReaderCursor, name_map: &NameMap, import_map: 
     let size = reader.read_i32::<LittleEndian>().unwrap();
     let array_index = reader.read_i32::<LittleEndian>().unwrap();
 
-    println!("Reading property: {} {}", property_type, name);
-
     let tag_data = match property_type.as_ref() {
         "StructProperty" => FPropertyTagData::StructProperty(read_fname(reader, name_map), FGuid::new(reader)),
         "BoolProperty" => FPropertyTagData::BoolProperty(reader.read_u8().unwrap() != 0),
@@ -746,7 +756,9 @@ fn read_property_tag(reader: &mut ReaderCursor, name_map: &NameMap, import_map: 
         false => None,
     };
     let final_pos = pos + (size as u64);
-    reader.seek(SeekFrom::Start(final_pos as u64)).expect("Could not seek to size");
+    if read_data {
+        reader.seek(SeekFrom::Start(final_pos as u64)).expect("Could not seek to size");
+    }
 
     Some(FPropertyTag {
         name,

@@ -175,9 +175,24 @@ impl PakExtractor {
     }
 
     pub fn get_file(&mut self, file: &FPakEntry) -> Vec<u8> {
-        self.reader.seek(SeekFrom::Start(file.position as u64)).unwrap();
+        let start_pos = file.position as u64 + file.struct_size;
+        self.reader.seek(SeekFrom::Start(start_pos)).unwrap();
         let mut buffer = vec![0u8; file.size as usize];
-        self.reader.read_exact(&mut buffer).unwrap();
+
+        if file.encrypted {
+            let enc_size = match file.size % 16 {
+                0 => file.size,
+                _ => ((file.size / 16) + 1) * 16,
+            };
+            let mut enc_buffer = vec![0u8; enc_size as usize];
+            self.reader.read_exact(&mut enc_buffer).unwrap();
+            let key = hex::decode(&self.key).expect("Hex error");
+            let plain_buffer = rijndael::rijndael_decrypt_buf(&enc_buffer, &key);
+            let mut plain_cursor = Cursor::new(plain_buffer);
+            plain_cursor.read_exact(&mut buffer).unwrap();
+        } else {
+            self.reader.read_exact(&mut buffer).unwrap();
+        }
 
         buffer
     }
