@@ -5,6 +5,7 @@ extern crate serde_derive;
 extern crate serde_json;
 #[macro_use]
 extern crate erased_serde;
+extern crate image;
 
 use std::path::Path;
 use std::fs;
@@ -14,6 +15,7 @@ use std::env;
 mod rijndael;
 mod assets;
 mod archives;
+mod texture;
 
 #[derive(Debug)]
 struct CommandError {
@@ -48,6 +50,37 @@ fn serialize(params: &[String]) -> CommandResult {
     let serial_package = serde_json::to_string(&package).unwrap();
     let mut file = fs::File::create(path.to_owned() + ".json").unwrap();
     file.write_all(serial_package.as_bytes()).unwrap();
+
+    Ok(())
+}
+
+fn texture(params: &[String]) -> CommandResult {
+    let path = match params.get(0) {
+        Some(data) => data,
+        None => return cerr("No path specified"),
+    };
+
+    let package = assets::Package::new(path);
+    let texture = match package.get_export().downcast_ref::<assets::Texture2D>() {
+        Some(data) => data,
+        None => return cerr("Package not exporting texture"),
+    };
+
+    let pixel_format = texture.get_pixel_format().unwrap();
+
+    if pixel_format != "PF_DXT5" {
+        return cerr("Only supported formats: DXT5");
+    }
+
+    let texture = texture.get_texture().unwrap();
+    let texture_bytes = match texture::decode_texture(texture.get_bytes(), texture.get_width(), texture.get_height()) {
+        Some(data) => data,
+        None => return cerr("Could not decode texture"),
+    };
+
+    let save_path = path.clone() + ".png";
+
+    texture::save_texture(&save_path, &texture_bytes, texture.get_width(), texture.get_height());
 
     Ok(())
 }
@@ -117,6 +150,7 @@ fn main() {
         "serialize" => serialize(params),
         "filelist" => filelist(params),
         "extract" => extract(params),
+        "texture" => texture(params),
         _ => {
             println!("Invalid command");
             Ok(())

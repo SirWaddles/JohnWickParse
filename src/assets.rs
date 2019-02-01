@@ -781,7 +781,7 @@ impl Newable for FByteBulkData {
 
 #[allow(dead_code)]
 #[derive(Debug)]
-struct FTexture2DMipMap {
+pub struct FTexture2DMipMap {
     data: FByteBulkData,
     size_x: i32,
     size_y: i32,
@@ -805,15 +805,33 @@ impl Newable for FTexture2DMipMap {
     }
 }
 
+impl FTexture2DMipMap {
+    pub fn get_bytes(&self) -> &Vec<u8> {
+        &self.data.data
+    }
+
+    pub fn get_width(&self) -> u32 {
+        self.size_x as u32
+    }
+
+    pub fn get_height(&self) -> u32 {
+        self.size_y as u32
+    }
+}
+
 #[allow(dead_code)]
 #[derive(Debug)]
-struct FTexturePlatformData {
+pub struct FTexturePlatformData {
     size_x: i32,
     size_y: i32,
     num_slices: i32,
     pixel_format: String,
     first_mip: i32,
     mips: Vec<FTexture2DMipMap>,
+}
+
+impl FTexturePlatformData {
+    
 }
 
 impl Newable for FTexturePlatformData {
@@ -842,7 +860,7 @@ struct UObject {
 
 #[allow(dead_code)]
 impl UObject {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, export_type: &str) -> Option<Self> {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, export_type: &str, read_zero: bool) -> Option<Self> {
         println!("Export type: {}", export_type);
         let mut properties = Vec::new();
         loop {
@@ -853,6 +871,10 @@ impl UObject {
             };
 
             properties.push(tag);
+        }
+
+        if read_zero == true {
+            reader.read_u32::<LittleEndian>().unwrap();
         }
 
         Some(Self {
@@ -888,7 +910,7 @@ pub struct Texture2D {
 
 impl Texture2D {
     fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, asset_file_size: usize) -> Self {
-        let object = UObject::new(reader, name_map, import_map, "Texture2D").unwrap();
+        let object = UObject::new(reader, name_map, import_map, "Texture2D", false).unwrap();
         let serialize_guid = reader.read_u32::<LittleEndian>().unwrap();
         if serialize_guid != 0 {
             let _object_guid = FGuid::new(reader);
@@ -917,6 +939,26 @@ impl Texture2D {
             cooked: cooked,
             textures: textures,
         }
+    }
+
+    pub fn get_pixel_format(&self) -> Option<&str> {
+        let pdata = match self.textures.get(0) {
+            Some(data) => data,
+            None => return None,
+        };
+        Some(&pdata.pixel_format)
+    }
+
+    pub fn get_texture(&self) -> Option<&FTexture2DMipMap> {
+        let pdata = match self.textures.get(0) {
+            Some(data) => data,
+            None => return None,
+        };
+        let texture = match pdata.mips.get(0) {
+            Some(data) => data,
+            None => return None,
+        };
+        Some(texture)
     }
 }
 
@@ -981,11 +1023,11 @@ impl Package {
             cursor.seek(SeekFrom::Start(position)).unwrap();
             let export: Box<dyn Any> = match export_type.as_ref() {
                 "Texture2D" => Box::new(Texture2D::new(&mut cursor, &name_map, &import_map, asset_length)),
-                _ => Box::new(UObject::new(&mut cursor, &name_map, &import_map, export_type).unwrap()),
+                _ => Box::new(UObject::new(&mut cursor, &name_map, &import_map, export_type, true).unwrap()),
             };
-            let _zero = cursor.read_u32::<LittleEndian>().unwrap();
-            if cursor.position() != position + v.serial_size as u64 {
-                println!("Did not read {} correctly", export_type);
+            let valid_pos = position + v.serial_size as u64;
+            if cursor.position() != valid_pos {
+                println!("Did not read {} correctly. Current Position: {}, End of Asset: {}", export_type, cursor.position(), valid_pos);
             }
             export
         }).collect();
