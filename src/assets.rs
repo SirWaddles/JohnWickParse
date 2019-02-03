@@ -12,7 +12,7 @@ pub trait Newable {
     fn new(reader: &mut ReaderCursor) -> Self;
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 pub struct FGuid {
     a: u32,
     b: u32,
@@ -40,6 +40,12 @@ impl NewableWithNameMap for FGuid {
 impl fmt::Display for FGuid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:08x}{:08x}{:08x}{:08x}", self.a, self.b, self.c, self.d)
+    }
+}
+
+impl Serialize for FGuid {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        serializer.serialize_str(&self.to_string())
     }
 }
 
@@ -126,6 +132,52 @@ impl Newable for String {
 impl Newable for i32 {
     fn new(reader: &mut ReaderCursor) -> Self {
         reader.read_i32::<LittleEndian>().unwrap()
+    }
+}
+
+#[derive(Debug, Serialize)]
+enum TRangeBoundType {
+    RangeExclusive,
+    RangeInclusive,
+    RangeOpen,
+}
+
+#[derive(Debug, Serialize)]
+struct TRangeBound<T> {
+    bound_type: TRangeBoundType,
+    value: T,
+}
+
+impl<T> Newable for TRangeBound<T> where T: Newable {
+    fn new(reader: &mut ReaderCursor) -> Self {
+        let bound_type = reader.read_u8().unwrap();
+        let bound_type = match bound_type {
+            0 => TRangeBoundType::RangeExclusive,
+            1 => TRangeBoundType::RangeInclusive,
+            2 => TRangeBoundType::RangeOpen,
+            _ => panic!("Range bound type not supported"),
+        };
+
+        let value = T::new(reader);
+
+        Self {
+            bound_type, value
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct TRange<T> {
+    lower_bound: TRangeBound<T>,
+    upper_bound: TRangeBound<T>,
+}
+
+impl <T> Newable for TRange<T> where T: Newable {
+    fn new(reader: &mut ReaderCursor) -> Self {
+        Self {
+            lower_bound: TRangeBound::new(reader),
+            upper_bound: TRangeBound::new(reader),
+        }
     }
 }
 
@@ -280,9 +332,13 @@ trait NewableWithNameMap: std::fmt::Debug + TraitSerialize {
 serialize_trait_object!(NewableWithNameMap);
 
 fn read_fname(reader: &mut ReaderCursor, name_map: &NameMap) -> String {
+    let index_pos = reader.position();
     let name_index = reader.read_i32::<LittleEndian>().unwrap();
     reader.read_i32::<LittleEndian>().unwrap(); // name_number ?
-    name_map[name_index as usize].data.to_owned()
+    match name_map.get(name_index as usize) {
+        Some(data) => data.data.to_owned(),
+        None => panic!("Could not read FName index: {} at pos {}", name_index, index_pos),
+    }
 }
 
 #[derive(Debug)]
@@ -536,6 +592,7 @@ struct FStructFallback {
 impl NewableWithNameMap for FStructFallback {
     fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> Self {
         let mut properties = Vec::new();
+        println!("reading FStructFallback");
         loop {
             let tag = read_property_tag(reader, name_map, import_map, true);
             let tag = match tag {
@@ -569,15 +626,117 @@ struct UScriptStruct {
     struct_type: Box<NewableWithNameMap>,
 }
 
+#[derive(Debug, Serialize)]
+struct FLevelSequenceLegacyObjectReference {
+    key_guid: FGuid,
+    object_id: FGuid,
+    object_path: String,
+}
+
+impl Newable for FLevelSequenceLegacyObjectReference {
+    fn new(reader: &mut ReaderCursor) -> Self {
+        Self {
+            key_guid: FGuid::new(reader),
+            object_id: FGuid::new(reader),
+            object_path: read_string(reader),
+        }
+    }
+}
+
+#[derive(Debug)]
+struct FLevelSequenceObjectReferenceMap {
+    map_data: Vec<FLevelSequenceLegacyObjectReference>,
+}
+
+impl NewableWithNameMap for FLevelSequenceObjectReferenceMap {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> Self {
+        let mut map_data = Vec::new();
+        let element_count = reader.read_i32::<LittleEndian>().unwrap();
+        println!("Element count: {}", element_count);
+        for _i in 0..element_count {
+            map_data.push(FLevelSequenceLegacyObjectReference::new(reader));
+        }
+        Self {
+            map_data
+        }
+    }
+}
+
+impl Serialize for FLevelSequenceObjectReferenceMap {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        let mut map = serializer.serialize_map(Some(self.map_data.len()))?;
+        for property in &self.map_data {
+            map.serialize_entry(&property.key_guid.to_string(), &property.object_path)?;
+        }
+        map.end()
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FMovieSceneTrackIdentifier {
+    value: i32,
+}
+
+impl NewableWithNameMap for FMovieSceneTrackIdentifier {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> Self {
+        Self {
+            value: reader.read_i32::<LittleEndian>().unwrap(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FMovieSceneSegment {
+    range: TRange<i32>,
+    id: i32,
+    allow_empty: bool,
+    impls: Vec<UScriptStruct>,
+}
+
+impl NewableWithNameMap for FMovieSceneSegment {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> Self {
+        let range: TRange<i32> = TRange::new(reader);
+        let id = reader.read_i32::<LittleEndian>().unwrap();
+        let allow_empty = reader.read_u32::<LittleEndian>().unwrap() != 0;
+        let num_structs = reader.read_u32::<LittleEndian>().unwrap();
+        let mut impls: Vec<UScriptStruct> = Vec::new();
+        for _i in 0..num_structs {
+            impls.push(UScriptStruct::new(reader, name_map, import_map, "SectionEvaluationData"));
+        }
+        Self {
+            range, id, allow_empty, impls,
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FFrameNumber {
+    value: i32,
+}
+
+impl NewableWithNameMap for FFrameNumber {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> Self {
+        Self {
+            value: reader.read_i32::<LittleEndian>().unwrap(),
+        }
+    }
+}
+
 #[allow(dead_code)]
 impl UScriptStruct {
     fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, struct_name: &str) -> Self {
+        println!("Struct name: {}", struct_name);
         let struct_type: Box<NewableWithNameMap> = match struct_name {
             "Vector2D" => Box::new(FVector2D::new_n(reader, name_map, import_map)),
             "LinearColor" => Box::new(FLinearColor::new_n(reader, name_map, import_map)),
             "GameplayTagContainer" => Box::new(FGameplayTagContainer::new_n(reader, name_map, import_map)),
             "IntPoint" => Box::new(FIntPoint::new_n(reader, name_map, import_map)),
             "Guid" => Box::new(FGuid::new(reader)),
+            "SoftObjectPath" => Box::new(FSoftObjectPath::new_n(reader, name_map, import_map)),
+            "LevelSequenceObjectReferenceMap" => Box::new(FLevelSequenceObjectReferenceMap::new_n(reader, name_map, import_map)),
+            "MovieSceneTrackIdentifier" => Box::new(FMovieSceneTrackIdentifier::new_n(reader, name_map, import_map)),
+            "MovieSceneSegment" => Box::new(FMovieSceneSegment::new_n(reader, name_map, import_map)),
+            "FrameNumber" => Box::new(FFrameNumber::new_n(reader, name_map, import_map)),
             _ => Box::new(FStructFallback::new_n(reader, name_map, import_map)),
         };
         Self {
@@ -636,6 +795,41 @@ impl Serialize for UScriptArray {
     }
 }
 
+#[derive(Debug, Serialize)]
+struct UScriptMap {
+    map_data: Vec<(FPropertyTagType, FPropertyTagType)>,
+}
+
+fn read_map_value(reader: &mut ReaderCursor, inner_type: &str, struct_type: &str, name_map: &NameMap, import_map: &ImportMap) -> FPropertyTagType {
+    match inner_type {
+        "BoolProperty" => FPropertyTagType::BoolProperty(reader.read_u8().unwrap() != 1),
+        "EnumProperty" => FPropertyTagType::EnumProperty(Some(read_fname(reader, name_map))),
+        "StructProperty" => FPropertyTagType::StructProperty(UScriptStruct::new(reader, name_map, import_map, struct_type)),
+        _ => FPropertyTagType::StructProperty(UScriptStruct::new(reader, name_map, import_map, inner_type)),
+    }
+}
+
+impl UScriptMap {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, key_type: &str, value_type: &str) -> Self {
+        let num_keys_to_remove = reader.read_i32::<LittleEndian>().unwrap();
+        println!("keys to remove: {}", num_keys_to_remove);
+        let num = reader.read_i32::<LittleEndian>().unwrap();
+        println!("keys: {}", num);
+        let mut map_data: Vec<(FPropertyTagType, FPropertyTagType)> = Vec::new();
+        println!("inner types: {} {}", key_type, value_type);
+        println!("reader position: {}", reader.position());
+        for _i in 0..num {
+            map_data.push((
+                read_map_value(reader, key_type, "StructProperty", name_map, import_map),
+                read_map_value(reader, value_type, "StructProperty", name_map, import_map),
+            ));
+        }
+        Self {
+            map_data,
+        }
+    }
+}
+
 #[derive(Debug)]
 #[allow(dead_code)]
 enum FPropertyTagData {
@@ -644,6 +838,8 @@ enum FPropertyTagData {
     ByteProperty (String),
     EnumProperty (String),
     ArrayProperty (String),
+    MapProperty (String, String),
+    SetProperty (String),
     NoData,
 }
 
@@ -656,9 +852,12 @@ enum FPropertyTagType {
     ObjectProperty(FPackageIndex),
     FloatProperty(f32),
     TextProperty(FText),
+    StrProperty(String),
     NameProperty(String),
     IntProperty(i32),
+    UInt16Property(u16),
     ArrayProperty(UScriptArray),
+    MapProperty(UScriptMap),
     ByteProperty(u8),
     EnumProperty(Option<String>),
     SoftObjectProperty(FSoftObjectPath),
@@ -684,13 +883,21 @@ impl FPropertyTagType {
             "ObjectProperty" => FPropertyTagType::ObjectProperty(FPackageIndex::new_n(reader, name_map, import_map)),
             "FloatProperty" =>  FPropertyTagType::FloatProperty(reader.read_f32::<LittleEndian>().unwrap()),
             "TextProperty" => FPropertyTagType::TextProperty(FText::new(reader)),
+            "StrProperty" => FPropertyTagType::StrProperty(read_string(reader)),
             "NameProperty" => FPropertyTagType::NameProperty(read_fname(reader, name_map)),
             "IntProperty" => FPropertyTagType::IntProperty(reader.read_i32::<LittleEndian>().unwrap()),
+            "UInt16Property" => FPropertyTagType::UInt16Property(reader.read_u16::<LittleEndian>().unwrap()),
             "ArrayProperty" => match tag_data.unwrap() {
                 FPropertyTagData::ArrayProperty(inner_type) => FPropertyTagType::ArrayProperty(
                     UScriptArray::new(reader, inner_type, name_map, import_map)
                 ),
                 _ => panic!("Could not read array from non-array"),
+            },
+            "MapProperty" => match tag_data.unwrap() {
+                FPropertyTagData::MapProperty(key_type, value_type) => FPropertyTagType::MapProperty(
+                    UScriptMap::new(reader, name_map, import_map, key_type, value_type),
+                ),
+                _ => panic!("Map needs map data"),
             },
             "ByteProperty" => match tag_data.unwrap() {
                 FPropertyTagData::ByteProperty(name) => {
@@ -724,6 +931,14 @@ struct FPropertyTag {
     tag: Option<FPropertyTagType>,
 }
 
+fn tag_data_overrides(tag_name: &str) -> Option<FPropertyTagData> {
+    match tag_name {
+        "BindingIdToReferences" => Some(FPropertyTagData::MapProperty("Guid".to_owned(), "LevelSequenceBindingReferenceArray".to_owned())),
+        "Tracks" => Some(FPropertyTagData::MapProperty("MovieSceneTrackIdentifier".to_owned(), "MovieSceneEvaluationTrack".to_owned())),
+        _ => None,
+    }
+}
+
 #[allow(dead_code)]
 fn read_property_tag(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, read_data: bool) -> Option<FPropertyTag> {
     let name = read_fname(reader, name_map);
@@ -735,13 +950,22 @@ fn read_property_tag(reader: &mut ReaderCursor, name_map: &NameMap, import_map: 
     let size = reader.read_i32::<LittleEndian>().unwrap();
     let array_index = reader.read_i32::<LittleEndian>().unwrap();
 
-    let tag_data = match property_type.as_ref() {
+    println!("Reading property: {} {}", name, property_type);
+
+    let mut tag_data = match property_type.as_ref() {
         "StructProperty" => FPropertyTagData::StructProperty(read_fname(reader, name_map), FGuid::new(reader)),
         "BoolProperty" => FPropertyTagData::BoolProperty(reader.read_u8().unwrap() != 0),
         "EnumProperty" => FPropertyTagData::EnumProperty(read_fname(reader, name_map)),
         "ByteProperty" => FPropertyTagData::ByteProperty(read_fname(reader, name_map)),
         "ArrayProperty" => FPropertyTagData::ArrayProperty(read_fname(reader, name_map)),
+        "MapProperty" => FPropertyTagData::MapProperty(read_fname(reader, name_map), read_fname(reader, name_map)),
+        "SetProperty" => FPropertyTagData::SetProperty(read_fname(reader, name_map)),
         _ => FPropertyTagData::NoData,
+    };
+
+    tag_data = match tag_data_overrides(&name) {
+        Some(data) => data,
+        None => tag_data,
     };
 
     let has_property_guid = reader.read_u8().unwrap() != 0;
@@ -1051,8 +1275,11 @@ impl Package {
 
         let mut name_map = Vec::new();
         cursor.seek(SeekFrom::Start(summary.name_offset as u64)).unwrap();
-        for _i in 0..summary.name_count {
-            name_map.push(FNameEntrySerialized::new(&mut cursor));
+        for i in 0..summary.name_count {
+            let name = FNameEntrySerialized::new(&mut cursor);
+            println!("Name: {} {}", i, name.data);
+            name_map.push(name);
+            // name_map.push(FNameEntrySerialized::new(&mut cursor));
         }
 
         let mut import_map = Vec::new();
