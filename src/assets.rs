@@ -123,6 +123,17 @@ pub fn read_tarray<S>(reader: &mut ReaderCursor) -> Vec<S> where S: Newable {
     container
 }
 
+fn read_tarray_n<S>(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> Vec<S> where S: NewableWithNameMap {
+    let length = reader.read_u32::<LittleEndian>().unwrap();
+    let mut container = Vec::new();
+
+    for _i in 0..length {
+        container.push(S::new_n(reader, name_map, import_map));
+    }
+
+    container
+}
+
 impl Newable for String {
     fn new(reader: &mut ReaderCursor) -> Self {
         read_string(reader)
@@ -673,19 +684,6 @@ impl Serialize for FLevelSequenceObjectReferenceMap {
 }
 
 #[derive(Debug, Serialize)]
-struct FMovieSceneTrackIdentifier {
-    value: i32,
-}
-
-impl NewableWithNameMap for FMovieSceneTrackIdentifier {
-    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> Self {
-        Self {
-            value: reader.read_i32::<LittleEndian>().unwrap(),
-        }
-    }
-}
-
-#[derive(Debug, Serialize)]
 struct FMovieSceneSegment {
     range: TRange<i32>,
     id: i32,
@@ -710,14 +708,208 @@ impl NewableWithNameMap for FMovieSceneSegment {
 }
 
 #[derive(Debug, Serialize)]
-struct FFrameNumber {
+struct FMovieSceneEvaluationTreeNode {
+    range: TRange<i32>,
+    parent: FMovieSceneEvaluationTreeNodeHandle,
+    children_id: FEvaluationTreeEntryHandle,
+    data_id: FEvaluationTreeEntryHandle,
+
+}
+
+impl Newable for FMovieSceneEvaluationTreeNode {
+    fn new(reader: &mut ReaderCursor) -> Self {
+        Self {
+            range: TRange::new(reader),
+            parent: FMovieSceneEvaluationTreeNodeHandle::new(reader),
+            children_id: FEvaluationTreeEntryHandle::new(reader),
+            data_id: FEvaluationTreeEntryHandle::new(reader),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FMovieSceneEvaluationTreeNodeHandle {
+    children_handle: FEvaluationTreeEntryHandle,
+    index: i32,
+}
+
+impl Newable for FMovieSceneEvaluationTreeNodeHandle {
+    fn new(reader: &mut ReaderCursor) -> Self {
+        Self {
+            children_handle: FEvaluationTreeEntryHandle::new(reader),
+            index: reader.read_i32::<LittleEndian>().unwrap(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FEvaluationTreeEntryHandle {
+    entry_index: i32,
+}
+
+impl Newable for FEvaluationTreeEntryHandle {
+    fn new(reader: &mut ReaderCursor) -> Self {
+        Self {
+            entry_index: reader.read_i32::<LittleEndian>().unwrap(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct TEvaluationTreeEntryContainer<T> {
+    entries: Vec<FEntry>,
+    items: Vec<T>,
+}
+
+impl<T> Newable for TEvaluationTreeEntryContainer<T> where T: Newable {
+    fn new(reader: &mut ReaderCursor) -> Self {
+        Self {
+            entries: read_tarray(reader),
+            items: read_tarray(reader),
+        }
+    }
+}
+
+impl<T> NewableWithNameMap for TEvaluationTreeEntryContainer<T> where T: NewableWithNameMap + Serialize {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> Self {
+        Self {
+            entries: read_tarray(reader),
+            items: read_tarray_n(reader, name_map, import_map),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FMovieSceneEvaluationTree {
+    root_node: FMovieSceneEvaluationTreeNode,
+    child_nodes: TEvaluationTreeEntryContainer<FMovieSceneEvaluationTreeNode>,
+}
+
+impl Newable for FMovieSceneEvaluationTree {
+    fn new(reader: &mut ReaderCursor) -> Self {
+        Self {
+            root_node: FMovieSceneEvaluationTreeNode::new(reader),
+            child_nodes: TEvaluationTreeEntryContainer::new(reader),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FEntry {
+    start_index: i32,
+    size: i32,
+    capacity: i32,
+}
+
+impl Newable for FEntry {
+    fn new(reader: &mut ReaderCursor) -> Self {
+        Self {
+            start_index: reader.read_i32::<LittleEndian>().unwrap(),
+            size: reader.read_i32::<LittleEndian>().unwrap(),
+            capacity: reader.read_i32::<LittleEndian>().unwrap(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct TMovieSceneEvaluationTree<T> {
+    base_tree: FMovieSceneEvaluationTree,
+    data: TEvaluationTreeEntryContainer<T>,
+}
+
+impl<T> NewableWithNameMap for TMovieSceneEvaluationTree<T> where T: NewableWithNameMap + Serialize {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> Self {
+        Self {
+            base_tree: FMovieSceneEvaluationTree::new(reader),
+            data: TEvaluationTreeEntryContainer::new_n(reader, name_map, import_map),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FSectionEvaluationDataTree {
+    tree: TMovieSceneEvaluationTree<FStructFallback>,
+}
+
+impl NewableWithNameMap for FSectionEvaluationDataTree {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> Self {
+        Self {
+            tree: TMovieSceneEvaluationTree::new_n(reader, name_map, import_map),
+        }
+    }
+}
+
+// wat
+#[derive(Debug, Serialize)]
+struct InlineUStruct {
+    type_name: String,
+    data: FStructFallback,
+}
+
+impl NewableWithNameMap for InlineUStruct {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> Self {
+        let type_name = read_string(reader);
+        println!("Reading inline struct: {}", type_name);
+        Self {
+            type_name,
+            data: FStructFallback::new_n(reader, name_map, import_map),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FMovieSceneFrameRange {
+    value: TRange<i32>,
+}
+
+impl NewableWithNameMap for FMovieSceneFrameRange {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> Self {
+        Self {
+            value: TRange::new(reader),
+        }
+    }
+}
+
+// There are too many types that are just i32s. This is a replacement for those.
+#[derive(Debug, Serialize)]
+struct FI32 {
     value: i32,
 }
 
-impl NewableWithNameMap for FFrameNumber {
+impl NewableWithNameMap for FI32 {
     fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> Self {
         Self {
             value: reader.read_i32::<LittleEndian>().unwrap(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FU32 {
+    value: u32,
+}
+
+impl NewableWithNameMap for FU32 {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> Self {
+        Self {
+            value: reader.read_u32::<LittleEndian>().unwrap(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FMovieSceneEvaluationKey {
+    sequence_id: u32,
+    track_identifier: i32,
+    section_index: u32,
+}
+
+impl NewableWithNameMap for FMovieSceneEvaluationKey {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> Self {
+        Self {
+            sequence_id: reader.read_u32::<LittleEndian>().unwrap(),
+            track_identifier: reader.read_i32::<LittleEndian>().unwrap(),
+            section_index: reader.read_u32::<LittleEndian>().unwrap(),
         }
     }
 }
@@ -734,9 +926,16 @@ impl UScriptStruct {
             "Guid" => Box::new(FGuid::new(reader)),
             "SoftObjectPath" => Box::new(FSoftObjectPath::new_n(reader, name_map, import_map)),
             "LevelSequenceObjectReferenceMap" => Box::new(FLevelSequenceObjectReferenceMap::new_n(reader, name_map, import_map)),
-            "MovieSceneTrackIdentifier" => Box::new(FMovieSceneTrackIdentifier::new_n(reader, name_map, import_map)),
+            "MovieSceneTrackIdentifier" => Box::new(FI32::new_n(reader, name_map, import_map)),
             "MovieSceneSegment" => Box::new(FMovieSceneSegment::new_n(reader, name_map, import_map)),
-            "FrameNumber" => Box::new(FFrameNumber::new_n(reader, name_map, import_map)),
+            "FrameNumber" => Box::new(FI32::new_n(reader, name_map, import_map)),
+            "SectionEvaluationDataTree" => Box::new(FSectionEvaluationDataTree::new_n(reader, name_map, import_map)),
+            "MovieSceneEvalTemplatePtr" => Box::new(InlineUStruct::new_n(reader, name_map, import_map)),
+            "MovieSceneTrackImplementationPtr" => Box::new(InlineUStruct::new_n(reader, name_map, import_map)),
+            "MovieSceneFrameRange" => Box::new(FMovieSceneFrameRange::new_n(reader, name_map, import_map)),
+            "MovieSceneSegmentIdentifier" => Box::new(FI32::new_n(reader, name_map, import_map)),
+            "MovieSceneSequenceID" => Box::new(FU32::new_n(reader, name_map, import_map)),
+            "MovieSceneEvaluationKey" => Box::new(FMovieSceneEvaluationKey::new_n(reader, name_map, import_map)),
             _ => Box::new(FStructFallback::new_n(reader, name_map, import_map)),
         };
         Self {
@@ -804,6 +1003,7 @@ fn read_map_value(reader: &mut ReaderCursor, inner_type: &str, struct_type: &str
     match inner_type {
         "BoolProperty" => FPropertyTagType::BoolProperty(reader.read_u8().unwrap() != 1),
         "EnumProperty" => FPropertyTagType::EnumProperty(Some(read_fname(reader, name_map))),
+        "UInt32Property" => FPropertyTagType::UInt32Property(reader.read_u32::<LittleEndian>().unwrap()),
         "StructProperty" => FPropertyTagType::StructProperty(UScriptStruct::new(reader, name_map, import_map, struct_type)),
         _ => FPropertyTagType::StructProperty(UScriptStruct::new(reader, name_map, import_map, inner_type)),
     }
@@ -856,6 +1056,7 @@ enum FPropertyTagType {
     NameProperty(String),
     IntProperty(i32),
     UInt16Property(u16),
+    UInt32Property(u32),
     ArrayProperty(UScriptArray),
     MapProperty(UScriptMap),
     ByteProperty(u8),
@@ -887,6 +1088,7 @@ impl FPropertyTagType {
             "NameProperty" => FPropertyTagType::NameProperty(read_fname(reader, name_map)),
             "IntProperty" => FPropertyTagType::IntProperty(reader.read_i32::<LittleEndian>().unwrap()),
             "UInt16Property" => FPropertyTagType::UInt16Property(reader.read_u16::<LittleEndian>().unwrap()),
+            "UInt32Property" => FPropertyTagType::UInt32Property(reader.read_u32::<LittleEndian>().unwrap()),
             "ArrayProperty" => match tag_data.unwrap() {
                 FPropertyTagData::ArrayProperty(inner_type) => FPropertyTagType::ArrayProperty(
                     UScriptArray::new(reader, inner_type, name_map, import_map)
@@ -935,6 +1137,7 @@ fn tag_data_overrides(tag_name: &str) -> Option<FPropertyTagData> {
     match tag_name {
         "BindingIdToReferences" => Some(FPropertyTagData::MapProperty("Guid".to_owned(), "LevelSequenceBindingReferenceArray".to_owned())),
         "Tracks" => Some(FPropertyTagData::MapProperty("MovieSceneTrackIdentifier".to_owned(), "MovieSceneEvaluationTrack".to_owned())),
+        "SubTemplateSerialNumbers" => Some(FPropertyTagData::MapProperty("MovieSceneSequenceID".to_owned(), "UInt32Property".to_owned())),
         _ => None,
     }
 }
