@@ -1064,6 +1064,19 @@ impl UScriptMap {
     }
 }
 
+#[derive(Debug, Serialize)]
+struct UInterfaceProperty {
+    interface_number: u32,
+}
+
+impl NewableWithNameMap for UInterfaceProperty {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+        Ok(Self {
+            interface_number: reader.read_u32::<LittleEndian>()?,
+        })
+    }
+}
+
 #[derive(Debug)]
 enum FPropertyTagData {
     StructProperty (String, FGuid),
@@ -1082,6 +1095,7 @@ enum FPropertyTagType {
     BoolProperty(bool),
     StructProperty(UScriptStruct),
     ObjectProperty(FPackageIndex),
+    InterfaceProperty(UInterfaceProperty),
     FloatProperty(f32),
     TextProperty(FText),
     StrProperty(String),
@@ -1113,6 +1127,7 @@ impl FPropertyTagType {
                 }
             ),
             "ObjectProperty" => FPropertyTagType::ObjectProperty(FPackageIndex::new_n(reader, name_map, import_map)?),
+            "InterfaceProperty" => FPropertyTagType::InterfaceProperty(UInterfaceProperty::new_n(reader, name_map, import_map)?),
             "FloatProperty" =>  FPropertyTagType::FloatProperty(reader.read_f32::<LittleEndian>()?),
             "TextProperty" => FPropertyTagType::TextProperty(FText::new(reader)?),
             "StrProperty" => FPropertyTagType::StrProperty(read_string(reader)?),
@@ -1147,7 +1162,7 @@ impl FPropertyTagType {
                 }
             ),
             "SoftObjectProperty" => FPropertyTagType::SoftObjectProperty(FSoftObjectPath::new_n(reader, name_map, import_map)?),
-            _ => return Err(ParserError::new(format!("Could not read property type: {}", property_type))),
+            _ => return Err(ParserError::new(format!("Could not read property type: {} at pos {}", property_type, reader.position()))),
         })
     }
 }
@@ -1222,6 +1237,9 @@ fn read_property_tag(reader: &mut ReaderCursor, name_map: &NameMap, import_map: 
     let final_pos = pos + (size as u64);
     if read_data {
         reader.seek(SeekFrom::Start(final_pos as u64)).expect("Could not seek to size");
+    }
+    if read_data && final_pos != reader.position() {
+        println!("Could not read entire property: {} ({})", name, property_type);
     }
 
     Ok(Some(FPropertyTag {
