@@ -419,7 +419,7 @@ impl NewableWithNameMap for FPackageIndex {
         let index = reader.read_i32::<LittleEndian>()?;
         let import = match FPackageIndex::get_package(index, import_map) {
             Some(data) => data.object_name.clone(),
-            None => "None".to_owned(),
+            None => index.to_string(),
         };
         Ok(Self {
             index,
@@ -905,7 +905,7 @@ impl NewableWithNameMap for FMovieSceneFrameRange {
 }
 
 // There are too many types that are just i32s. This is a replacement for those.
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 struct FI32 {
     value: i32,
 }
@@ -918,7 +918,13 @@ impl NewableWithNameMap for FI32 {
     }
 }
 
-#[derive(Debug, Serialize)]
+impl Serialize for FI32 {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        serializer.serialize_i32(self.value)
+    }
+}
+
+#[derive(Debug)]
 struct FU32 {
     value: u32,
 }
@@ -928,6 +934,12 @@ impl NewableWithNameMap for FU32 {
         Ok(Self {
             value: reader.read_u32::<LittleEndian>()?,
         })
+    }
+}
+
+impl Serialize for FU32 {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        serializer.serialize_u32(self.value)
     }
 }
 
@@ -948,6 +960,59 @@ impl NewableWithNameMap for FMovieSceneEvaluationKey {
     }
 }
 
+#[derive(Debug, Serialize)]
+struct FQuat {
+    x: f32,
+    y: f32,
+    z: f32,
+    w: f32,
+}
+
+impl NewableWithNameMap for FQuat {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+        Ok(Self {
+            x: reader.read_f32::<LittleEndian>()?,
+            y: reader.read_f32::<LittleEndian>()?,
+            z: reader.read_f32::<LittleEndian>()?,
+            w: reader.read_f32::<LittleEndian>()?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FVector {
+    x: f32,
+    y: f32,
+    z: f32,
+}
+
+impl NewableWithNameMap for FVector {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+        Ok(Self {
+            x: reader.read_f32::<LittleEndian>()?,
+            y: reader.read_f32::<LittleEndian>()?,
+            z: reader.read_f32::<LittleEndian>()?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FRotator {
+    pitch: f32,
+    yaw: f32,
+    roll: f32,
+}
+
+impl NewableWithNameMap for FRotator {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+        Ok(Self {
+            pitch: reader.read_f32::<LittleEndian>()?,
+            yaw: reader.read_f32::<LittleEndian>()?,
+            roll: reader.read_f32::<LittleEndian>()?,
+        })
+    }
+}
+
 impl UScriptStruct {
     fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, struct_name: &str) -> ParserResult<Self> {
         let err = |v| ParserError::add(v, format!("Struct Type: {}", struct_name));
@@ -957,12 +1022,15 @@ impl UScriptStruct {
             "GameplayTagContainer" => Box::new(FGameplayTagContainer::new_n(reader, name_map, import_map).map_err(err)?),
             "IntPoint" => Box::new(FIntPoint::new_n(reader, name_map, import_map).map_err(err)?),
             "Guid" => Box::new(FGuid::new(reader).map_err(err)?),
+            "Quat" => Box::new(FQuat::new_n(reader, name_map, import_map).map_err(err)?),
+            "Vector" => Box::new(FVector::new_n(reader, name_map, import_map).map_err(err)?),
+            "Rotator" => Box::new(FRotator::new_n(reader, name_map, import_map).map_err(err)?),
             "SoftObjectPath" => Box::new(FSoftObjectPath::new_n(reader, name_map, import_map).map_err(err)?),
             "LevelSequenceObjectReferenceMap" => Box::new(FLevelSequenceObjectReferenceMap::new_n(reader, name_map, import_map).map_err(err)?),
-            "MovieSceneTrackIdentifier" => Box::new(FI32::new_n(reader, name_map, import_map).map_err(err)?),
-            "MovieSceneSegment" => Box::new(FMovieSceneSegment::new_n(reader, name_map, import_map).map_err(err)?),
             "FrameNumber" => Box::new(FI32::new_n(reader, name_map, import_map).map_err(err)?),
             "SectionEvaluationDataTree" => Box::new(FSectionEvaluationDataTree::new_n(reader, name_map, import_map).map_err(err)?),
+            "MovieSceneTrackIdentifier" => Box::new(FI32::new_n(reader, name_map, import_map).map_err(err)?),
+            "MovieSceneSegment" => Box::new(FMovieSceneSegment::new_n(reader, name_map, import_map).map_err(err)?),
             "MovieSceneEvalTemplatePtr" => Box::new(InlineUStruct::new_n(reader, name_map, import_map).map_err(err)?),
             "MovieSceneTrackImplementationPtr" => Box::new(InlineUStruct::new_n(reader, name_map, import_map).map_err(err)?),
             "MovieSceneSequenceInstanceDataPtr" => Box::new(InlineUStruct::new_n(reader, name_map, import_map).map_err(err)?),
@@ -1008,6 +1076,14 @@ impl UScriptArray {
 
         let mut contents: Vec<FPropertyTagType> = Vec::new();
         for _i in 0..element_count {
+            if inner_type == "BoolProperty" {
+                contents.push(FPropertyTagType::BoolProperty(reader.read_u8()? != 0));
+                continue;
+            }
+            if inner_type == "ByteProperty" {
+                contents.push(FPropertyTagType::ByteProperty(reader.read_u8()?));
+                continue;
+            }
             contents.push(FPropertyTagType::new(reader, name_map, import_map, &inner_type, inner_tag_data)?);
         }
 
@@ -1028,7 +1104,7 @@ impl Serialize for UScriptArray {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 struct UScriptMap {
     map_data: Vec<(FPropertyTagType, FPropertyTagType)>,
 }
@@ -1061,6 +1137,38 @@ impl UScriptMap {
         Ok(Self {
             map_data,
         })
+    }
+}
+
+struct TempSerializeTuple<'a, K, V> {
+    key: &'a K,
+    value: &'a V,
+}
+
+impl<'a, K,V> Serialize for TempSerializeTuple<'a, K, V> 
+where
+    K: Serialize,
+    V: Serialize,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        let mut map = serializer.serialize_map(Some(2))?;
+        map.serialize_entry("key", self.key)?;
+        map.serialize_entry("value", self.value)?;
+        map.end()
+    }
+}
+
+impl Serialize for UScriptMap {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        let mut seq = serializer.serialize_seq(Some(self.map_data.len()))?;
+        for e in &self.map_data {
+            let obj = TempSerializeTuple {
+                key: &e.0,
+                value: &e.1,
+            };
+            seq.serialize_element(&obj)?;
+        }
+        seq.end()
     }
 }
 
