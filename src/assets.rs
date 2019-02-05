@@ -1609,6 +1609,43 @@ impl PackageExport for Texture2D {
 }
 
 #[derive(Debug)]
+pub struct ObjectProperty {
+    base_object: UObject,
+}
+
+impl ObjectProperty {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
+        let object = match UObject::new(reader, name_map, import_map, "ObjectProperty", false)? {
+            Some(object) => object,
+            None => return Err(ParserError::new("ObjectProperty could not read UObject".to_owned())),
+        };
+
+        let mut words: Vec<u32> = Vec::new();
+
+        for _i in 0..2 {
+            words.push(reader.read_u32::<LittleEndian>()?);
+        }
+
+        let name1 = read_fname(reader, name_map)?;
+        let name2 = read_fname(reader, name_map)?;
+
+        let float1 = reader.read_f32::<LittleEndian>()?;
+
+        println!("Name: {:?} {} {} {}", words, name1, name2, float1);
+
+        Ok(Self {
+            base_object: object,
+        })
+    }
+}
+
+impl PackageExport for ObjectProperty {
+    fn get_export_type(&self) -> &str {
+        "ObjectProperty"
+    }
+}
+
+#[derive(Debug)]
 pub struct Package {
     summary: FPackageFileSummary,
     name_map: NameMap,
@@ -1663,11 +1700,12 @@ impl Package {
             cursor.seek(SeekFrom::Start(position))?;
             let export: Box<dyn Any> = match export_type.as_ref() {
                 "Texture2D" => Box::new(Texture2D::new(&mut cursor, &name_map, &import_map, asset_length)?),
+                "ObjectProperty" => Box::new(ObjectProperty::new(&mut cursor, &name_map, &import_map)?),
                 _ => Box::new(UObject::new(&mut cursor, &name_map, &import_map, export_type, true)?.unwrap()),
             };
             let valid_pos = position + v.serial_size as u64;
             if cursor.position() != valid_pos {
-                println!("Did not read {} correctly. Current Position: {}, End of Asset: {}", export_type, cursor.position(), valid_pos);
+                println!("Did not read {} correctly. Current Position: {}, Bytes Remaining: {}", export_type, cursor.position(), valid_pos as i64 - cursor.position() as i64);
             }
             exports.push(export);
         }
@@ -1693,10 +1731,13 @@ impl Serialize for Package {
         for e in &self.exports {
             if let Some(obj) = e.downcast_ref::<UObject>() {
                 seq.serialize_element(obj)?;
+                continue;
             }
             if let Some(texture) = e.downcast_ref::<Texture2D>() {
                 seq.serialize_element(&texture.base_object)?;
+                continue;
             }
+            seq.serialize_element("None")?;
         }
         seq.end()
     }
