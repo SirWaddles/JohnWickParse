@@ -19,7 +19,7 @@ mod texture;
 
 #[derive(Debug)]
 struct CommandError {
-    message: &'static str,
+    message: String,
 }
 
 impl std::error::Error for CommandError {
@@ -32,11 +32,20 @@ impl std::fmt::Display for CommandError {
     }
 }
 
+impl From<assets::ParserError> for CommandError {
+    fn from(error: assets::ParserError) -> Self {
+        let property_error = error.get_properties().into_iter().rev().fold(String::new(), |acc, v| acc + "\n" + v);
+        CommandError {
+            message: "Property error occurred: ".to_owned() + &property_error,
+        }
+    }
+}
+
 type CommandResult = Result<(), CommandError>;
 
 fn cerr(message: &'static str) -> CommandResult {
     Err(CommandError {
-        message
+        message: message.to_owned()
     })
 }
 
@@ -46,7 +55,7 @@ fn serialize(params: &[String]) -> CommandResult {
         None => return cerr("No path specified"),
     };
 
-    let package = assets::Package::new(path);
+    let package = assets::Package::new(path)?;
     let serial_package = serde_json::to_string(&package).unwrap();
     let mut file = fs::File::create(path.to_owned() + ".json").unwrap();
     file.write_all(serial_package.as_bytes()).unwrap();
@@ -60,7 +69,7 @@ fn texture(params: &[String]) -> CommandResult {
         None => return cerr("No path specified"),
     };
 
-    let package = assets::Package::new(path);
+    let package = assets::Package::new(path)?;
     let texture = match package.get_export().downcast_ref::<assets::Texture2D>() {
         Some(data) => data,
         None => return cerr("Package not exporting texture"),
@@ -95,7 +104,7 @@ fn filelist(params: &[String]) -> CommandResult {
         Err(_) => return cerr("Could not read key"),
     };
 
-    let archive = archives::PakExtractor::new(path, &key);
+    let archive = archives::PakExtractor::new(path, &key)?;
     let entries = archive.get_entries();
     let file_list = entries.into_iter().map(|v| v.get_filename()).fold(String::new(), |acc, v| acc + v + "\n");
     let mut file = fs::File::create(path.to_owned() + ".txt").unwrap();
@@ -118,7 +127,7 @@ fn extract(params: &[String]) -> CommandResult {
         None => return cerr("No pattern specified"),
     };
 
-    let mut archive = archives::PakExtractor::new(path, &key);
+    let mut archive = archives::PakExtractor::new(path, &key)?;
     let entries: Vec<archives::FPakEntry> = archive.get_entries().into_iter().filter(|v| v.get_filename().contains(pattern)).cloned().collect();
 
     for asset in entries {
