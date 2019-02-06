@@ -55,7 +55,7 @@ fn serialize(params: &[String]) -> CommandResult {
         None => return cerr("No path specified"),
     };
 
-    let package = assets::Package::new(path)?;
+    let package = assets::Package::from_file(path)?;
     let serial_package = serde_json::to_string(&package).unwrap();
     let mut file = fs::File::create(path.to_owned() + ".json").unwrap();
     file.write_all(serial_package.as_bytes()).unwrap();
@@ -69,8 +69,8 @@ fn texture(params: &[String]) -> CommandResult {
         None => return cerr("No path specified"),
     };
 
-    let package = assets::Package::new(path)?;
-    let texture = match package.get_export().downcast_ref::<assets::Texture2D>() {
+    let package = assets::Package::from_file(path)?;
+    let texture = match package.get_export(0)?.downcast_ref::<assets::Texture2D>() {
         Some(data) => data,
         None => return cerr("Package not exporting texture"),
     };

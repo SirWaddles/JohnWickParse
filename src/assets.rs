@@ -8,6 +8,7 @@ use byteorder::{LittleEndian, ReadBytesExt};
 
 pub type ReaderCursor = Cursor<Vec<u8>>;
 
+/// ParserError contains a list of error messages that wind down to where the parser was not able to parse a property
 #[derive(Debug)]
 pub struct ParserError {
     property_list: Vec<String>,
@@ -1492,6 +1493,7 @@ pub trait PackageExport: std::fmt::Debug {
     fn get_export_type(&self) -> &str;
 }
 
+/// A UObject is a struct for all of the parsed properties of an object
 #[derive(Debug)]
 struct UObject {
     export_type: String,
@@ -1538,6 +1540,7 @@ impl PackageExport for UObject {
     }
 }
 
+/// Texture2D contains the details, parameters and mipmaps for a texture
 #[derive(Debug)]
 pub struct Texture2D {
     base_object: UObject,
@@ -1645,6 +1648,10 @@ impl PackageExport for ObjectProperty {
     }
 }
 
+/// A Package is the collection of parsed data from a uasset/uexp file combo
+/// 
+/// It contains a number of 'Exports' which could be of any type implementing the `PackageExport` trait
+/// Note that exports are of type `dyn Any` and will need to be downcasted to their appropriate types before being usable
 #[derive(Debug)]
 pub struct Package {
     summary: FPackageFileSummary,
@@ -1656,16 +1663,9 @@ pub struct Package {
 }
 
 impl Package {
-    pub fn new(file_path: &str) -> ParserResult<Self> {
-        let asset_file = file_path.to_owned() + ".uasset";
-        let uexp_file = file_path.to_owned() + ".uexp";
-        // read asset file
-        let mut asset = File::open(asset_file)?;
-        let mut buffer = Vec::new();
-
-        asset.read_to_end(&mut buffer).expect("Could not read file");
-        let asset_length = buffer.len();
-        let mut cursor = ReaderCursor::new(buffer);
+    pub fn from_buffer(uasset: Vec<u8>, uexp: Vec<u8>) -> ParserResult<Self> {
+        let asset_length = uasset.len();
+        let mut cursor = ReaderCursor::new(uasset);
         let summary = FPackageFileSummary::new(&mut cursor)?;
 
         let mut name_map = Vec::new();
@@ -1687,10 +1687,7 @@ impl Package {
         }
 
         // read uexp file
-        let mut uexp = File::open(uexp_file)?;
-        let mut buffer = Vec::new();
-        uexp.read_to_end(&mut buffer).expect("Could not read uexp file");
-        let mut cursor = ReaderCursor::new(buffer);
+        let mut cursor = ReaderCursor::new(uexp);
 
         let mut exports: Vec<Box<dyn Any>> = Vec::new();
 
@@ -1720,8 +1717,29 @@ impl Package {
         })
     }
 
-    pub fn get_export(&self) -> &dyn Any {
-        self.exports.get(0).unwrap().as_ref()
+    pub fn from_file(file_path: &str) -> ParserResult<Self> {
+        let asset_file = file_path.to_owned() + ".uasset";
+        let uexp_file = file_path.to_owned() + ".uexp";
+        // read asset file
+        let mut asset = File::open(asset_file)?;
+        let mut uasset_buf = Vec::new();
+
+        asset.read_to_end(&mut uasset_buf)?;
+
+        let mut uexp = File::open(uexp_file)?;
+        let mut uexp_buf = Vec::new();
+        uexp.read_to_end(&mut uexp_buf)?;
+        Self::from_buffer(uasset_buf, uexp_buf)
+    }
+
+    /// Returns a reference to an export
+    /// 
+    /// Export will live as long as the underlying Package
+    pub fn get_export(&self, index: usize) -> ParserResult<&dyn Any> {
+        Ok(match self.exports.get(index) {
+            Some(data) => data,
+            None => return Err(ParserError::new(format!("index {} out of range", index))),
+        }.as_ref())
     }
 }
 

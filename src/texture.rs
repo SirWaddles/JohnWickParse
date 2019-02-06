@@ -16,6 +16,7 @@ pub fn decode_texture(data: &Vec<u8>, width: u32, height: u32) -> Option<Vec<u8>
     Some(bytes)
 }
 
+#[allow(dead_code)]
 pub fn save_texture(path: &str, bytes: &Vec<u8>, width: u32, height: u32) {
     image::save_buffer(path, bytes, width, height, image::RGBA(8)).unwrap()
 }

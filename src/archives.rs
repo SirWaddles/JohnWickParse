@@ -70,6 +70,7 @@ impl Newable for FPakCompressedBlock {
     }
 }
 
+/// Contains the details of a file residing in a `.pak` file
 #[allow(dead_code)]
 #[derive(Clone)]
 pub struct FPakEntry {
@@ -107,6 +108,7 @@ impl FPakEntry {
         })
     }
 
+    /// Gets the internal filename for the file this represents
     pub fn get_filename(&self) -> &str {
         &self.filename[..]
     }
@@ -138,6 +140,7 @@ impl FPakIndex {
     }
 }
 
+/// PakExtractor can read the contents of a `.pak` file
 #[allow(dead_code)]
 pub struct PakExtractor {
     header: FPakInfo,
@@ -148,6 +151,7 @@ pub struct PakExtractor {
 
 #[allow(dead_code)]
 impl PakExtractor {
+    /// Create a `PakExtractor` by specifying the path to the pak file on disk, and the encryption key to the file index
     pub fn new(path: &str, key: &str) -> ParserResult<Self> {
         let file = File::open(path)?;
         let mut reader = BufReader::new(file);
@@ -170,10 +174,14 @@ impl PakExtractor {
         })
     }
 
+    /// Get a list of `FPakEntry` that can be used with `get_file` to extract files.
     pub fn get_entries(&self) -> &Vec<FPakEntry> {
         &self.index.index_entries
     }
 
+    /// Uses an `FPakEntry` to seek to and extract a file from a `.pak` file
+    /// 
+    /// Note that the `FPakEntry` must come from the same `PakExtractor`, using a mismatched one will panic
     pub fn get_file(&mut self, file: &FPakEntry) -> Vec<u8> {
         let start_pos = file.position as u64 + file.struct_size;
         self.reader.seek(SeekFrom::Start(start_pos)).unwrap();
