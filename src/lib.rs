@@ -27,7 +27,7 @@ pub struct TextureData {
 
 /// Extracts a raw RGBA texture from a Package struct 
 pub fn read_texture(package: &Package) -> ParserResult<TextureData> {
-    let texture = match package.get_export().downcast_ref::<Texture2D>() {
+    let texture = match package.get_export(0)?.downcast_ref::<Texture2D>() {
         Some(data) => data,
         None => return Err(ParserError::new(format!("Package does not export texture"))),
     };

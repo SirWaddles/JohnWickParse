@@ -30,7 +30,6 @@ impl Newable for FPakInfo {
         let index_offset = reader.read_u64::<LittleEndian>()?;
         let index_size = reader.read_i64::<LittleEndian>()?;
 
-        println!("index: {} {}", index_offset, index_size);
         let mut index_hash = [0u8; 20];
         reader.read_exact(&mut index_hash)?;
 
@@ -50,7 +49,6 @@ fn get_index(header: &FPakInfo, reader: &mut BufReader<File>, key: &str) -> Vec<
     reader.seek(SeekFrom::Start(header.index_offset)).unwrap();
     reader.read_exact(&mut ciphertext).unwrap();
     let key = hex::decode(key).expect("Hex error");
-    println!("Key: {}", key.len());
     rijndael::rijndael_decrypt_buf(&ciphertext, &key)
 }
 
@@ -125,7 +123,6 @@ impl FPakIndex {
     fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
         let mount_point = read_string(reader)?;
         let file_count = reader.read_u32::<LittleEndian>()?;
-        println!("Reading {} files", file_count);
         let mut index_entries = Vec::new();
         for _i in 0..file_count {
             let filename = read_string(reader)?;
