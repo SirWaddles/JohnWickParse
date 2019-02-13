@@ -117,6 +117,9 @@ impl Newable for FCustomVersion {
 
 pub fn read_string(reader: &mut ReaderCursor) -> ParserResult<String> {
     let length = reader.read_i32::<LittleEndian>()?;
+    if length > 65536 || length < 0 {
+        return Err(ParserError::new(format!("String length too large ({}), likely a read error.", length)));
+    }
     let mut bytes = vec![0u8; length as usize];
     reader.read_exact(&mut bytes).expect("Could not read string");
     bytes.pop();

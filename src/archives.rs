@@ -1,7 +1,7 @@
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::fs::File;
 use std::io::{Read, BufReader, Seek, SeekFrom, Cursor};
-use crate::assets::{FGuid, Newable, ReaderCursor, read_string, read_tarray, ParserResult};
+use crate::assets::{FGuid, Newable, ReaderCursor, read_string, read_tarray, ParserResult, ParserError};
 use crate::rijndael;
 
 const PAK_MAGIC: u32 = 0x5A6F12E1;
@@ -122,6 +122,9 @@ struct FPakIndex {
 impl FPakIndex {
     fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
         let mount_point = read_string(reader)?;
+        if mount_point.len() > 1024 {
+            return Err(ParserError::new(format!("Could not read Pak Archive")));
+        }
         let file_count = reader.read_u32::<LittleEndian>()?;
         let mut index_entries = Vec::new();
         for _i in 0..file_count {
