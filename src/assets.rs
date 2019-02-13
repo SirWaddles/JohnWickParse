@@ -644,6 +644,25 @@ impl NewableWithNameMap for FLinearColor {
     }
 }
 
+#[derive(Debug, Serialize)]
+struct FColor {
+    r: u8,
+    g: u8,
+    b: u8,
+    a: u8,
+}
+
+impl NewableWithNameMap for FColor {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+        Ok(Self {
+            b: reader.read_u8()?,
+            g: reader.read_u8()?,
+            r: reader.read_u8()?,
+            a: reader.read_u8()?,
+        })
+    }
+}
+
 #[derive(Debug)]
 struct FStructFallback {
     properties: Vec<FPropertyTag>,
@@ -1030,6 +1049,7 @@ impl UScriptStruct {
         let struct_type: Box<NewableWithNameMap> = match struct_name {
             "Vector2D" => Box::new(FVector2D::new_n(reader, name_map, import_map).map_err(err)?),
             "LinearColor" => Box::new(FLinearColor::new_n(reader, name_map, import_map).map_err(err)?),
+            "Color" => Box::new(FColor::new_n(reader, name_map, import_map).map_err(err)?),
             "GameplayTagContainer" => Box::new(FGameplayTagContainer::new_n(reader, name_map, import_map).map_err(err)?),
             "IntPoint" => Box::new(FIntPoint::new_n(reader, name_map, import_map).map_err(err)?),
             "Guid" => Box::new(FGuid::new(reader).map_err(err)?),
@@ -1126,6 +1146,7 @@ fn read_map_value(reader: &mut ReaderCursor, inner_type: &str, struct_type: &str
         "EnumProperty" => FPropertyTagType::EnumProperty(Some(read_fname(reader, name_map)?)),
         "UInt32Property" => FPropertyTagType::UInt32Property(reader.read_u32::<LittleEndian>()?),
         "StructProperty" => FPropertyTagType::StructProperty(UScriptStruct::new(reader, name_map, import_map, struct_type)?),
+        "NameProperty" => FPropertyTagType::NameProperty(read_fname(reader, name_map)?),
         _ => FPropertyTagType::StructProperty(UScriptStruct::new(reader, name_map, import_map, inner_type)?),
     })
 }
@@ -1622,43 +1643,6 @@ impl PackageExport for Texture2D {
     }
 }
 
-#[derive(Debug)]
-pub struct ObjectProperty {
-    base_object: UObject,
-}
-
-impl ObjectProperty {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
-        let object = match UObject::new(reader, name_map, import_map, "ObjectProperty", false)? {
-            Some(object) => object,
-            None => return Err(ParserError::new("ObjectProperty could not read UObject".to_owned())),
-        };
-
-        let mut words: Vec<u32> = Vec::new();
-
-        for _i in 0..2 {
-            words.push(reader.read_u32::<LittleEndian>()?);
-        }
-
-        let name1 = read_fname(reader, name_map)?;
-        let name2 = read_fname(reader, name_map)?;
-
-        let float1 = reader.read_f32::<LittleEndian>()?;
-
-        println!("Name: {:?} {} {} {}", words, name1, name2, float1);
-
-        Ok(Self {
-            base_object: object,
-        })
-    }
-}
-
-impl PackageExport for ObjectProperty {
-    fn get_export_type(&self) -> &str {
-        "ObjectProperty"
-    }
-}
-
 /// A Package is the collection of parsed data from a uasset/uexp file combo
 /// 
 /// It contains a number of 'Exports' which could be of any type implementing the `PackageExport` trait
@@ -1708,7 +1692,6 @@ impl Package {
             cursor.seek(SeekFrom::Start(position))?;
             let export: Box<dyn Any> = match export_type.as_ref() {
                 "Texture2D" => Box::new(Texture2D::new(&mut cursor, &name_map, &import_map, asset_length)?),
-                "ObjectProperty" => Box::new(ObjectProperty::new(&mut cursor, &name_map, &import_map)?),
                 _ => Box::new(UObject::new(&mut cursor, &name_map, &import_map, export_type, true)?.unwrap()),
             };
             let valid_pos = position + v.serial_size as u64;
