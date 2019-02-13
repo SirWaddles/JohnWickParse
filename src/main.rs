@@ -75,21 +75,11 @@ fn texture(params: &[String]) -> CommandResult {
         None => return cerr("Package not exporting texture"),
     };
 
-    let pixel_format = texture.get_pixel_format().unwrap();
-
-    if pixel_format != "PF_DXT5" {
-        return cerr("Only supported formats: DXT5");
-    }
-
-    let texture = texture.get_texture().unwrap();
-    let texture_bytes = match texture::decode_texture(texture.get_bytes(), texture.get_width(), texture.get_height()) {
-        Some(data) => data,
-        None => return cerr("Could not decode texture"),
-    };
+    let texture_bytes = texture::decode_texture(texture)?;
 
     let save_path = path.clone() + ".png";
-
-    texture::save_texture(&save_path, &texture_bytes, texture.get_width(), texture.get_height());
+    let mut file = fs::File::create(save_path).unwrap();
+    file.write_all(&texture_bytes).unwrap();
 
     Ok(())
 }
