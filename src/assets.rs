@@ -533,17 +533,24 @@ impl Newable for FText {
     fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
         let flags = reader.read_u32::<LittleEndian>()?;
         let history_type = reader.read_i8()?;
-        if history_type != 0 {
-            panic!("Could not read history type (FText): {}", history_type);
-        }
 
-        Ok(Self {
-            flags,
-            history_type,
-            namespace: read_string(reader)?,
-            key: read_string(reader)?,
-            source_string: read_string(reader)?,
-        })
+        match history_type {
+            -1 => Ok(Self {
+                flags,
+                history_type,
+                namespace: "".to_owned(),
+                key: "".to_owned(),
+                source_string: "".to_owned(),
+            }),
+            0 => Ok(Self {
+                flags,
+                history_type,
+                namespace: read_string(reader)?,
+                key: read_string(reader)?,
+                source_string: read_string(reader)?,
+            }),
+            _ => Err(ParserError::new(format!("Could not read history type: {}", history_type))),
+        }        
     }
 }
 
