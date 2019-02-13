@@ -116,15 +116,30 @@ impl Newable for FCustomVersion {
 }
 
 pub fn read_string(reader: &mut ReaderCursor) -> ParserResult<String> {
-    let length = reader.read_i32::<LittleEndian>()?;
-    if length > 65536 || length < 0 {
+    let mut length = reader.read_i32::<LittleEndian>()?;
+    if length > 65536 || length < -65536 {
         return Err(ParserError::new(format!("String length too large ({}), likely a read error.", length)));
     }
-    let mut bytes = vec![0u8; length as usize];
-    reader.read_exact(&mut bytes).expect("Could not read string");
-    bytes.pop();
 
-    Ok(std::str::from_utf8(&bytes)?.to_owned())
+    let mut fstr;
+
+    if length < 0 {
+        length *= -1;
+        let mut u16bytes = vec![0u16; length as usize];
+        for i in 0..length {
+            let val = reader.read_u16::<LittleEndian>()?;
+            u16bytes[i as usize] = val;
+        }
+        u16bytes.pop();
+        fstr = String::from_utf16(&u16bytes)?;
+    } else {
+        let mut bytes = vec![0u8; length as usize];
+        reader.read_exact(&mut bytes)?;
+        fstr = std::str::from_utf8(&bytes)?.to_owned();
+        fstr.pop();
+    }
+
+    Ok(fstr)
 }
 
 #[derive(Debug)]
@@ -354,26 +369,8 @@ struct FNameEntrySerialized {
 
 impl Newable for FNameEntrySerialized {
     fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
-        let mut length = reader.read_i32::<LittleEndian>()?;
-        let mut fstr;
-
-        if length < 0 {
-            length *= -1;
-            let mut u16bytes = vec![0u16; length as usize];
-            for i in 0..length {
-                let val = reader.read_u16::<LittleEndian>()?;
-                u16bytes[i as usize] = val;
-            }
-            fstr = String::from_utf16(&u16bytes)?;
-        } else {
-            let mut bytes = vec![0u8; length as usize];
-            reader.read_exact(&mut bytes)?;
-            fstr = std::str::from_utf8(&bytes)?.to_owned();
-            fstr.pop();
-        }
-
         Ok(Self {
-            data: fstr,
+            data: read_string(reader)?,
             non_case_preserving_hash: reader.read_u16::<LittleEndian>()?,
             case_preserving_hash: reader.read_u16::<LittleEndian>()?,
         })
