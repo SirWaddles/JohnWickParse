@@ -1529,7 +1529,8 @@ impl UObject {
 
 impl Serialize for UObject {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
-        let mut map = serializer.serialize_map(Some(self.properties.len()))?;
+        let mut map = serializer.serialize_map(Some(self.properties.len() + 1))?;
+        map.serialize_entry("export_type", &self.export_type)?;
         for property in &self.properties {
             map.serialize_entry(&property.name, &property.tag)?;
         }
