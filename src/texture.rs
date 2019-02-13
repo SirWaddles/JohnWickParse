@@ -1,5 +1,5 @@
 use std::io::Cursor;
-use image::{dxt, png, ImageDecoder};
+use image::{dxt, png, ImageDecoder, ImageError};
 use crate::assets::{Texture2D, ParserResult, ParserError};
 
 /// A simple struct with the data for returning a texture
@@ -7,6 +7,12 @@ pub struct TextureData {
     pub width: u32,
     pub height: u32,
     pub data: Vec<u8>
+}
+
+impl From<ImageError> for ParserError {
+    fn from(error: ImageError) -> ParserError {
+        ParserError::new(format!("{}", error))
+    }
 }
 
 pub fn decode_texture(texture: &Texture2D) -> ParserResult<Vec<u8>> {
@@ -25,16 +31,11 @@ pub fn decode_texture(texture: &Texture2D) -> ParserResult<Vec<u8>> {
         data: texture_mipmap.get_bytes().clone(),
     };
 
-    let bytes: Option<Vec<u8>> = match pixel_format {
-        "PF_DXT5" => decode_texture_dxt5(&data),
-        "PF_DXT1" => decode_texture_dxt1(&data),
-        "PF_B8G8R8A8" => Some(data.data),
+    let bytes: Vec<u8> = match pixel_format {
+        "PF_DXT5" => decode_texture_dxt5(&data)?,
+        "PF_DXT1" => decode_texture_dxt1(&data)?,
+        "PF_B8G8R8A8" => data.data,
         _ => return Err(ParserError::new(format!("Unsupported pixel format: {}", pixel_format))),
-    };
-
-    let bytes = match bytes {
-        Some(data) => data,
-        None => return Err(ParserError::new(format!("Could not read bytes"))),
     };
 
     let colour_type = match pixel_format {
@@ -53,34 +54,23 @@ pub fn decode_texture(texture: &Texture2D) -> ParserResult<Vec<u8>> {
     Ok(png_data)
 }
 
-fn decode_texture_dxt5(data: &TextureData) -> Option<Vec<u8>> {
+fn decode_texture_dxt5(data: &TextureData) -> ParserResult<Vec<u8>> {
     let reader = Cursor::new(&data.data);
-    let decoder = match dxt::DXTDecoder::new(reader, data.width, data.height, dxt::DXTVariant::DXT5) {
-        Ok(data) => data,
-        Err(_) => return None,
-    };
+    println!("Size: {} {}", data.width, data.height);
+    let decoder = dxt::DXTDecoder::new(reader, data.width, data.height, dxt::DXTVariant::DXT5)?;
 
-    let bytes = match decoder.read_image() {
-        Ok(data) => data,
-        Err(_) => return None,
-    };
+    let bytes = decoder.read_image()?;
 
-    Some(bytes)
+    Ok(bytes)
 }
 
-fn decode_texture_dxt1(data: &TextureData) -> Option<Vec<u8>> {
+fn decode_texture_dxt1(data: &TextureData) -> ParserResult<Vec<u8>> {
     let reader = Cursor::new(&data.data);
-    let decoder = match dxt::DXTDecoder::new(reader, data.width, data.height, dxt::DXTVariant::DXT1) {
-        Ok(data) => data,
-        Err(_) => return None,
-    };
+    let decoder = dxt::DXTDecoder::new(reader, data.width, data.height, dxt::DXTVariant::DXT1)?;
 
-    let bytes = match decoder.read_image() {
-        Ok(data) => data,
-        Err(_) => return None,
-    };
+    let bytes = decoder.read_image()?;
 
-    Some(bytes)
+    Ok(bytes)
 }
 
 #[allow(dead_code)]
