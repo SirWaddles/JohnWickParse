@@ -15,30 +15,24 @@ impl From<ImageError> for ParserError {
     }
 }
 
-pub fn decode_texture(texture: &Texture2D) -> ParserResult<Vec<u8>> {
-    let pixel_format = match texture.get_pixel_format() {
-        Some(data) => data,
-        None => return Err(ParserError::new(format!("Could not find format"))),
-    };
-    let texture_mipmap = match texture.get_texture() {
-        Some(data) => data,
-        None => return Err(ParserError::new(format!("Could not find texture"))),
-    };
+pub fn decode_texture(texture: Texture2D) -> ParserResult<Vec<u8>> {
+    let pixel_format = texture.get_pixel_format()?.to_owned();
+    let texture_mipmap = texture.get_texture_move()?;
 
     let data = TextureData {
         width: texture_mipmap.get_width(),
         height: texture_mipmap.get_height(),
-        data: texture_mipmap.get_bytes().clone(),
+        data: texture_mipmap.get_bytes_move(),
     };
 
-    let bytes: Vec<u8> = match pixel_format {
+    let bytes: Vec<u8> = match pixel_format.as_ref() {
         "PF_DXT5" => decode_texture_dxt5(&data)?,
         "PF_DXT1" => decode_texture_dxt1(&data)?,
         "PF_B8G8R8A8" => data.data,
         _ => return Err(ParserError::new(format!("Unsupported pixel format: {}", pixel_format))),
     };
 
-    let colour_type = match pixel_format {
+    let colour_type = match pixel_format.as_ref() {
         "PF_B8G8R8A8" => image::BGRA(8),
         _ => image::RGBA(8),
     };
@@ -56,7 +50,6 @@ pub fn decode_texture(texture: &Texture2D) -> ParserResult<Vec<u8>> {
 
 fn decode_texture_dxt5(data: &TextureData) -> ParserResult<Vec<u8>> {
     let reader = Cursor::new(&data.data);
-    println!("Size: {} {}", data.width, data.height);
     let decoder = dxt::DXTDecoder::new(reader, data.width, data.height, dxt::DXTVariant::DXT5)?;
 
     let bytes = decoder.read_image()?;

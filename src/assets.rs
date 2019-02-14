@@ -1240,6 +1240,7 @@ enum FPropertyTagType {
     IntProperty(i32),
     UInt16Property(u16),
     UInt32Property(u32),
+    UInt64Property(u64),
     ArrayProperty(UScriptArray),
     MapProperty(UScriptMap),
     ByteProperty(u8),
@@ -1272,6 +1273,7 @@ impl FPropertyTagType {
             "IntProperty" => FPropertyTagType::IntProperty(reader.read_i32::<LittleEndian>()?),
             "UInt16Property" => FPropertyTagType::UInt16Property(reader.read_u16::<LittleEndian>()?),
             "UInt32Property" => FPropertyTagType::UInt32Property(reader.read_u32::<LittleEndian>()?),
+            "UInt64Property" => FPropertyTagType::UInt64Property(reader.read_u64::<LittleEndian>()?),
             "ArrayProperty" => match tag_data.unwrap() {
                 FPropertyTagData::ArrayProperty(inner_type) => FPropertyTagType::ArrayProperty(
                     UScriptArray::new(reader, inner_type, name_map, import_map)?
@@ -1476,9 +1478,14 @@ impl Newable for FTexture2DMipMap {
     }
 }
 
+#[allow(dead_code)]
 impl FTexture2DMipMap {
     pub fn get_bytes(&self) -> &Vec<u8> {
         &self.data.data
+    }
+
+    pub fn get_bytes_move(self) -> Vec<u8> {
+        self.data.data
     }
 
     pub fn get_width(&self) -> u32 {
@@ -1613,24 +1620,35 @@ impl Texture2D {
         })
     }
 
-    pub fn get_pixel_format(&self) -> Option<&str> {
+    pub fn get_pixel_format(&self) -> ParserResult<&str> {
         let pdata = match self.textures.get(0) {
             Some(data) => data,
-            None => return None,
+            None => return Err(ParserError::new(format!("No textures found"))),
         };
-        Some(&pdata.pixel_format)
+        Ok(&pdata.pixel_format)
     }
 
-    pub fn get_texture(&self) -> Option<&FTexture2DMipMap> {
+    pub fn get_texture(&self) -> ParserResult<&FTexture2DMipMap> {
         let pdata = match self.textures.get(0) {
             Some(data) => data,
-            None => return None,
+            None => return Err(ParserError::new(format!("No textures part of export"))),
         };
         let texture = match pdata.mips.get(0) {
             Some(data) => data,
-            None => return None,
+            None => return Err(ParserError::new(format!("No mipmaps part of texture"))),
         };
-        Some(texture)
+        Ok(texture)
+    }
+
+    pub fn get_texture_move(mut self) -> ParserResult<FTexture2DMipMap> {
+        if self.textures.len() <= 0 {
+            return Err(ParserError::new(format!("No textures part of export")));
+        }
+        let mut texture = self.textures.swap_remove(0);
+        if texture.mips.len() <= 0 {
+            return Err(ParserError::new(format!("No mipmaps part of texture")));
+        }
+        Ok(texture.mips.swap_remove(0))
     }
 }
 
@@ -1731,6 +1749,14 @@ impl Package {
             Some(data) => data,
             None => return Err(ParserError::new(format!("index {} out of range", index))),
         }.as_ref())
+    }
+
+    pub fn get_export_move(mut self, index: usize) -> ParserResult<Box<dyn Any>> {
+        if index < self.exports.len() {
+            Ok(self.exports.swap_remove(index))
+        } else {
+            Err(ParserError::new(format!("No exports found")))
+        }
     }
 }
 

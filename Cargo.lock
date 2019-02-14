@@ -101,7 +101,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "image"
 version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/SirWaddles/image#cb882c7d7a33b28da7c756349181f11f82b85d34"
 dependencies = [
  "byteorder 1.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "gif 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -131,12 +131,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "john-wick-parse"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "byteorder 1.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "erased-serde 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "image 0.21.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "image 0.21.0 (git+https://github.com/SirWaddles/image)",
  "serde 1.0.85 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.85 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.37 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -359,7 +359,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum erased-serde 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)" = "649aa42dc65035b3006880d1007ba09323235c961fd220c19a961066568e99f8"
 "checksum gif 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)" = "dd4bca55ac1f213920ce3527ccd62386f1f15fa3f1714aeee1cf93f2c416903f"
 "checksum hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "805026a5d0141ffc30abb3be3173848ad46a1b1664fe632428479619a3644d77"
-"checksum image 0.21.0 (registry+https://github.com/rust-lang/crates.io-index)" = "52fb0666a1273dac46f9725aa4859bcd5595fc3554cf3495051b4de8db745e7d"
+"checksum image 0.21.0 (git+https://github.com/SirWaddles/image)" = "<none>"
 "checksum inflate 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)" = "84c683bde2d8413b8f1be3e459c30e4817672b6e7a31d9212b0323154e76eba7"
 "checksum itoa 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)" = "1306f3464951f30e30d12373d31c79fbd52d236e5e896fd92f96ec7babbbe60b"
 "checksum jpeg-decoder 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)" = "c8b7d43206b34b3f94ea9445174bda196e772049b9bddbc620c9d29b2d20110d"

@@ -70,12 +70,13 @@ fn texture(params: &[String]) -> CommandResult {
     };
 
     let package = assets::Package::from_file(path)?;
-    let texture = match package.get_export(0)?.downcast_ref::<assets::Texture2D>() {
-        Some(data) => data,
-        None => return cerr("Package not exporting texture"),
+    let package_export = package.get_export_move(0)?;
+    let texture = match package_export.downcast::<assets::Texture2D>() {
+        Ok(data) => data,
+        Err(_) => return cerr("Package not exporting texture"),
     };
 
-    let texture_bytes = texture::decode_texture(texture)?;
+    let texture_bytes = texture::decode_texture(*texture)?;
 
     let save_path = path.clone() + ".png";
     let mut file = fs::File::create(save_path).unwrap();

@@ -19,11 +19,11 @@ pub fn read_asset(asset: Vec<u8>, uexp: Vec<u8>) -> ParserResult<Package> {
 }
 
 /// Extracts a raw RGBA texture from a Package struct 
-pub fn read_texture(package: &Package) -> ParserResult<Vec<u8>> {
-    let texture = match package.get_export(0)?.downcast_ref::<Texture2D>() {
-        Some(data) => data,
-        None => return Err(ParserError::new(format!("Package does not export texture"))),
+pub fn read_texture(package: Package) -> ParserResult<Vec<u8>> {
+    let package_export = package.get_export_move(0)?;
+    let texture = match package_export.downcast::<Texture2D>() {
+        Ok(data) => data,
+        Err(_) => return Err(ParserError::new(format!("Export is not texture"))),
     };
-
-    texture::decode_texture(texture)
+    texture::decode_texture(*texture)
 }
