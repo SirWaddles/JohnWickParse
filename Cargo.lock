@@ -131,7 +131,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "john-wick-parse"
-version = "0.4.1"
+version = "0.5.0"
 dependencies = [
  "byteorder 1.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "erased-serde 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",

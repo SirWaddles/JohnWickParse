@@ -8,13 +8,19 @@ const PAK_MAGIC: u32 = 0x5A6F12E1;
 const PAK_SIZE: u32 = 8 + 16 + 20 + 1 + 16;
 
 #[allow(dead_code)]
-struct FPakInfo {
+pub struct FPakInfo {
     encryption_key_guid: FGuid,
     encrypted_index: bool,
     version: u32,
     index_offset: u64,
     index_size: i64,
     index_hash: [u8; 20],
+}
+
+impl FPakInfo {
+    pub fn get_key_guid(&self) -> &FGuid {
+        &self.encryption_key_guid
+    }
 }
 
 impl Newable for FPakInfo {
@@ -172,6 +178,19 @@ impl PakExtractor {
             key: key.to_owned(),
             reader,
         })
+    }
+
+    pub fn new_header(path: &str) -> ParserResult<FPakInfo> {
+        let file = File::open(path)?;
+        let mut reader = BufReader::new(file);
+        reader.seek(SeekFrom::End(-(PAK_SIZE as i64)))?;
+        let mut header_b = vec![0u8; PAK_SIZE as usize];
+        reader.read_exact(&mut header_b)?;
+
+        let mut header_reader = Cursor::new(header_b);
+        let header = FPakInfo::new(&mut header_reader)?;
+
+        Ok(header)
     }
 
     /// Get a list of `FPakEntry` that can be used with `get_file` to extract files.
