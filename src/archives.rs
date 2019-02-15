@@ -17,6 +17,7 @@ pub struct FPakInfo {
     index_hash: [u8; 20],
 }
 
+#[allow(dead_code)]
 impl FPakInfo {
     pub fn get_key_guid(&self) -> &FGuid {
         &self.encryption_key_guid

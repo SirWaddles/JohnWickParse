@@ -393,7 +393,7 @@ fn read_fname(reader: &mut ReaderCursor, name_map: &NameMap) -> ParserResult<Str
     reader.read_i32::<LittleEndian>()?; // name_number ?
     match name_map.get(name_index as usize) {
         Some(data) => Ok(data.data.to_owned()),
-        None => Err(ParserError::new(format!("FName could not be read at {}", index_pos))),
+        None => Err(ParserError::new(format!("FName could not be read at {} {}", index_pos, name_index))),
     }
 }
 
@@ -1584,6 +1584,7 @@ pub struct Texture2D {
     textures: Vec<FTexturePlatformData>,
 }
 
+#[allow(dead_code)]
 impl Texture2D {
     fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, asset_file_size: usize) -> ParserResult<Self> {
         let object = match UObject::new(reader, name_map, import_map, "Texture2D", false)? {
@@ -1658,6 +1659,48 @@ impl PackageExport for Texture2D {
     }
 }
 
+#[derive(Debug)]
+pub struct UDataTable {
+    super_object: UObject,
+    rows: Vec<(String, UObject)>,
+}
+
+impl PackageExport for UDataTable {
+    fn get_export_type(&self) -> &str {
+        "DataTable"
+    }
+}
+
+impl UDataTable {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
+        let super_object = UObject::new(reader, name_map, import_map, "RowStruct", true)?.unwrap();
+        let num_rows = reader.read_i32::<LittleEndian>()?;
+
+        let mut rows = Vec::new();
+
+        for _i in 0..num_rows {
+            let row_name = read_fname(reader, name_map)?;
+            let row_object = UObject::new(reader, name_map, import_map, "RowStruct", false)?.unwrap();
+            rows.push((row_name, row_object));
+        }
+        
+        Ok(Self {
+            super_object, rows,
+        })
+    }
+}
+
+impl Serialize for UDataTable {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        let mut map = serializer.serialize_map(Some((self.rows.len() + 1) as usize))?;
+        map.serialize_entry("export_type", "DataTable")?;
+        for e in &self.rows {
+            map.serialize_entry(&e.0, &e.1)?;
+        }
+        map.end()
+    }
+}
+
 /// A Package is the collection of parsed data from a uasset/uexp file combo
 /// 
 /// It contains a number of 'Exports' which could be of any type implementing the `PackageExport` trait
@@ -1672,6 +1715,7 @@ pub struct Package {
     exports: Vec<Box<Any>>,
 }
 
+#[allow(dead_code)]
 impl Package {
     pub fn from_buffer(uasset: Vec<u8>, uexp: Vec<u8>) -> ParserResult<Self> {
         let asset_length = uasset.len();
@@ -1707,6 +1751,7 @@ impl Package {
             cursor.seek(SeekFrom::Start(position))?;
             let export: Box<dyn Any> = match export_type.as_ref() {
                 "Texture2D" => Box::new(Texture2D::new(&mut cursor, &name_map, &import_map, asset_length)?),
+                "DataTable" => Box::new(UDataTable::new(&mut cursor, &name_map, &import_map)?),
                 _ => Box::new(UObject::new(&mut cursor, &name_map, &import_map, export_type, true)?.unwrap()),
             };
             let valid_pos = position + v.serial_size as u64;
@@ -1770,6 +1815,10 @@ impl Serialize for Package {
             }
             if let Some(texture) = e.downcast_ref::<Texture2D>() {
                 seq.serialize_element(&texture.base_object)?;
+                continue;
+            }
+            if let Some(table) = e.downcast_ref::<UDataTable>() {
+                seq.serialize_element(&table)?;
                 continue;
             }
             seq.serialize_element("None")?;
