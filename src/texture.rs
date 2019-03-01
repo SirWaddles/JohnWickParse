@@ -33,6 +33,7 @@ pub fn decode_texture(texture: Texture2D) -> ParserResult<Vec<u8>> {
     };
 
     let colour_type = match pixel_format.as_ref() {
+        "PF_DXT1" => image::RGB(8),
         "PF_B8G8R8A8" => image::BGRA(8),
         _ => image::RGBA(8),
     };

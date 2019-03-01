@@ -1,6 +1,7 @@
 use std::fmt;
 use std::io::{Cursor, Read, Seek, SeekFrom};
-use std::fs::File;
+use std::fs::{File, metadata};
+use std::path::Path;
 use std::any::Any;
 use serde::ser::{Serialize, Serializer, SerializeMap, SerializeSeq};
 use erased_serde::{Serialize as TraitSerialize};
@@ -1437,14 +1438,26 @@ impl std::fmt::Debug for FByteBulkData {
     }
 }
 
-impl Newable for FByteBulkData {
-    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+impl FByteBulkData {
+    fn new(reader: &mut ReaderCursor, ubulk: &mut Option<ReaderCursor>, bulk_offset: i64) -> ParserResult<Self> {
         let header = FByteBulkDataHeader::new(reader)?;
         let mut data: Vec<u8> = Vec::new();
 
         if header.bulk_data_flags & 0x0040 != 0 {
             data.resize(header.element_count as usize, 0u8);
             reader.read_exact(&mut data)?;
+        }
+
+        if header.bulk_data_flags & 0x0100 != 0 {
+            let ubulk_reader = match ubulk {
+                Some(data) => data,
+                None => return Err(ParserError::new(format!("No ubulk specified for texture"))),
+            };
+            // Archive seems "kind of" appended.
+            let offset = header.offset_in_file + bulk_offset;
+            data.resize(header.element_count as usize, 0u8);
+            ubulk_reader.seek(SeekFrom::Start(offset as u64)).unwrap();
+            ubulk_reader.read_exact(&mut data).unwrap();
         }
 
         Ok(Self {
@@ -1461,10 +1474,10 @@ pub struct FTexture2DMipMap {
     size_z: i32,
 }
 
-impl Newable for FTexture2DMipMap {
-    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+impl FTexture2DMipMap {
+    fn new(reader: &mut ReaderCursor, ubulk: &mut Option<ReaderCursor>, bulk_offset: i64) -> ParserResult<Self> {
         let cooked = reader.read_i32::<LittleEndian>()?;
-        let data = FByteBulkData::new(reader)?;
+        let data = FByteBulkData::new(reader, ubulk, bulk_offset)?;
         let size_x = reader.read_i32::<LittleEndian>()?;
         let size_y = reader.read_i32::<LittleEndian>()?;
         let size_z = reader.read_i32::<LittleEndian>()?;
@@ -1511,15 +1524,21 @@ impl FTexturePlatformData {
     
 }
 
-impl Newable for FTexturePlatformData {
-    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+impl FTexturePlatformData {
+    fn new(reader: &mut ReaderCursor, ubulk: &mut Option<ReaderCursor>, bulk_offset: i64) -> ParserResult<Self> {
+        let size_x = reader.read_i32::<LittleEndian>()?;
+        let size_y = reader.read_i32::<LittleEndian>()?;
+        let num_slices = reader.read_i32::<LittleEndian>()?;
+        let pixel_format = read_string(reader)?;
+        let first_mip = reader.read_i32::<LittleEndian>()?;
+        let length = reader.read_u32::<LittleEndian>()?;
+        let mut mips = Vec::new();
+        for _i in 0..length {
+            mips.push(FTexture2DMipMap::new(reader, ubulk, bulk_offset)?);
+        }
+
         Ok(Self {
-            size_x: reader.read_i32::<LittleEndian>()?,
-            size_y: reader.read_i32::<LittleEndian>()?,
-            num_slices: reader.read_i32::<LittleEndian>()?,
-            pixel_format: read_string(reader)?,
-            first_mip: reader.read_i32::<LittleEndian>()?,
-            mips: read_tarray(reader)?,
+            size_x, size_y, num_slices, pixel_format, first_mip, mips,
         })
     }
 }
@@ -1586,7 +1605,7 @@ pub struct Texture2D {
 
 #[allow(dead_code)]
 impl Texture2D {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, asset_file_size: usize) -> ParserResult<Self> {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, asset_file_size: i32, export_size: i64, ubulk: &mut Option<ReaderCursor>) -> ParserResult<Self> {
         let object = match UObject::new(reader, name_map, import_map, "Texture2D", false)? {
             Some(object) => object,
             None => return Err(ParserError::new("Texture2D could not read UObject".to_owned())),
@@ -1605,7 +1624,7 @@ impl Texture2D {
             let mut pixel_format = read_fname(reader, name_map)?;
             while pixel_format != "None" {
                 let skip_offset = reader.read_i64::<LittleEndian>()?;
-                let texture = FTexturePlatformData::new(reader)?;
+                let texture = FTexturePlatformData::new(reader, ubulk, export_size + asset_file_size as i64)?;
                 if reader.position() + asset_file_size as u64 != skip_offset as u64 {
                     panic!("Texture read incorrectly {} {}", reader.position() + asset_file_size as u64, skip_offset);
                 }
@@ -1711,14 +1730,12 @@ pub struct Package {
     name_map: NameMap,
     import_map: ImportMap,
     export_map: Vec<FObjectExport>,
-    asset_file_size: usize,
     exports: Vec<Box<Any>>,
 }
 
 #[allow(dead_code)]
 impl Package {
-    pub fn from_buffer(uasset: Vec<u8>, uexp: Vec<u8>) -> ParserResult<Self> {
-        let asset_length = uasset.len();
+    pub fn from_buffer(uasset: Vec<u8>, uexp: Vec<u8>, ubulk: Option<Vec<u8>>) -> ParserResult<Self> {
         let mut cursor = ReaderCursor::new(uasset);
         let summary = FPackageFileSummary::new(&mut cursor)?;
 
@@ -1740,8 +1757,17 @@ impl Package {
             export_map.push(FObjectExport::new_n(&mut cursor, &name_map, &import_map)?);
         }
 
+        let export_size = export_map.iter().fold(0, |acc, v| v.serial_size + acc);
+
         // read uexp file
         let mut cursor = ReaderCursor::new(uexp);
+
+        let mut ubulk_cursor = match ubulk {
+            Some(data) => Some(ReaderCursor::new(data)),
+            None => None,
+        };
+
+        let asset_length = summary.total_header_size;
 
         let mut exports: Vec<Box<dyn Any>> = Vec::new();
 
@@ -1750,7 +1776,7 @@ impl Package {
             let position = v.serial_offset as u64 - asset_length as u64;
             cursor.seek(SeekFrom::Start(position))?;
             let export: Box<dyn Any> = match export_type.as_ref() {
-                "Texture2D" => Box::new(Texture2D::new(&mut cursor, &name_map, &import_map, asset_length)?),
+                "Texture2D" => Box::new(Texture2D::new(&mut cursor, &name_map, &import_map, asset_length, export_size, &mut ubulk_cursor)?),
                 "DataTable" => Box::new(UDataTable::new(&mut cursor, &name_map, &import_map)?),
                 _ => Box::new(UObject::new(&mut cursor, &name_map, &import_map, export_type, true)?.unwrap()),
             };
@@ -1766,7 +1792,6 @@ impl Package {
             name_map: name_map,
             import_map: import_map,
             export_map: export_map,
-            asset_file_size: asset_length,
             exports: exports,
         })
     }
@@ -1774,16 +1799,31 @@ impl Package {
     pub fn from_file(file_path: &str) -> ParserResult<Self> {
         let asset_file = file_path.to_owned() + ".uasset";
         let uexp_file = file_path.to_owned() + ".uexp";
+        let ubulk_file = file_path.to_owned() + ".ubulk";
+
         // read asset file
         let mut asset = File::open(asset_file)?;
         let mut uasset_buf = Vec::new();
-
         asset.read_to_end(&mut uasset_buf)?;
 
+        // read uexp file
         let mut uexp = File::open(uexp_file)?;
         let mut uexp_buf = Vec::new();
         uexp.read_to_end(&mut uexp_buf)?;
-        Self::from_buffer(uasset_buf, uexp_buf)
+
+        // read ubulk file (if exists)
+        let ubulk_path = Path::new(&ubulk_file);
+        let ubulk_buf = match metadata(ubulk_path).is_ok() {
+            true => {
+                let mut ubulk = File::open(ubulk_file)?;
+                let mut ubulk_ibuf = Vec::new();
+                ubulk.read_to_end(&mut ubulk_ibuf)?;
+                Some(ubulk_ibuf)
+            },
+            false => None,
+        };
+
+        Self::from_buffer(uasset_buf, uexp_buf, ubulk_buf)
     }
 
     /// Returns a reference to an export
