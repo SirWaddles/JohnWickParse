@@ -213,6 +213,12 @@ impl Newable for i32 {
     }
 }
 
+impl Newable for f32 {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        Ok(reader.read_f32::<LittleEndian>()?)
+    }
+}
+
 #[derive(Debug, Serialize)]
 enum TRangeBoundType {
     RangeExclusive,
@@ -1041,6 +1047,53 @@ impl NewableWithNameMap for FRotator {
     }
 }
 
+#[derive(Debug, Serialize)]
+struct FPerPlatformFloat {
+    cooked: bool,
+    value: f32,
+}
+
+impl NewableWithNameMap for FPerPlatformFloat {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+        Ok(Self {
+            cooked: reader.read_u8()? != 0,
+            value: reader.read_f32::<LittleEndian>()?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FPerPlatformInt {
+    cooked: bool,
+    value: u32,
+}
+
+impl NewableWithNameMap for FPerPlatformInt {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+        Ok(Self {
+            cooked: reader.read_u8()? != 0,
+            value: reader.read_u32::<LittleEndian>()?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FWeightedRandomSampler {
+    prob: Vec<f32>,
+    alias: Vec<i32>,
+    total_weight: f32,
+}
+
+impl NewableWithNameMap for FWeightedRandomSampler {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+        Ok(Self {
+            prob: read_tarray(reader)?,
+            alias: read_tarray(reader)?,
+            total_weight: reader.read_f32::<LittleEndian>()?,
+        })
+    }
+}
+
 impl UScriptStruct {
     fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, struct_name: &str) -> ParserResult<Self> {
         let err = |v| ParserError::add(v, format!("Struct Type: {}", struct_name));
@@ -1054,6 +1107,9 @@ impl UScriptStruct {
             "Quat" => Box::new(FQuat::new_n(reader, name_map, import_map).map_err(err)?),
             "Vector" => Box::new(FVector::new_n(reader, name_map, import_map).map_err(err)?),
             "Rotator" => Box::new(FRotator::new_n(reader, name_map, import_map).map_err(err)?),
+            "PerPlatformFloat" => Box::new(FPerPlatformFloat::new_n(reader, name_map, import_map).map_err(err)?),
+            "PerPlatformInt" => Box::new(FPerPlatformInt::new_n(reader, name_map, import_map).map_err(err)?),
+            "SkeletalMeshSamplingLODBuiltData" => Box::new(FWeightedRandomSampler::new_n(reader, name_map, import_map).map_err(err)?),
             "SoftObjectPath" => Box::new(FSoftObjectPath::new_n(reader, name_map, import_map).map_err(err)?),
             "LevelSequenceObjectReferenceMap" => Box::new(FLevelSequenceObjectReferenceMap::new_n(reader, name_map, import_map).map_err(err)?),
             "FrameNumber" => Box::new(FI32::new_n(reader, name_map, import_map).map_err(err)?),
