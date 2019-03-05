@@ -219,6 +219,12 @@ impl Newable for f32 {
     }
 }
 
+impl NewableWithNameMap for String {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+        read_fname(reader, name_map)
+    }
+}
+
 #[derive(Debug, Serialize)]
 enum TRangeBoundType {
     RangeExclusive,
@@ -256,7 +262,7 @@ struct TRange<T> {
     upper_bound: TRangeBound<T>,
 }
 
-impl <T> Newable for TRange<T> where T: Newable {
+impl<T> Newable for TRange<T> where T: Newable {
     fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
         Ok(Self {
             lower_bound: TRangeBound::new(reader)?,
@@ -1004,6 +1010,12 @@ struct FQuat {
 
 impl NewableWithNameMap for FQuat {
     fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+        Self::new(reader)
+    }
+}
+
+impl Newable for FQuat {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
         Ok(Self {
             x: reader.read_f32::<LittleEndian>()?,
             y: reader.read_f32::<LittleEndian>()?,
@@ -1020,13 +1032,19 @@ struct FVector {
     z: f32,
 }
 
-impl NewableWithNameMap for FVector {
-    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+impl Newable for FVector {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
         Ok(Self {
             x: reader.read_f32::<LittleEndian>()?,
             y: reader.read_f32::<LittleEndian>()?,
             z: reader.read_f32::<LittleEndian>()?,
         })
+    }
+}
+
+impl NewableWithNameMap for FVector {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+        Self::new(reader)
     }
 }
 
@@ -1455,6 +1473,12 @@ struct FStripDataFlags {
     class_strip_flags: u8,
 }
 
+impl FStripDataFlags {
+    fn is_editor_data_stripped(&self) -> bool {
+        (self.global_strip_flags & 1) != 0
+    }
+}
+
 impl Newable for FStripDataFlags {
     fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
         Ok(Self {
@@ -1599,6 +1623,118 @@ impl FTexturePlatformData {
     }
 }
 
+#[derive(Debug, Serialize)]
+struct FBoxSphereBounds {
+    origin: FVector,
+    box_extend: FVector,
+    sphere_radius: f32,
+}
+
+impl Newable for FBoxSphereBounds {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        Ok(Self {
+            origin: FVector::new(reader)?,
+            box_extend: FVector::new(reader)?,
+            sphere_radius: reader.read_f32::<LittleEndian>()?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FSkeletalMaterial {
+    material_interface: FPackageIndex,
+    material_slot_name: String,
+    uv_channel_data: FMeshUVChannelInfo,
+}
+
+impl NewableWithNameMap for FSkeletalMaterial {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
+        Ok(Self {
+            material_interface: FPackageIndex::new_n(reader, name_map, import_map)?,
+            material_slot_name: read_fname(reader, name_map)?,
+            uv_channel_data: FMeshUVChannelInfo::new(reader)?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FMeshUVChannelInfo {
+    initialised: bool,
+    override_densities: bool,
+    local_uv_densities: [f32;4],
+}
+
+impl Newable for FMeshUVChannelInfo {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        let initialised = reader.read_u32::<LittleEndian>()? != 0;
+        let override_densities = reader.read_u32::<LittleEndian>()? != 0;
+        let mut local_uv_densities = [0.0;4];
+        for i in 0..4 {
+            local_uv_densities[i] = reader.read_f32::<LittleEndian>()?;
+        }
+
+        Ok(Self {
+            initialised, override_densities, local_uv_densities,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FTransform {
+    rotation: FQuat,
+    translation: FVector,
+    scale_3d: FVector,
+}
+
+impl Newable for FTransform {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        Ok(Self {
+            rotation: FQuat::new(reader)?,
+            translation: FVector::new(reader)?,
+            scale_3d: FVector::new(reader)?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FMeshBoneInfo {
+    name: String,
+    parent_index: i32,
+}
+
+impl NewableWithNameMap for FMeshBoneInfo {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+        Ok(Self {
+            name: read_fname(reader, name_map)?,
+            parent_index: reader.read_i32::<LittleEndian>()?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FReferenceSkeleton {
+    ref_bone_info: Vec<FMeshBoneInfo>,
+    ref_bone_pose: Vec<FTransform>,
+    name_to_index: Vec<(String, i32)>,
+}
+
+impl NewableWithNameMap for FReferenceSkeleton {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
+        let ref_bone_info = read_tarray_n(reader, name_map, import_map)?;
+        let ref_bone_pose = read_tarray(reader)?;
+        let index_count = reader.read_u32::<LittleEndian>()?;
+
+        let mut name_to_index = Vec::new();
+        for _i in 0..index_count {
+            name_to_index.push((read_fname(reader, name_map)?, reader.read_i32::<LittleEndian>()?));
+        }
+
+        Ok(Self {
+            ref_bone_info, ref_bone_pose, name_to_index,
+        })
+    }
+}
+
 pub trait PackageExport: std::fmt::Debug {
     fn get_export_type(&self) -> &str;
 }
@@ -1611,10 +1747,23 @@ struct UObject {
 }
 
 impl UObject {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, export_type: &str, read_zero: bool) -> ParserResult<Option<Self>> {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, export_type: &str) -> ParserResult<Self> {
+        let properties = Self::serialize_properties(reader, name_map, import_map).map_err(|v| ParserError::add(v, format!("Export type: {}", export_type)))?;
+        let serialize_guid = reader.read_u32::<LittleEndian>()? != 0;
+        if serialize_guid {
+            let _object_guid = FGuid::new(reader);
+        }
+
+        Ok(Self {
+            properties: properties,
+            export_type: export_type.to_owned(),
+        })
+    }
+
+    fn serialize_properties(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Vec<FPropertyTag>> {
         let mut properties = Vec::new();
         loop {
-            let tag = read_property_tag(reader, name_map, import_map, true).map_err(|v| ParserError::add(v, format!("Export type: {}", export_type)))?;
+            let tag = read_property_tag(reader, name_map, import_map, true)?;
             let tag = match tag {
                 Some(data) => data,
                 None => break,
@@ -1623,14 +1772,7 @@ impl UObject {
             properties.push(tag);
         }
 
-        if read_zero == true {
-            reader.read_u32::<LittleEndian>()?;
-        }
-
-        Ok(Some(Self {
-            properties: properties,
-            export_type: export_type.to_owned(),
-        }))
+        Ok(properties)
     }
 }
 
@@ -1662,14 +1804,7 @@ pub struct Texture2D {
 #[allow(dead_code)]
 impl Texture2D {
     fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, asset_file_size: i32, export_size: i64, ubulk: &mut Option<ReaderCursor>) -> ParserResult<Self> {
-        let object = match UObject::new(reader, name_map, import_map, "Texture2D", false)? {
-            Some(object) => object,
-            None => return Err(ParserError::new("Texture2D could not read UObject".to_owned())),
-        };
-        let serialize_guid = reader.read_u32::<LittleEndian>()?;
-        if serialize_guid != 0 {
-            let _object_guid = FGuid::new(reader);
-        }
+        let object = UObject::new(reader, name_map, import_map, "Texture2D")?;
 
         FStripDataFlags::new(reader)?; // still no idea
         FStripDataFlags::new(reader)?; // why there are two
@@ -1748,14 +1883,14 @@ impl PackageExport for UDataTable {
 
 impl UDataTable {
     fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
-        let super_object = UObject::new(reader, name_map, import_map, "RowStruct", true)?.unwrap();
+        let super_object = UObject::new(reader, name_map, import_map, "RowStruct")?;
         let num_rows = reader.read_i32::<LittleEndian>()?;
 
         let mut rows = Vec::new();
 
         for _i in 0..num_rows {
             let row_name = read_fname(reader, name_map)?;
-            let row_object = UObject::new(reader, name_map, import_map, "RowStruct", false)?.unwrap();
+            let row_object = UObject::new(reader, name_map, import_map, "RowStruct")?;
             rows.push((row_name, row_object));
         }
         
@@ -1773,6 +1908,43 @@ impl Serialize for UDataTable {
             map.serialize_entry(&e.0, &e.1)?;
         }
         map.end()
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct USkeletalMesh {
+    super_object: UObject,
+    imported_bounds: FBoxSphereBounds,
+    materials: Vec<FSkeletalMaterial>,
+    ref_skeleton: FReferenceSkeleton,
+}
+
+impl USkeletalMesh {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
+        let super_object = UObject::new(reader, name_map, import_map, "SkeletalMesh")?;
+        let flags = FStripDataFlags::new(reader)?;
+        let imported_bounds = FBoxSphereBounds::new(reader)?;
+        let materials: Vec<FSkeletalMaterial> = read_tarray_n(reader, name_map, import_map)?;
+        let ref_skeleton = FReferenceSkeleton::new_n(reader, name_map, import_map)?;
+
+        if !flags.is_editor_data_stripped() {
+            println!("editor data still present");
+        }
+
+        let cooked = reader.read_u32::<LittleEndian>()? != 0;
+        if cooked {
+            println!("cooked data present");
+        }
+
+        Ok(Self {
+            super_object, imported_bounds, materials, ref_skeleton,
+        })
+    }
+}
+
+impl PackageExport for USkeletalMesh {
+    fn get_export_type(&self) -> &str {
+        "get_export_type"
     }
 }
 
@@ -1834,7 +2006,8 @@ impl Package {
             let export: Box<dyn Any> = match export_type.as_ref() {
                 "Texture2D" => Box::new(Texture2D::new(&mut cursor, &name_map, &import_map, asset_length, export_size, &mut ubulk_cursor)?),
                 "DataTable" => Box::new(UDataTable::new(&mut cursor, &name_map, &import_map)?),
-                _ => Box::new(UObject::new(&mut cursor, &name_map, &import_map, export_type, true)?.unwrap()),
+                "SkeletalMesh" => Box::new(USkeletalMesh::new(&mut cursor, &name_map, &import_map)?),
+                _ => Box::new(UObject::new(&mut cursor, &name_map, &import_map, export_type)?),
             };
             let valid_pos = position + v.serial_size as u64;
             if cursor.position() != valid_pos {
@@ -1916,6 +2089,9 @@ impl Serialize for Package {
             if let Some(table) = e.downcast_ref::<UDataTable>() {
                 seq.serialize_element(&table)?;
                 continue;
+            }
+            if let Some(mesh) = e.downcast_ref::<USkeletalMesh>() {
+                seq.serialize_element(&mesh)?;
             }
             seq.serialize_element("None")?;
         }
