@@ -39,8 +39,8 @@ impl ParserError {
 }
 
 impl From<std::io::Error> for ParserError {
-    fn from(_error: std::io::Error) -> ParserError {
-        ParserError::new("File IO Error".to_owned())
+    fn from(error: std::io::Error) -> ParserError {
+        ParserError::new(format!("File Error: {}", error))
     }
 }
 
@@ -194,6 +194,8 @@ fn read_tarray_n<S>(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &
     let length = reader.read_u32::<LittleEndian>()?;
     let mut container = Vec::new();
 
+    println!("tarray_n: {}", length);
+
     for _i in 0..length {
         container.push(S::new_n(reader, name_map, import_map)?);
     }
@@ -207,6 +209,12 @@ impl Newable for String {
     }
 }
 
+impl Newable for u32 {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        Ok(reader.read_u32::<LittleEndian>()?)
+    }
+}
+
 impl Newable for i32 {
     fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
         Ok(reader.read_i32::<LittleEndian>()?)
@@ -216,6 +224,18 @@ impl Newable for i32 {
 impl Newable for f32 {
     fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
         Ok(reader.read_f32::<LittleEndian>()?)
+    }
+}
+
+impl Newable for u16 {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        Ok(reader.read_u16::<LittleEndian>()?)
+    }
+}
+
+impl Newable for i16 {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        Ok(reader.read_i16::<LittleEndian>()?)
     }
 }
 
@@ -1049,6 +1069,31 @@ impl NewableWithNameMap for FVector {
 }
 
 #[derive(Debug, Serialize)]
+struct FVector4 {
+    x: f32,
+    y: f32,
+    z: f32,
+    w: f32,
+}
+
+impl Newable for FVector4 {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        Ok(Self {
+            x: reader.read_f32::<LittleEndian>()?,
+            y: reader.read_f32::<LittleEndian>()?,
+            z: reader.read_f32::<LittleEndian>()?,
+            w: reader.read_f32::<LittleEndian>()?,
+        })
+    }
+}
+
+impl NewableWithNameMap for FVector4 {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+        Self::new(reader)
+    }
+}
+
+#[derive(Debug, Serialize)]
 struct FRotator {
     pitch: f32,
     yaw: f32,
@@ -1477,6 +1522,14 @@ impl FStripDataFlags {
     fn is_editor_data_stripped(&self) -> bool {
         (self.global_strip_flags & 1) != 0
     }
+
+    fn is_data_stripped_for_server(&self) -> bool {
+        (self.global_strip_flags & 2) != 0
+    }
+
+    fn is_class_data_stripped(&self, flag: u8) -> bool {
+        (self.class_strip_flags & flag) != 0
+    }
 }
 
 impl Newable for FStripDataFlags {
@@ -1624,6 +1677,33 @@ impl FTexturePlatformData {
 }
 
 #[derive(Debug, Serialize)]
+struct FPositionVertexBuffer {
+    verts: Vec<FVector>,
+    stride: i32,
+    num_verts: i32,
+}
+
+impl Newable for FPositionVertexBuffer {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        let stride = reader.read_i32::<LittleEndian>()?;
+        let num_verts = reader.read_i32::<LittleEndian>()?;
+        let _element_size = reader.read_i32::<LittleEndian>()?;
+        let verts = read_tarray(reader)?;
+        Ok(Self {
+            stride, num_verts, verts,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FStaticMeshVertexBuffer {
+    num_tex_coords: i32,
+    num_vertices: i32,
+    use_full_precision_uvs: bool,
+    use_high_precision_tangent: bool,
+}
+
+#[derive(Debug, Serialize)]
 struct FBoxSphereBounds {
     origin: FVector,
     box_extend: FVector,
@@ -1731,6 +1811,153 @@ impl NewableWithNameMap for FReferenceSkeleton {
 
         Ok(Self {
             ref_bone_info, ref_bone_pose, name_to_index,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FClothingSectionData {
+    asset_guid: FGuid,
+    asset_lod_index: i32,
+}
+
+impl Newable for FClothingSectionData {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        Ok(Self {
+            asset_guid: FGuid::new(reader)?,
+            asset_lod_index: reader.read_i32::<LittleEndian>()?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FIndexLengthPair {
+    word1: u32,
+    word2: u32,
+}
+
+impl Newable for FIndexLengthPair {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        Ok(Self {
+            word1: reader.read_u32::<LittleEndian>()?,
+            word2: reader.read_u32::<LittleEndian>()?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+enum FMultisizeIndexContainer {
+    Indices16(Vec<u16>),
+    Indices32(Vec<u32>),
+}
+
+impl Newable for FMultisizeIndexContainer {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        let data_size = reader.read_u8()?;
+        let _element_size = reader.read_i32::<LittleEndian>()?;
+        match data_size {
+            2 => Ok(FMultisizeIndexContainer::Indices16(read_tarray(reader)?)),
+            4 => Ok(FMultisizeIndexContainer::Indices32(read_tarray(reader)?)),
+            _ => Err(ParserError::new(format!("No format size"))),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FSkelMeshRenderSection {
+    material_index: i16,
+    base_index: i32,
+    num_triangles: i32,
+    base_vertex_index: u32,
+    cloth_mapping_data: Vec<FMeshToMeshVertData>,
+    bone_map: Vec<u16>,
+    num_vertices: i32,
+    max_bone_influences: i32,
+    clothing_data: FClothingSectionData,
+    disabled: bool,
+}
+
+impl NewableWithNameMap for FSkelMeshRenderSection {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+        let _flags = FStripDataFlags::new(reader)?;
+        let material_index = reader.read_i16::<LittleEndian>()?;
+        let base_index = reader.read_i32::<LittleEndian>()?;
+        let num_triangles = reader.read_i32::<LittleEndian>()?;
+
+        let _recompute_tangent = reader.read_u32::<LittleEndian>()? != 0;
+        let _cast_shadow = reader.read_u32::<LittleEndian>()? != 0;
+        let base_vertex_index = reader.read_u32::<LittleEndian>()?;
+        let cloth_mapping_data = read_tarray(reader)?;
+        let bone_map = read_tarray(reader)?;
+        let num_vertices = reader.read_i32::<LittleEndian>()?;
+        let max_bone_influences = reader.read_i32::<LittleEndian>()?;
+        let _correspond_cloth_asset_index = reader.read_i16::<LittleEndian>()?;
+        let clothing_data = FClothingSectionData::new(reader)?;
+        let _vertex_buffer: Vec<i32> = read_tarray(reader)?;
+        let _index_pairs: Vec<FIndexLengthPair> = read_tarray(reader)?;
+        let disabled = reader.read_u32::<LittleEndian>()? != 0;
+
+        Ok(Self {
+            material_index, base_index, num_triangles, base_vertex_index, cloth_mapping_data,
+            bone_map, num_vertices, max_bone_influences, clothing_data, disabled,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FSkeletalMeshRenderData {
+    sections: Vec<FSkelMeshRenderSection>,
+    indices: FMultisizeIndexContainer,
+    active_bone_indices: Vec<i16>,
+    required_bones: Vec<i16>,
+    position_vertex_buffer: Option<FPositionVertexBuffer>,
+}
+
+impl NewableWithNameMap for FSkeletalMeshRenderData {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
+        let flags = FStripDataFlags::new(reader)?;
+        let sections = read_tarray_n(reader, name_map, import_map)?;
+        let indices = FMultisizeIndexContainer::new(reader)?;
+        let active_bone_indices = read_tarray(reader)?;
+        let required_bones = read_tarray(reader)?;
+
+        let render_data = !flags.is_data_stripped_for_server() && !flags.is_class_data_stripped(2);
+        let position_vertex_buffer = match render_data {
+            true => Some(FPositionVertexBuffer::new(reader)?),
+            false => None,
+        };
+
+        Ok(Self {
+            sections, indices, active_bone_indices, required_bones, position_vertex_buffer,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FMeshToMeshVertData {
+    position_bary_coords: FVector4,
+    normal_bary_coords: FVector4,
+    tangent_bary_coords: FVector4,
+    source_mesh_vert_indices: [u16;4],
+    padding: [u32; 2],
+}
+
+impl Newable for FMeshToMeshVertData {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        let position_bary_coords = FVector4::new(reader)?;
+        let normal_bary_coords = FVector4::new(reader)?;
+        let tangent_bary_coords = FVector4::new(reader)?;
+        let mut source_mesh_vert_indices = [0u16;4];
+        for i in 0..4 {
+            source_mesh_vert_indices[i] = reader.read_u16::<LittleEndian>()?;
+        }
+        let mut padding = [0u32;2];
+        for i in 0..2 {
+            padding[i] = reader.read_u32::<LittleEndian>()?;
+        }
+
+        Ok(Self {
+            position_bary_coords, normal_bary_coords, tangent_bary_coords, source_mesh_vert_indices, padding,
         })
     }
 }
@@ -1917,6 +2144,7 @@ pub struct USkeletalMesh {
     imported_bounds: FBoxSphereBounds,
     materials: Vec<FSkeletalMaterial>,
     ref_skeleton: FReferenceSkeleton,
+    lod_models: Vec<FSkeletalMeshRenderData>,
 }
 
 impl USkeletalMesh {
@@ -1935,9 +2163,13 @@ impl USkeletalMesh {
         if cooked {
             println!("cooked data present");
         }
+        let lod_models = match cooked {
+            true => read_tarray_n(reader, name_map, import_map)?,
+            false => Vec::new(),
+        };
 
         Ok(Self {
-            super_object, imported_bounds, materials, ref_skeleton,
+            super_object, imported_bounds, materials, ref_skeleton, lod_models,
         })
     }
 }
