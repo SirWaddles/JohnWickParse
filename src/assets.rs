@@ -1812,7 +1812,7 @@ impl FStaticMeshVertexBuffer {
         let use_full_precision_uvs = reader.read_i32::<LittleEndian>()? != 0;
         let use_high_precision_tangent = reader.read_i32::<LittleEndian>()? != 0;
 
-        if !flags.is_data_stripped_for_server() {
+        if flags.is_data_stripped_for_server() {
             return Ok(None);
         }
 
@@ -1830,6 +1830,67 @@ impl FStaticMeshVertexBuffer {
 
         Ok(Some(Self {
             num_tex_coords, num_vertices, tangents, uvs,
+        }))
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FSkinWeightInfo {
+    bone_index: [u8;8],
+    bone_weight: [u8;8],
+}
+
+impl FSkinWeightInfo {
+    fn new(reader: &mut ReaderCursor, max_influences: usize) -> ParserResult<Self> {
+        if max_influences > 8 {
+            return Err(ParserError::new(format!("Max influences too high")));
+        }
+
+        let mut bone_index = [0u8;8];
+        for i in 0..max_influences {
+            bone_index[i] = reader.read_u8()?;
+        }
+        let mut bone_weight = [0u8;8];
+        for i in 0..max_influences {
+            bone_weight[i] = reader.read_u8()?;
+        }
+
+        Ok(Self {
+            bone_index, bone_weight,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FSkinWeightVertexBuffer {
+    weights: Vec<FSkinWeightInfo>,
+    num_vertices: i32,
+}
+
+impl FSkinWeightVertexBuffer {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Option<Self>> {
+        let flags = FStripDataFlags::new(reader)?;
+
+        let extra_bone_influences = reader.read_i32::<LittleEndian>()? != 0;
+        let num_vertices = reader.read_i32::<LittleEndian>()?;
+
+        if flags.is_data_stripped_for_server() {
+            return Ok(None);
+        }
+
+        let _element_size = reader.read_i32::<LittleEndian>()?;
+        let element_count = reader.read_i32::<LittleEndian>()?;
+        let num_influences = match extra_bone_influences {
+            true => 8,
+            false => 4,
+        };
+        let mut weights = Vec::new();
+        for _i in 0..element_count {
+            weights.push(FSkinWeightInfo::new(reader, num_influences)?);
+        }
+
+        Ok(Some(Self {
+            weights, num_vertices,
         }))
     }
 }
@@ -2043,6 +2104,7 @@ struct FSkeletalMeshRenderData {
     required_bones: Vec<i16>,
     position_vertex_buffer: FPositionVertexBuffer,
     static_mesh_vertex_buffer: Option<FStaticMeshVertexBuffer>,
+    skin_weight_vertex_buffer: Option<FSkinWeightVertexBuffer>,
 }
 
 impl NewableWithNameMap for FSkeletalMeshRenderData {
@@ -2059,12 +2121,15 @@ impl NewableWithNameMap for FSkeletalMeshRenderData {
         }
         let position_vertex_buffer = FPositionVertexBuffer::new(reader)?;
         let static_mesh_vertex_buffer = FStaticMeshVertexBuffer::new(reader)?;
+        let skin_weight_vertex_buffer = FSkinWeightVertexBuffer::new(reader)?;
 
-        println!("read some data");
+        if flags.is_class_data_stripped(1) {
+
+        }
 
         Ok(Self {
             sections, indices, active_bone_indices, required_bones, position_vertex_buffer,
-            static_mesh_vertex_buffer,
+            static_mesh_vertex_buffer, skin_weight_vertex_buffer,
         })
     }
 }
@@ -2303,6 +2368,8 @@ impl USkeletalMesh {
             true => read_tarray_n(reader, name_map, import_map)?,
             false => Vec::new(),
         };
+
+        let _serialize_guid = reader.read_u32::<LittleEndian>()?;
 
         Ok(Self {
             super_object, imported_bounds, materials, ref_skeleton, lod_models,
