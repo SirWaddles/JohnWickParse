@@ -3,6 +3,7 @@ use std::io::{Cursor, Read, Seek, SeekFrom};
 use std::fs::{File, metadata};
 use std::path::Path;
 use std::any::Any;
+use half::f16;
 use serde::ser::{Serialize, Serializer, SerializeMap, SerializeSeq};
 use erased_serde::{Serialize as TraitSerialize};
 use byteorder::{LittleEndian, ReadBytesExt};
@@ -646,12 +647,18 @@ struct FVector2D {
     y: f32,
 }
 
-impl NewableWithNameMap for FVector2D {
-    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+impl Newable for FVector2D {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
         Ok(Self {
             x: reader.read_f32::<LittleEndian>()?,
             y: reader.read_f32::<LittleEndian>()?,
         })
+    }
+}
+
+impl NewableWithNameMap for FVector2D {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+        Self::new(reader)
     }
 }
 
@@ -1696,11 +1703,135 @@ impl Newable for FPositionVertexBuffer {
 }
 
 #[derive(Debug, Serialize)]
+struct FPackedRGBA16N {
+    x: i16,
+    y: i16,
+    z: i16,
+    w: i16,
+}
+
+impl Newable for FPackedRGBA16N {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        Ok(Self {
+            x: reader.read_i16::<LittleEndian>()?,
+            y: reader.read_i16::<LittleEndian>()?,
+            z: reader.read_i16::<LittleEndian>()?,
+            w: reader.read_i16::<LittleEndian>()?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FPackedNormal {
+    x: i8,
+    y: i8,
+    z: i8,
+    w: i8,
+}
+
+impl Newable for FPackedNormal {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        Ok(Self {
+            x: reader.read_i8()?,
+            y: reader.read_i8()?,
+            z: reader.read_i8()?,
+            w: reader.read_i8()?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FVector2DHalf {
+    x: f16,
+    y: f16,
+}
+
+impl Newable for FVector2DHalf {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        Ok(Self {
+            x: f16::from_bits(reader.read_u16::<LittleEndian>()?),
+            y: f16::from_bits(reader.read_u16::<LittleEndian>()?),
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct TStaticMeshVertexTangent<T> {
+    x: T,
+    z: T,
+}
+
+impl<T> Newable for TStaticMeshVertexTangent<T> where T: Newable {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        Ok(Self {
+            x: T::new(reader)?,
+            z: T::new(reader)?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct TStaticMeshVertexUV<T> {
+    value: T,
+}
+
+impl<T> Newable for TStaticMeshVertexUV<T> where T: Newable {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        Ok(Self {
+            value: T::new(reader)?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+enum FStaticMeshVertexDataTangent {
+    High(Vec<TStaticMeshVertexTangent<FPackedRGBA16N>>),
+    Low(Vec<TStaticMeshVertexTangent<FPackedNormal>>),
+}
+
+#[derive(Debug, Serialize)]
+enum FStaticMeshVertexDataUV {
+    High(Vec<TStaticMeshVertexUV<FVector2D>>),
+    Low(Vec<TStaticMeshVertexUV<FVector2DHalf>>),
+}
+
+#[derive(Debug, Serialize)]
 struct FStaticMeshVertexBuffer {
     num_tex_coords: i32,
     num_vertices: i32,
-    use_full_precision_uvs: bool,
-    use_high_precision_tangent: bool,
+    tangents: FStaticMeshVertexDataTangent,
+    uvs: FStaticMeshVertexDataUV,
+}
+
+impl FStaticMeshVertexBuffer {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Option<Self>> {
+        let flags = FStripDataFlags::new(reader)?;
+
+        let num_tex_coords = reader.read_i32::<LittleEndian>()?;
+        let num_vertices = reader.read_i32::<LittleEndian>()?;
+        let use_full_precision_uvs = reader.read_i32::<LittleEndian>()? != 0;
+        let use_high_precision_tangent = reader.read_i32::<LittleEndian>()? != 0;
+
+        if !flags.is_data_stripped_for_server() {
+            return Ok(None);
+        }
+
+        let _element_size = reader.read_i32::<LittleEndian>()?;
+        let tangents = match use_high_precision_tangent {
+            true => FStaticMeshVertexDataTangent::High(read_tarray(reader)?),
+            false => FStaticMeshVertexDataTangent::Low(read_tarray(reader)?),
+        };
+
+        let _element_size = reader.read_i32::<LittleEndian>()?;
+        let uvs = match use_full_precision_uvs {
+            true => FStaticMeshVertexDataUV::High(read_tarray(reader)?),
+            false => FStaticMeshVertexDataUV::Low(read_tarray(reader)?),
+        };
+
+        Ok(Some(Self {
+            num_tex_coords, num_vertices, tangents, uvs,
+        }))
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -1910,7 +2041,8 @@ struct FSkeletalMeshRenderData {
     indices: FMultisizeIndexContainer,
     active_bone_indices: Vec<i16>,
     required_bones: Vec<i16>,
-    position_vertex_buffer: Option<FPositionVertexBuffer>,
+    position_vertex_buffer: FPositionVertexBuffer,
+    static_mesh_vertex_buffer: Option<FStaticMeshVertexBuffer>,
 }
 
 impl NewableWithNameMap for FSkeletalMeshRenderData {
@@ -1922,13 +2054,17 @@ impl NewableWithNameMap for FSkeletalMeshRenderData {
         let required_bones = read_tarray(reader)?;
 
         let render_data = !flags.is_data_stripped_for_server() && !flags.is_class_data_stripped(2);
-        let position_vertex_buffer = match render_data {
-            true => Some(FPositionVertexBuffer::new(reader)?),
-            false => None,
-        };
+        if !render_data {
+            return Err(ParserError::new(format!("Could not read FSkelMesh, no renderable data")));
+        }
+        let position_vertex_buffer = FPositionVertexBuffer::new(reader)?;
+        let static_mesh_vertex_buffer = FStaticMeshVertexBuffer::new(reader)?;
+
+        println!("read some data");
 
         Ok(Self {
             sections, indices, active_bone_indices, required_bones, position_vertex_buffer,
+            static_mesh_vertex_buffer,
         })
     }
 }
