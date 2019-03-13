@@ -16,6 +16,7 @@ mod rijndael;
 mod assets;
 mod archives;
 mod texture;
+mod meshes;
 
 #[derive(Debug)]
 struct CommandError {
@@ -81,6 +82,24 @@ fn texture(params: &[String]) -> CommandResult {
     let save_path = path.clone() + ".png";
     let mut file = fs::File::create(save_path).unwrap();
     file.write_all(&texture_bytes).unwrap();
+
+    Ok(())
+}
+
+fn mesh(params: &[String]) -> CommandResult {
+    let path = match params.get(0) {
+        Some(data) => data,
+        None => return cerr("No path specified"),
+    };
+
+    let package = assets::Package::from_file(path)?;
+    let mesh = meshes::decode_mesh(package, path)?;
+    let serial_mesh = serde_json::to_string(&mesh.data).unwrap();
+    let mut gltf_file = fs::File::create(path.to_owned() + ".gltf").unwrap();
+    gltf_file.write_all(serial_mesh.as_bytes()).unwrap();
+
+    let mut bin_file = fs::File::create(path.to_owned() + ".bin").unwrap();
+    bin_file.write_all(&mesh.buffer).unwrap();
 
     Ok(())
 }
@@ -151,6 +170,7 @@ fn main() {
         "filelist" => filelist(params),
         "extract" => extract(params),
         "texture" => texture(params),
+        "mesh" => mesh(params),
         _ => {
             println!("Invalid command");
             Ok(())

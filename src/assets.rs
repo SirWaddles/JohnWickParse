@@ -195,8 +195,6 @@ fn read_tarray_n<S>(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &
     let length = reader.read_u32::<LittleEndian>()?;
     let mut container = Vec::new();
 
-    println!("tarray_n: {}", length);
-
     for _i in 0..length {
         container.push(S::new_n(reader, name_map, import_map)?);
     }
@@ -1053,10 +1051,16 @@ impl Newable for FQuat {
 }
 
 #[derive(Debug, Serialize)]
-struct FVector {
+pub struct FVector {
     x: f32,
     y: f32,
     z: f32,
+}
+
+impl FVector {
+    pub fn get_tuple(&self) -> (f32, f32, f32) {
+        (self.x, self.y, self.z)
+    }
 }
 
 impl Newable for FVector {
@@ -1684,10 +1688,16 @@ impl FTexturePlatformData {
 }
 
 #[derive(Debug, Serialize)]
-struct FPositionVertexBuffer {
+pub struct FPositionVertexBuffer {
     verts: Vec<FVector>,
     stride: i32,
     num_verts: i32,
+}
+
+impl FPositionVertexBuffer {
+    pub fn get_verts(&self) -> &Vec<FVector> {
+        &self.verts
+    }
 }
 
 impl Newable for FPositionVertexBuffer {
@@ -2097,7 +2107,7 @@ impl NewableWithNameMap for FSkelMeshRenderSection {
 }
 
 #[derive(Debug, Serialize)]
-struct FSkeletalMeshRenderData {
+pub struct FSkeletalMeshRenderData {
     sections: Vec<FSkelMeshRenderSection>,
     indices: FMultisizeIndexContainer,
     active_bone_indices: Vec<i16>,
@@ -2105,6 +2115,12 @@ struct FSkeletalMeshRenderData {
     position_vertex_buffer: FPositionVertexBuffer,
     static_mesh_vertex_buffer: Option<FStaticMeshVertexBuffer>,
     skin_weight_vertex_buffer: Option<FSkinWeightVertexBuffer>,
+}
+
+impl FSkeletalMeshRenderData {
+    pub fn get_position_buffer(&self) -> &FPositionVertexBuffer {
+        &self.position_vertex_buffer
+    }
 }
 
 impl NewableWithNameMap for FSkeletalMeshRenderData {
@@ -2374,6 +2390,10 @@ impl USkeletalMesh {
         Ok(Self {
             super_object, imported_bounds, materials, ref_skeleton, lod_models,
         })
+    }
+
+    pub fn get_first_lod(&self) -> &FSkeletalMeshRenderData {
+        self.lod_models.get(0).unwrap()
     }
 }
 
