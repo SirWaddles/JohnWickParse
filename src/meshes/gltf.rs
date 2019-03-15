@@ -151,11 +151,6 @@ struct GLTFScene {
     nodes: Vec<u32>,
 }
 
-// Not quite sure of a better way to do this
-fn is_vec_empty<T>(vec_test: Vec<T>) -> bool {
-    vec_test.len() <= 0
-}
-
 #[derive(Debug, Serialize)]
 pub struct GLTFNode {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -307,6 +302,7 @@ pub struct GLTFAccessor {
     buffer_view: RefItem<GLTFBufferView>,
     #[serde(rename="byteOffset")]
     byte_offset: u32,
+    #[serde(rename="componentType")]
     component_type: GLTFComponentType,
     count: u32,
     #[serde(rename="type")]

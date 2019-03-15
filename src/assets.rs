@@ -1080,11 +1080,42 @@ impl NewableWithNameMap for FVector {
 }
 
 #[derive(Debug, Serialize)]
-struct FVector4 {
+pub struct FVector4 {
     x: f32,
     y: f32,
     z: f32,
     w: f32,
+}
+
+impl FVector4 {
+    pub fn get_tuple(&self) -> (f32, f32, f32, f32) {
+        (self.x, self.y, self.z, self.w)
+    }
+
+    pub fn get_tuple3(&self) -> (f32, f32, f32) {
+        (self.x, self.y, self.z)
+    }
+
+    pub fn get_normal(&self) -> Self {
+        let length = ((self.x * self.x) + (self.y * self.y) + (self.z * self.z)).sqrt();
+        if length == 0.0f32 { // literally no idea wtf to do here
+            return Self {
+                x: 0.0f32,
+                y: 0.0f32,
+                z: 1.0f32,
+                w: 1.0f32,
+            };
+        }
+        Self {
+            x: self.x / length,
+            y: self.y / length,
+            z: self.z / length,
+            w: match self.w > 0.0f32 {
+                true => -1.0f32,
+                false => 1.0f32,
+            },
+        }
+    }
 }
 
 impl Newable for FVector4 {
@@ -1713,7 +1744,7 @@ impl Newable for FPositionVertexBuffer {
 }
 
 #[derive(Debug, Serialize)]
-struct FPackedRGBA16N {
+pub struct FPackedRGBA16N {
     x: i16,
     y: i16,
     z: i16,
@@ -1732,7 +1763,7 @@ impl Newable for FPackedRGBA16N {
 }
 
 #[derive(Debug, Serialize)]
-struct FPackedNormal {
+pub struct FPackedNormal {
     x: i8,
     y: i8,
     z: i8,
@@ -1747,6 +1778,21 @@ impl Newable for FPackedNormal {
             z: reader.read_i8()?,
             w: reader.read_i8()?,
         })
+    }
+}
+
+fn rescale_i8(val: i8) -> f32 {
+    (val as f32) * (1.0f32 / 127.0f32)
+}
+
+impl FPackedNormal {
+    pub fn get_vector(&self) -> FVector4 {
+        FVector4 {
+            x: rescale_i8(self.x),
+            y: rescale_i8(self.y),
+            z: rescale_i8(self.z),
+            w: rescale_i8(self.w),
+        }
     }
 }
 
@@ -1766,17 +1812,27 @@ impl Newable for FVector2DHalf {
 }
 
 #[derive(Debug, Serialize)]
-struct TStaticMeshVertexTangent<T> {
-    x: T,
-    z: T,
+pub struct TStaticMeshVertexTangent<T> {
+    normal: T,
+    tangent: T,
 }
 
 impl<T> Newable for TStaticMeshVertexTangent<T> where T: Newable {
     fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
         Ok(Self {
-            x: T::new(reader)?,
-            z: T::new(reader)?,
+            tangent: T::new(reader)?,
+            normal: T::new(reader)?,
         })
+    }
+}
+
+impl<T> TStaticMeshVertexTangent<T> {
+    pub fn get_normal(&self) -> &T {
+        &self.normal
+    }
+
+    pub fn get_tangent(&self) -> &T {
+        &self.tangent
     }
 }
 
@@ -1794,7 +1850,7 @@ impl<T> Newable for TStaticMeshVertexUV<T> where T: Newable {
 }
 
 #[derive(Debug, Serialize)]
-enum FStaticMeshVertexDataTangent {
+pub enum FStaticMeshVertexDataTangent {
     High(Vec<TStaticMeshVertexTangent<FPackedRGBA16N>>),
     Low(Vec<TStaticMeshVertexTangent<FPackedNormal>>),
 }
@@ -1806,7 +1862,7 @@ enum FStaticMeshVertexDataUV {
 }
 
 #[derive(Debug, Serialize)]
-struct FStaticMeshVertexBuffer {
+pub struct FStaticMeshVertexBuffer {
     num_tex_coords: i32,
     num_vertices: i32,
     tangents: FStaticMeshVertexDataTangent,
@@ -1841,6 +1897,10 @@ impl FStaticMeshVertexBuffer {
         Ok(Some(Self {
             num_tex_coords, num_vertices, tangents, uvs,
         }))
+    }
+
+    pub fn get_tangents(&self) -> &FStaticMeshVertexDataTangent {
+        &self.tangents
     }
 }
 
@@ -2124,6 +2184,13 @@ impl FSkeletalMeshRenderData {
 
     pub fn get_indices(&self) -> &FMultisizeIndexContainer {
         &self.indices
+    }
+
+    pub fn get_static_buffer(&self) -> &FStaticMeshVertexBuffer {
+        match &self.static_mesh_vertex_buffer {
+            Some(buffer) => buffer,
+            None => panic!("No static mesh buffer found. Cannot do mesh conversion."),
+        }
     }
 }
 

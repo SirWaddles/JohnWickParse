@@ -1,7 +1,7 @@
 use std::io::{Cursor, Seek, SeekFrom};
 use byteorder::{LittleEndian, WriteBytesExt};
 use std::path::Path;
-use crate::assets::{USkeletalMesh, ParserResult, ParserError, Package, FVector, FMultisizeIndexContainer};
+use crate::assets::*;
 mod gltf;
 use gltf::*;
 
@@ -62,7 +62,58 @@ fn decode_skeletal_mesh(mesh: USkeletalMesh, buffer_name: String) -> ParserResul
     };
     let index_accessor = mesh_data.add_accessor(index_accessor);
 
-    let mesh_primitive = GLTFPrimitive::new(index_accessor).add_attribute("POSITION", mesh_accessor);
+    let tangents = lod.get_static_buffer().get_tangents();
+    let tangent_vectors = match tangents {
+        FStaticMeshVertexDataTangent::High(_data) => {
+            println!("not supported tangent precision");
+            Vec::new()
+        },
+        FStaticMeshVertexDataTangent::Low(data) => {
+            data.iter().map(|v| v.get_tangent().get_vector()).collect()
+        },
+    };
+    let tangent_buffer_view = {
+        let startpos = buffer.len();
+        let length = write_verts_buffer4(&tangent_vectors, &mut buffer)?;
+        GLTFBufferView::new(startpos as u32, length)
+    };
+    let tangent_buffer_view = mesh_data.add_buffer_view(tangent_buffer_view);
+    let tangent_accessor = mesh_data.add_accessor(
+        GLTFAccessor::new(
+            tangent_buffer_view,
+            GLTFComponentType::Float, tangent_vectors.len() as u32,
+            "VEC4",
+            GLTFAccessorValue::None, GLTFAccessorValue::None
+        )
+    );
+
+    let normal_vectors = match tangents {
+        FStaticMeshVertexDataTangent::High(_data) => {
+            println!("not supported normal precision");
+            Vec::new()
+        },
+        FStaticMeshVertexDataTangent::Low(data) => {
+            data.iter().map(|v| v.get_normal().get_vector()).collect()
+        },
+    };
+    let normal_buffer_view = mesh_data.add_buffer_view({
+        let startpos = buffer.len();
+        let length = write_verts_buffer43(&normal_vectors, &mut buffer)?;
+        GLTFBufferView::new(startpos as u32, length)
+    });
+    let normal_accessor = mesh_data.add_accessor(
+        GLTFAccessor::new(
+            normal_buffer_view,
+            GLTFComponentType::Float, normal_vectors.len() as u32,
+            "VEC3",
+            GLTFAccessorValue::None, GLTFAccessorValue::None
+        )
+    );
+
+    let mesh_primitive = GLTFPrimitive::new(index_accessor)
+        .add_attribute("POSITION", mesh_accessor)
+        .add_attribute("TANGENT", tangent_accessor)
+        .add_attribute("NORMAL", normal_accessor);
     let mesh_obj = GLTFMesh::new(vec![mesh_primitive]);
     let mesh_obj = mesh_data.add_mesh(mesh_obj);
 
@@ -95,7 +146,7 @@ fn get_vert_maximum(verts: &Vec<FVector>) -> ParserResult<GLTFAccessorValue> {
         }
     }
 
-    Ok(GLTFAccessorValue::Vec3Float(vec.0, vec.1, vec.2))
+    Ok(GLTFAccessorValue::Vec3Float(vec.0, vec.2, vec.1))
 }
 
 fn get_vert_minimum(verts: &Vec<FVector>) -> ParserResult<GLTFAccessorValue> {
@@ -114,7 +165,7 @@ fn get_vert_minimum(verts: &Vec<FVector>) -> ParserResult<GLTFAccessorValue> {
         }
     }
 
-    Ok(GLTFAccessorValue::Vec3Float(vec.0, vec.1, vec.2))
+    Ok(GLTFAccessorValue::Vec3Float(vec.0, vec.2, vec.1))
 }
 
 fn write_verts_buffer(verts: &Vec<FVector>, buffer: &mut Vec<u8>) -> ParserResult<u32> {
@@ -122,9 +173,39 @@ fn write_verts_buffer(verts: &Vec<FVector>, buffer: &mut Vec<u8>) -> ParserResul
     cursor.seek(SeekFrom::End(0)).unwrap();
     for i in 0..verts.len() {
         let vert = verts[i].get_tuple();
+        // Unreal is left-handed, GLTF is right handed..... or the other way around
         cursor.write_f32::<LittleEndian>(vert.0)?;
-        cursor.write_f32::<LittleEndian>(vert.1)?;
         cursor.write_f32::<LittleEndian>(vert.2)?;
+        cursor.write_f32::<LittleEndian>(vert.1)?;
+    }
+
+    Ok(verts.len() as u32 * 3 * 4)
+}
+
+fn write_verts_buffer4(verts: &Vec<FVector4>, buffer: &mut Vec<u8>) -> ParserResult<u32> {
+    let mut cursor = Cursor::new(buffer);
+    cursor.seek(SeekFrom::End(0)).unwrap();
+    for i in 0..verts.len() {
+        let vert = verts[i].get_normal().get_tuple();
+        // Unreal is left-handed, GLTF is right handed..... or the other way around
+        cursor.write_f32::<LittleEndian>(vert.0)?;
+        cursor.write_f32::<LittleEndian>(vert.2)?;
+        cursor.write_f32::<LittleEndian>(vert.1)?;
+        cursor.write_f32::<LittleEndian>(vert.3)?;
+    }
+
+    Ok(verts.len() as u32 * 4 * 4)
+}
+
+fn write_verts_buffer43(verts: &Vec<FVector4>, buffer: &mut Vec<u8>) -> ParserResult<u32> {
+    let mut cursor = Cursor::new(buffer);
+    cursor.seek(SeekFrom::End(0)).unwrap();
+    for i in 0..verts.len() {
+        let vert = verts[i].get_normal().get_tuple3();
+        // Unreal is left-handed, GLTF is right handed..... or the other way around
+        cursor.write_f32::<LittleEndian>(vert.0)?;
+        cursor.write_f32::<LittleEndian>(vert.2)?;
+        cursor.write_f32::<LittleEndian>(vert.1)?;
     }
 
     Ok(verts.len() as u32 * 3 * 4)
