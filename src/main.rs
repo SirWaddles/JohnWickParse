@@ -114,11 +114,36 @@ fn filelist(params: &[String]) -> CommandResult {
         Err(_) => return cerr("Could not read key"),
     };
 
-    let archive = archives::PakExtractor::new(path, &key)?;
-    let entries = archive.get_entries();
-    let file_list = entries.into_iter().map(|v| v.get_filename()).fold(String::new(), |acc, v| acc + v + "\n");
-    let mut file = fs::File::create(path.to_owned() + ".txt").unwrap();
-    file.write_all(file_list.as_bytes()).unwrap();
+    let path_dir = Path::new(path);
+    let paths = match path_dir.is_dir() {
+        true => {
+            path_dir.read_dir().unwrap().filter(|v| {
+                if let Ok(filepath) = v {
+                    return match filepath.path().extension() {
+                        Some(extension) => {
+                            extension.to_str().unwrap() == "pak"
+                        },
+                        None => false,
+                    };
+                }
+                false
+            }).map(|v| path.clone() + v.unwrap().file_name().to_str().unwrap()).collect()
+        },
+        false => {
+            vec![path.clone()]
+        },
+    };
+
+    for path in paths {
+        let archive = match archives::PakExtractor::new(&path, &key) {
+            Ok(archive) => archive,
+            Err(_) => continue,
+        };
+        let entries = archive.get_entries();
+        let file_list = entries.into_iter().map(|v| v.get_filename()).fold(String::new(), |acc, v| acc + v + "\n");
+        let mut file = fs::File::create(path.to_owned() + ".txt").unwrap();
+        file.write_all(file_list.as_bytes()).unwrap();
+    }
 
     Ok(())
 }

@@ -1,5 +1,5 @@
 use std::io::Cursor;
-use image::{dxt, png, ImageDecoder, ImageError};
+use image::{dxt, png, ImageDecoder, ImageError, ImageBuffer, Bgra, Rgba, ConvertBuffer};
 use crate::assets::{Texture2D, ParserResult, ParserError};
 
 /// A simple struct with the data for returning a texture
@@ -34,14 +34,29 @@ pub fn decode_texture(texture: Texture2D) -> ParserResult<Vec<u8>> {
 
     let colour_type = match pixel_format.as_ref() {
         "PF_DXT1" => image::RGB(8),
-        "PF_B8G8R8A8" => image::BGRA(8),
+        "PF_B8G8R8A8" => image::RGBA(8),
         _ => image::RGBA(8),
+    };
+
+    let image_buffer = match pixel_format.as_ref() {
+        "PF_DXT1" => {
+            bytes
+        },
+        "PF_DXT5" => {
+            bytes
+        },
+        "PF_B8G8R8A8" => {
+            let buf = ImageBuffer::<Bgra<u8>, Vec<u8>>::from_raw(data.width, data.height, bytes).unwrap();
+            let rgba_buf: ImageBuffer<Rgba<u8>, Vec<u8>> = buf.convert();
+            rgba_buf.into_raw()
+        },
+        _ => return Err(ParserError::new(format!("Unsupported pixel format: {}", pixel_format))),
     };
 
     let mut png_data: Vec<u8> = Vec::new();
 
     let encoder = png::PNGEncoder::new(&mut png_data);
-    match encoder.encode(&bytes, data.width, data.height, colour_type) {
+    match encoder.encode(&image_buffer, data.width, data.height, colour_type) {
         Ok(data) => data,
         Err(_) => return Err(ParserError::new(format!("PNG conversion failed"))),
     };

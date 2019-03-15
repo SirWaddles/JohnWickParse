@@ -2048,7 +2048,7 @@ impl Newable for FIndexLengthPair {
 }
 
 #[derive(Debug, Serialize)]
-enum FMultisizeIndexContainer {
+pub enum FMultisizeIndexContainer {
     Indices16(Vec<u16>),
     Indices32(Vec<u32>),
 }
@@ -2120,6 +2120,10 @@ pub struct FSkeletalMeshRenderData {
 impl FSkeletalMeshRenderData {
     pub fn get_position_buffer(&self) -> &FPositionVertexBuffer {
         &self.position_vertex_buffer
+    }
+
+    pub fn get_indices(&self) -> &FMultisizeIndexContainer {
+        &self.indices
     }
 }
 
