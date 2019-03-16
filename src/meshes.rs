@@ -1,4 +1,6 @@
 use std::io::{Cursor, Seek, SeekFrom};
+use std::cell::RefCell;
+use std::rc::Rc;
 use byteorder::{LittleEndian, WriteBytesExt};
 use std::path::Path;
 use crate::assets::*;
@@ -145,7 +147,10 @@ fn decode_skeletal_mesh(mesh: USkeletalMesh, asset_name: String) -> ParserResult
     let mesh_obj = mesh_data.add_mesh(mesh_obj);
 
     let mesh_node = GLTFNode::new().set_mesh(mesh_obj);
-    mesh_data.add_node(mesh_node);
+    let mesh_node = mesh_data.add_node(mesh_node);
+
+    let root_node = setup_skeleton(&mut mesh_data, mesh.get_skeleton());
+    mesh_node.borrow_mut().add_child(root_node);
 
     
     let buffer_desc = GLTFBuffer::new(buffer.len() as u32, asset_name.clone() + ".bin");
@@ -155,6 +160,39 @@ fn decode_skeletal_mesh(mesh: USkeletalMesh, asset_name: String) -> ParserResult
         buffer,
         data: mesh_data,
     })
+}
+
+fn transform_translation_tuple(val: (f32, f32, f32)) -> (f32, f32, f32) {
+    (val.0, val.2, val.1)
+}
+
+fn transform_rotation_tuple(val: (f32, f32, f32, f32)) -> (f32, f32, f32, f32) {
+    (val.0, val.2, val.1, val.3 * -1.0)
+}
+
+fn setup_skeleton(mesh_data: &mut GLTFItem, skeleton: &FReferenceSkeleton) -> Rc<RefCell<GLTFNode>> {
+    let bone_info = skeleton.get_bone_info();
+    let bone_pose = skeleton.get_bone_pose();
+
+    assert_eq!(bone_info.len(), bone_pose.len());
+
+    let bone_nodes: Vec<Rc<RefCell<GLTFNode>>> = bone_pose.iter().map(|v| {
+        mesh_data.add_node(GLTFNode::new().set_position(
+            transform_translation_tuple(v.get_translation().get_tuple()), 
+            transform_rotation_tuple(v.get_rotation().get_tuple())))
+    }).collect();
+    for i in 0..bone_info.len() {
+        {
+            let mut node = bone_nodes[i].borrow_mut();
+            node.set_name(bone_info[i].get_name().to_owned());
+        }
+        let node = &bone_info[i];
+        if node.get_parent_index() != -1 {
+            bone_nodes[node.get_parent_index() as usize].borrow_mut().add_child(bone_nodes[i].clone());
+        }
+    }
+
+    bone_nodes[0].clone()
 }
 
 fn load_material(mesh_data: &mut GLTFItem, material_name: &str) -> GLTFMaterial {

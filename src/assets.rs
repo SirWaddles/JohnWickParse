@@ -1045,11 +1045,17 @@ impl NewableWithNameMap for FMovieSceneEvaluationKey {
 }
 
 #[derive(Debug, Serialize)]
-struct FQuat {
+pub struct FQuat {
     x: f32,
     y: f32,
     z: f32,
     w: f32,
+}
+
+impl FQuat {
+    pub fn get_tuple(&self) -> (f32, f32, f32, f32) {
+        (self.x, self.y, self.z, self.w)
+    }
 }
 
 impl NewableWithNameMap for FQuat {
@@ -2094,10 +2100,24 @@ impl Newable for FMeshUVChannelInfo {
 }
 
 #[derive(Debug, Serialize)]
-struct FTransform {
+pub struct FTransform {
     rotation: FQuat,
     translation: FVector,
     scale_3d: FVector,
+}
+
+impl FTransform {
+    pub fn get_rotation(&self) -> &FQuat {
+        &self.rotation
+    }
+
+    pub fn get_translation(&self) -> &FVector {
+        &self.translation
+    }
+
+    pub fn get_scale(&self) -> &FVector {
+        &self.scale_3d
+    }
 }
 
 impl Newable for FTransform {
@@ -2111,9 +2131,19 @@ impl Newable for FTransform {
 }
 
 #[derive(Debug, Serialize)]
-struct FMeshBoneInfo {
+pub struct FMeshBoneInfo {
     name: String,
     parent_index: i32,
+}
+
+impl FMeshBoneInfo {
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn get_parent_index(&self) -> i32 {
+        self.parent_index
+    }
 }
 
 impl NewableWithNameMap for FMeshBoneInfo {
@@ -2126,10 +2156,20 @@ impl NewableWithNameMap for FMeshBoneInfo {
 }
 
 #[derive(Debug, Serialize)]
-struct FReferenceSkeleton {
+pub struct FReferenceSkeleton {
     ref_bone_info: Vec<FMeshBoneInfo>,
     ref_bone_pose: Vec<FTransform>,
     name_to_index: Vec<(String, i32)>,
+}
+
+impl FReferenceSkeleton {
+    pub fn get_bone_info(&self) -> &Vec<FMeshBoneInfo> {
+        &self.ref_bone_info
+    }
+
+    pub fn get_bone_pose(&self) -> &Vec<FTransform> {
+        &self.ref_bone_pose
+    }
 }
 
 impl NewableWithNameMap for FReferenceSkeleton {
@@ -2545,6 +2585,10 @@ impl USkeletalMesh {
 
     pub fn get_materials(&self) -> &Vec<FSkeletalMaterial> {
         &self.materials
+    }
+
+    pub fn get_skeleton(&self) -> &FReferenceSkeleton {
+        &self.ref_skeleton
     }
 }
 

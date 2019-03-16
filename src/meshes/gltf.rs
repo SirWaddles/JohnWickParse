@@ -213,6 +213,10 @@ pub struct GLTFNode {
     children: Vec<RefItem<GLTFNode>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     mesh: Option<RefItem<GLTFMesh>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    translation: Option<(f32, f32, f32)>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    rotation: Option<(f32, f32, f32, f32)>,
     #[serde(skip_serializing)]
     index: u32,
 }
@@ -224,17 +228,28 @@ impl GLTFNode {
             children: Vec::new(),
             mesh: None,
             index: 0,
+            translation: None,
+            rotation: None,
         }
     }
 
-    pub fn add_child(mut self, child_node: Rc<RefCell<GLTFNode>>) -> Self {
+    pub fn add_child(&mut self, child_node: Rc<RefCell<GLTFNode>>) {
         self.children.push(RefItem::new(child_node));
-        self
     }
 
     pub fn set_mesh(mut self, mesh: Rc<RefCell<GLTFMesh>>) -> Self {
         self.mesh = Some(RefItem::new(mesh));
         self
+    }
+
+    pub fn set_position(mut self, translation: (f32, f32, f32), rotation: (f32, f32, f32, f32)) -> Self {
+        self.translation = Some(translation);
+        self.rotation = Some(rotation);
+        self
+    }
+
+    pub fn set_name(&mut self, name: String) {
+        self.name = Some(name);
     }
 }
 
