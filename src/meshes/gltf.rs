@@ -85,6 +85,7 @@ pub struct GLTFItem {
     samplers: Vec<RefOwn<GLTFSampler>>,
     textures: Vec<RefOwn<GLTFTexture>>,
     materials: Vec<RefOwn<GLTFMaterial>>,
+    skins: Vec<RefOwn<GLTFSkin>>,
 }
 
 impl GLTFItem {
@@ -108,6 +109,7 @@ impl GLTFItem {
             samplers: Vec::new(),
             textures: Vec::new(),
             materials: Vec::new(),
+            skins: Vec::new(),
         }
     }
 
@@ -162,6 +164,12 @@ impl GLTFItem {
         self.materials.push(RefOwn::new(counted.clone()));
         counted
     }
+
+    pub fn add_skin(&mut self, skin: GLTFSkin) -> Rc<RefCell<GLTFSkin>> {
+        let counted = Rc::new(RefCell::new(skin));
+        self.skins.push(RefOwn::new(counted.clone()));
+        counted
+    }
 }
 
 impl Serialize for GLTFItem {
@@ -175,7 +183,7 @@ impl Serialize for GLTFItem {
         reindex_indexable(&self.materials);
         reindex_indexable(&self.textures);
 
-        let mut state = serializer.serialize_struct("GLTFItem", 12)?;
+        let mut state = serializer.serialize_struct("GLTFItem", 13)?;
         state.serialize_field("asset", &self.asset)?;
         state.serialize_field("scene", &self.scene)?;
         state.serialize_field("scenes", &self.scenes)?;
@@ -188,6 +196,7 @@ impl Serialize for GLTFItem {
         state.serialize_field("samplers", &self.samplers)?;
         state.serialize_field("materials", &self.materials)?;
         state.serialize_field("textures", &self.textures)?;
+        state.serialize_field("skins", &self.skins)?;
 
         state.end()
     }
@@ -217,6 +226,8 @@ pub struct GLTFNode {
     translation: Option<(f32, f32, f32)>,
     #[serde(skip_serializing_if = "Option::is_none")]
     rotation: Option<(f32, f32, f32, f32)>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    skin: Option<RefItem<GLTFSkin>>,
     #[serde(skip_serializing)]
     index: u32,
 }
@@ -230,6 +241,7 @@ impl GLTFNode {
             index: 0,
             translation: None,
             rotation: None,
+            skin: None,
         }
     }
 
@@ -250,6 +262,24 @@ impl GLTFNode {
 
     pub fn set_name(&mut self, name: String) {
         self.name = Some(name);
+    }
+
+    pub fn set_skin(&mut self, skin: Rc<RefCell<GLTFSkin>>) {
+        self.skin = Some(RefItem::new(skin));
+    }
+
+    pub fn get_translation(&self) -> (f32, f32, f32) {
+        match self.translation {
+            Some(data) => data,
+            None => panic!("No translation"),
+        }
+    }
+    
+    pub fn get_rotation(&self) -> (f32, f32, f32, f32) {
+        match self.rotation {
+            Some(data) => data,
+            None => panic!("No rotation"),
+        }
     }
 }
 
@@ -366,6 +396,8 @@ pub struct GLTFAccessor {
     min: GLTFAccessorValue,
     #[serde(skip_serializing_if = "GLTFAccessorValue::is_none")]
     max: GLTFAccessorValue,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    normalized: Option<bool>,
 }
 
 impl GLTFAccessor {
@@ -376,7 +408,13 @@ impl GLTFAccessor {
             index: 0,
             byte_offset: 0,
             min, max,
+            normalized: None,
         }
+    }
+
+    pub fn set_normalized(mut self, normalized: bool) -> Self {
+        self.normalized = Some(normalized);
+        self
     }
 }
 
@@ -543,5 +581,33 @@ impl GLTFMaterial {
             normal_texture: GLTFTextureInfoObject::new(normal),
             index: 0,
         }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct GLTFSkin {
+    skeleton: RefItem<GLTFNode>,
+    joints: Vec<RefItem<GLTFNode>>,
+    #[serde(rename="inverseBindMatrices")]
+    bind_inverse_matrix: Option<RefItem<GLTFAccessor>>,
+    #[serde(skip_serializing)]
+    index: u32,
+}
+
+indexable!(GLTFSkin);
+
+impl GLTFSkin {
+    pub fn new(skeleton: Rc<RefCell<GLTFNode>>, joints: Vec<Rc<RefCell<GLTFNode>>>) -> Self {
+        Self {
+            skeleton: RefItem::new(skeleton),
+            joints: joints.into_iter().map(|v| RefItem::new(v)).collect(),
+            index: 0,
+            bind_inverse_matrix: None,
+        }
+    }
+
+    pub fn set_accessor(mut self, accessor: Rc<RefCell<GLTFAccessor>>) -> Self {
+        self.bind_inverse_matrix = Some(RefItem::new(accessor));
+        self
     }
 }

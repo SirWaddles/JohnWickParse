@@ -138,19 +138,26 @@ fn decode_skeletal_mesh(mesh: USkeletalMesh, asset_name: String) -> ParserResult
         )
     );
 
+    let weight_buffer = lod.get_weight_buffer();
+    let weight_accs = make_weight_accessors(weight_buffer, &mut buffer, &mut mesh_data, lod.get_sections(), 0)?;
+    let weight_accs2 = make_weight_accessors(weight_buffer, &mut buffer, &mut mesh_data, lod.get_sections(), 4)?;
+
     let mesh_primitive = GLTFPrimitive::new(index_accessor, material)
         .add_attribute("POSITION", mesh_accessor)
         .add_attribute("TANGENT", tangent_accessor)
         .add_attribute("NORMAL", normal_accessor)
-        .add_attribute("TEXCOORD_0", uv_accessor);
+        .add_attribute("TEXCOORD_0", uv_accessor)
+        .add_attribute("JOINTS_0", weight_accs.0)
+        .add_attribute("WEIGHTS_0", weight_accs.1)
+        .add_attribute("JOINTS_1", weight_accs2.0)
+        .add_attribute("WEIGHTS_1", weight_accs2.1);
     let mesh_obj = GLTFMesh::new(vec![mesh_primitive]);
     let mesh_obj = mesh_data.add_mesh(mesh_obj);
 
     let mesh_node = GLTFNode::new().set_mesh(mesh_obj);
     let mesh_node = mesh_data.add_node(mesh_node);
 
-    let root_node = setup_skeleton(&mut mesh_data, mesh.get_skeleton());
-    mesh_node.borrow_mut().add_child(root_node);
+    setup_skeleton(&mut mesh_data, mesh.get_skeleton(), mesh_node.clone(), &mut buffer);
 
     
     let buffer_desc = GLTFBuffer::new(buffer.len() as u32, asset_name.clone() + ".bin");
@@ -162,15 +169,148 @@ fn decode_skeletal_mesh(mesh: USkeletalMesh, asset_name: String) -> ParserResult
     })
 }
 
+fn make_weight_accessors(weights: &FSkinWeightVertexBuffer, buffer: &mut Vec<u8>, mesh_data: &mut GLTFItem, sections: &Vec<FSkelMeshRenderSection>, off: usize) 
+    -> ParserResult<(Rc<RefCell<GLTFAccessor>>, Rc<RefCell<GLTFAccessor>>)> {
+    let joint_buffer_view = mesh_data.add_buffer_view({
+        let startpos = buffer.len();
+        let length = write_joints_buffer(weights, buffer, sections, off)?;
+        GLTFBufferView::new(startpos as u32, length)
+    });
+    let joint_accessor = mesh_data.add_accessor(GLTFAccessor::new(
+        joint_buffer_view,
+        GLTFComponentType::UnsignedShort, weights.get_length(),
+        "VEC4", GLTFAccessorValue::None, GLTFAccessorValue::None
+    ));
+
+    let weight_buffer_view = mesh_data.add_buffer_view({
+        let startpos = buffer.len();
+        let length = write_weights_buffer(weights, buffer, off)?;
+        GLTFBufferView::new(startpos as u32, length)
+    });
+    let weight_accessor = mesh_data.add_accessor(GLTFAccessor::new(
+        weight_buffer_view,
+        GLTFComponentType::UnsignedByte, weights.get_length(),
+        "VEC4", GLTFAccessorValue::None, GLTFAccessorValue::None
+    ).set_normalized(true));
+
+    Ok((joint_accessor, weight_accessor))
+}
+
+fn write_joints_buffer(weights: &FSkinWeightVertexBuffer, buffer: &mut Vec<u8>, sections: &Vec<FSkelMeshRenderSection>, off: usize) -> ParserResult<u32> {
+    let mut cursor = Cursor::new(buffer);
+    cursor.seek(SeekFrom::End(0)).unwrap();
+    let weights = weights.get_weights();
+
+    for section in sections {
+        let bone_map = section.get_bone_map();
+        for i in 0..section.get_num_verts() {
+            let weight = &weights[i as usize + section.get_base_index() as usize];
+            let index = weight.get_bone_index();
+            cursor.write_u16::<LittleEndian>(bone_map[index[0 + off] as usize])?;
+            cursor.write_u16::<LittleEndian>(bone_map[index[1 + off] as usize])?;
+            cursor.write_u16::<LittleEndian>(bone_map[index[2 + off] as usize])?;
+            cursor.write_u16::<LittleEndian>(bone_map[index[3 + off] as usize])?;
+        }
+    }
+
+    Ok(weights.len() as u32 * 4 * 2)
+}
+
+fn write_weights_buffer(weights: &FSkinWeightVertexBuffer, buffer: &mut Vec<u8>, off: usize) -> ParserResult<u32> {
+    let mut cursor = Cursor::new(buffer);
+    cursor.seek(SeekFrom::End(0)).unwrap();
+    let weights = weights.get_weights();
+    for weight in weights {
+        let index = weight.get_bone_weight();
+        cursor.write_u8(index[0 + off])?;
+        cursor.write_u8(index[1 + off])?;
+        cursor.write_u8(index[2 + off])?;
+        cursor.write_u8(index[3 + off])?;
+    }
+
+    Ok(weights.len() as u32 * 4)
+}
+
 fn transform_translation_tuple(val: (f32, f32, f32)) -> (f32, f32, f32) {
-    (val.0, val.2, val.1)
+    (val.0 * 0.01, val.2 * 0.01, val.1 * 0.01)
 }
 
 fn transform_rotation_tuple(val: (f32, f32, f32, f32)) -> (f32, f32, f32, f32) {
     (val.0, val.2, val.1, val.3 * -1.0)
 }
 
-fn setup_skeleton(mesh_data: &mut GLTFItem, skeleton: &FReferenceSkeleton) -> Rc<RefCell<GLTFNode>> {
+fn get_translation_matrix(translation: (f32, f32, f32)) -> glm::Mat4 {
+    glm::mat4(
+        1.0, 0.0, 0.0, 0.0,
+        0.0, 1.0, 0.0, 0.0,
+        0.0, 0.0, 1.0, 0.0,
+        translation.0, translation.1, translation.2, 1.0
+    )
+}
+
+fn normalize_quat(q: (f32, f32, f32, f32)) -> (f32, f32, f32, f32) {
+    let n = 1.0 / (q.0*q.0 + q.1*q.1 + q.2*q.2 + q.3*q.3).sqrt();
+    (n * q.0, n * q.1, n * q.2, n * q.3)
+}
+
+fn get_rotation_matrix(qun: (f32, f32, f32, f32)) -> glm::Mat4 {
+    let q = normalize_quat(qun);
+    let qx = q.0;
+    let qy = q.1;
+    let qz = q.2;
+    let qw = q.3;
+    glm::mat4(
+        1.0 - 2.0*qy*qy - 2.0*qz*qz, 2.0*qx*qy - 2.0*qz*qw, 2.0*qx*qz + 2.0*qy*qw, 0.0,
+        2.0*qx*qy + 2.0*qz*qw, 1.0 - 2.0*qx*qx - 2.0*qz*qz, 2.0*qy*qz - 2.0*qx*qw, 0.0,
+        2.0*qx*qz - 2.0*qy*qw, 2.0*qy*qz + 2.0*qx*qw, 1.0 - 2.0*qx*qx - 2.0*qy*qy, 0.0,
+        0.0, 0.0, 0.0, 1.0
+    )
+}
+
+fn calculate_bind_matrix(node_index: i32, bone_list: &Vec<FMeshBoneInfo>, bone_nodes: &Vec<Rc<RefCell<GLTFNode>>>) -> glm::Mat4 {
+    let mut transforms = Vec::new();
+    
+    let mut active_index = node_index;
+    while active_index != -1 {
+        let node = bone_nodes[active_index as usize].borrow();
+        transforms.push((node.get_translation(), node.get_rotation()));
+        active_index = bone_list[active_index as usize].get_parent_index();
+    }
+
+    let mut transform_matrix = glm::mat4(  1.0, 0.0, 0.0, 0.0,
+                            0.0, 1.0, 0.0, 0.0,
+                            0.0, 0.0, 1.0, 0.0,
+                            0.0, 0.0, 0.0, 1.0);
+
+    transforms.iter().fold(transform_matrix, |acc, transform| {
+        let translate = get_translation_matrix(transform.0);
+        let rotate = get_rotation_matrix(transform.1);
+        acc * (translate * rotate)
+    })
+}
+
+fn write_glm_vec(vec: glm::Vec4, cursor: &mut Cursor<&mut Vec<u8>>) -> ParserResult<()> {
+    let slice = vec.as_array();
+    cursor.write_f32::<LittleEndian>(slice[0])?;
+    cursor.write_f32::<LittleEndian>(slice[1])?;
+    cursor.write_f32::<LittleEndian>(slice[2])?;
+    cursor.write_f32::<LittleEndian>(slice[3])?;
+    Ok(())
+}
+
+fn write_matrix(mat: &glm::Mat4, buffer: &mut Vec<u8>) -> ParserResult<()> {
+    let mut cursor = Cursor::new(buffer);
+    cursor.seek(SeekFrom::End(0)).unwrap();
+    let vecs = mat.as_array();
+    write_glm_vec(vecs[0], &mut cursor)?;
+    write_glm_vec(vecs[1], &mut cursor)?;
+    write_glm_vec(vecs[2], &mut cursor)?;
+    write_glm_vec(vecs[3], &mut cursor)?;
+    
+    Ok(())
+}
+
+fn setup_skeleton(mesh_data: &mut GLTFItem, skeleton: &FReferenceSkeleton, root_node: Rc<RefCell<GLTFNode>>, buffer: &mut Vec<u8>) {  
     let bone_info = skeleton.get_bone_info();
     let bone_pose = skeleton.get_bone_pose();
 
@@ -192,7 +332,26 @@ fn setup_skeleton(mesh_data: &mut GLTFItem, skeleton: &FReferenceSkeleton) -> Rc
         }
     }
 
-    bone_nodes[0].clone()
+    let startpos = buffer.len();
+    for i in 0..bone_info.len() {
+        let bind_matrix = calculate_bind_matrix(i as i32, &bone_info, &bone_nodes);
+        write_matrix(&bind_matrix, buffer).unwrap();
+    }
+
+    let length = bone_info.len() * 16 * 4;
+    let matrix_view = mesh_data.add_buffer_view(GLTFBufferView::new(startpos as u32, length as u32));
+    let matrix_accessor = mesh_data.add_accessor(GLTFAccessor::new(
+        matrix_view, GLTFComponentType::Float, bone_info.len() as u32,
+        "MAT4", GLTFAccessorValue::None, GLTFAccessorValue::None 
+    ));
+
+    let skeleton_root = bone_nodes[0].clone();
+    // Order in the joints array needs to exactly match the bone indices in the original data
+    // so that the joints and weights buffers are correct
+    let skin = mesh_data.add_skin(GLTFSkin::new(bone_nodes[0].clone(), bone_nodes).set_accessor(matrix_accessor));
+    let mut root_node = root_node.borrow_mut();
+    root_node.add_child(skeleton_root);
+    root_node.set_skin(skin);
 }
 
 fn load_material(mesh_data: &mut GLTFItem, material_name: &str) -> GLTFMaterial {
@@ -273,10 +432,10 @@ fn load_material(mesh_data: &mut GLTFItem, material_name: &str) -> GLTFMaterial 
 }
 
 fn get_vert_maximum(verts: &Vec<FVector>) -> ParserResult<GLTFAccessorValue> {
-    let mut vec = verts.get(0).unwrap().get_tuple();
+    let mut vec = transform_translation_tuple(verts.get(0).unwrap().get_tuple());
 
     for vert in verts {
-        let comp = vert.get_tuple();
+        let comp = transform_translation_tuple(vert.get_tuple());
         if comp.0 > vec.0 {
             vec.0 = comp.0;
         }
@@ -288,14 +447,14 @@ fn get_vert_maximum(verts: &Vec<FVector>) -> ParserResult<GLTFAccessorValue> {
         }
     }
 
-    Ok(GLTFAccessorValue::Vec3Float(vec.0, vec.2, vec.1))
+    Ok(GLTFAccessorValue::Vec3Float(vec.0, vec.1, vec.2))
 }
 
 fn get_vert_minimum(verts: &Vec<FVector>) -> ParserResult<GLTFAccessorValue> {
-    let mut vec = verts.get(0).unwrap().get_tuple();
+    let mut vec = transform_translation_tuple(verts.get(0).unwrap().get_tuple());
 
     for vert in verts {
-        let comp = vert.get_tuple();
+        let comp = transform_translation_tuple(vert.get_tuple());
         if comp.0 < vec.0 {
             vec.0 = comp.0;
         }
@@ -307,18 +466,18 @@ fn get_vert_minimum(verts: &Vec<FVector>) -> ParserResult<GLTFAccessorValue> {
         }
     }
 
-    Ok(GLTFAccessorValue::Vec3Float(vec.0, vec.2, vec.1))
+    Ok(GLTFAccessorValue::Vec3Float(vec.0, vec.1, vec.2))
 }
 
 fn write_verts_buffer(verts: &Vec<FVector>, buffer: &mut Vec<u8>) -> ParserResult<u32> {
     let mut cursor = Cursor::new(buffer);
     cursor.seek(SeekFrom::End(0)).unwrap();
     for i in 0..verts.len() {
-        let vert = verts[i].get_tuple();
+        let vert = transform_translation_tuple(verts[i].get_tuple());
         // Unreal is left-handed, GLTF is right handed..... or the other way around
         cursor.write_f32::<LittleEndian>(vert.0)?;
-        cursor.write_f32::<LittleEndian>(vert.2)?;
         cursor.write_f32::<LittleEndian>(vert.1)?;
+        cursor.write_f32::<LittleEndian>(vert.2)?;
     }
 
     Ok(verts.len() as u32 * 3 * 4)

@@ -1977,7 +1977,7 @@ impl FStaticMeshVertexBuffer {
 }
 
 #[derive(Debug, Serialize)]
-struct FSkinWeightInfo {
+pub struct FSkinWeightInfo {
     bone_index: [u8;8],
     bone_weight: [u8;8],
 }
@@ -2001,10 +2001,18 @@ impl FSkinWeightInfo {
             bone_index, bone_weight,
         })
     }
+
+    pub fn get_bone_index(&self) -> &[u8;8] {
+        &self.bone_index
+    }
+
+    pub fn get_bone_weight(&self) -> &[u8;8] {
+        &self.bone_weight
+    }
 }
 
 #[derive(Debug, Serialize)]
-struct FSkinWeightVertexBuffer {
+pub struct FSkinWeightVertexBuffer {
     weights: Vec<FSkinWeightInfo>,
     num_vertices: i32,
 }
@@ -2034,6 +2042,14 @@ impl FSkinWeightVertexBuffer {
         Ok(Some(Self {
             weights, num_vertices,
         }))
+    }
+
+    pub fn get_weights(&self) -> &Vec<FSkinWeightInfo> {
+        &self.weights
+    }
+
+    pub fn get_length(&self) -> u32 {
+        self.weights.len() as u32
     }
 }
 
@@ -2238,7 +2254,7 @@ impl Newable for FMultisizeIndexContainer {
 }
 
 #[derive(Debug, Serialize)]
-struct FSkelMeshRenderSection {
+pub struct FSkelMeshRenderSection {
     material_index: i16,
     base_index: i32,
     num_triangles: i32,
@@ -2249,6 +2265,20 @@ struct FSkelMeshRenderSection {
     max_bone_influences: i32,
     clothing_data: FClothingSectionData,
     disabled: bool,
+}
+
+impl FSkelMeshRenderSection {
+    pub fn get_bone_map(&self) -> &Vec<u16> {
+        &self.bone_map
+    }
+
+    pub fn get_num_verts(&self) -> i32 {
+        self.num_vertices
+    }
+
+    pub fn get_base_index(&self) -> u32 {
+        self.base_vertex_index
+    }
 }
 
 impl NewableWithNameMap for FSkelMeshRenderSection {
@@ -2303,6 +2333,17 @@ impl FSkeletalMeshRenderData {
             Some(buffer) => buffer,
             None => panic!("No static mesh buffer found. Cannot do mesh conversion."),
         }
+    }
+
+    pub fn get_weight_buffer(&self) -> &FSkinWeightVertexBuffer {
+        match &self.skin_weight_vertex_buffer {
+            Some(buffer) => buffer,
+            None => panic!("No weight buffer found. Cannot do mesh conversion."),
+        }
+    }
+
+    pub fn get_sections(&self) -> &Vec<FSkelMeshRenderSection> {
+        &self.sections
     }
 }
 
