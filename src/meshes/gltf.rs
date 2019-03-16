@@ -7,6 +7,20 @@ pub trait Indexable {
     fn set_index(&mut self, index: u32);
 }
 
+macro_rules! indexable {
+    ($class_name:path) => {
+        impl Indexable for $class_name {
+            fn get_index(&self) -> u32 {
+                self.index
+            }
+
+            fn set_index(&mut self, index: u32) {
+                self.index = index;
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct RefItem<T> {
     data: Rc<RefCell<T>>,
@@ -67,6 +81,10 @@ pub struct GLTFItem {
     buffer_views: Vec<RefOwn<GLTFBufferView>>,
     accessors: Vec<RefOwn<GLTFAccessor>>,
     meshes: Vec<RefOwn<GLTFMesh>>,
+    images: Vec<RefOwn<GLTFImage>>,
+    samplers: Vec<RefOwn<GLTFSampler>>,
+    textures: Vec<RefOwn<GLTFTexture>>,
+    materials: Vec<RefOwn<GLTFMaterial>>,
 }
 
 impl GLTFItem {
@@ -86,6 +104,10 @@ impl GLTFItem {
             buffer_views: Vec::new(),
             accessors: Vec::new(),
             meshes: Vec::new(),
+            images: Vec::new(),
+            samplers: Vec::new(),
+            textures: Vec::new(),
+            materials: Vec::new(),
         }
     }
 
@@ -116,6 +138,30 @@ impl GLTFItem {
         self.meshes.push(RefOwn::new(counted.clone()));
         counted
     }
+
+    pub fn add_image(&mut self, image: GLTFImage) -> Rc<RefCell<GLTFImage>> {
+        let counted = Rc::new(RefCell::new(image));
+        self.images.push(RefOwn::new(counted.clone()));
+        counted
+    }
+
+    pub fn add_sampler(&mut self, sampler: GLTFSampler) -> Rc<RefCell<GLTFSampler>> {
+        let counted = Rc::new(RefCell::new(sampler));
+        self.samplers.push(RefOwn::new(counted.clone()));
+        counted
+    }
+
+    pub fn add_texture(&mut self, texture: GLTFTexture) -> Rc<RefCell<GLTFTexture>> {
+        let counted = Rc::new(RefCell::new(texture));
+        self.textures.push(RefOwn::new(counted.clone()));
+        counted
+    }
+
+    pub fn add_material(&mut self, material: GLTFMaterial) -> Rc<RefCell<GLTFMaterial>> {
+        let counted = Rc::new(RefCell::new(material));
+        self.materials.push(RefOwn::new(counted.clone()));
+        counted
+    }
 }
 
 impl Serialize for GLTFItem {
@@ -124,8 +170,12 @@ impl Serialize for GLTFItem {
         reindex_indexable(&self.buffer_views);
         reindex_indexable(&self.accessors);
         reindex_indexable(&self.meshes);
+        reindex_indexable(&self.images);
+        reindex_indexable(&self.samplers);
+        reindex_indexable(&self.materials);
+        reindex_indexable(&self.textures);
 
-        let mut state = serializer.serialize_struct("GLTFItem", 8)?;
+        let mut state = serializer.serialize_struct("GLTFItem", 12)?;
         state.serialize_field("asset", &self.asset)?;
         state.serialize_field("scene", &self.scene)?;
         state.serialize_field("scenes", &self.scenes)?;
@@ -134,6 +184,10 @@ impl Serialize for GLTFItem {
         state.serialize_field("bufferViews", &self.buffer_views)?;
         state.serialize_field("accessors", &self.accessors)?;
         state.serialize_field("meshes", &self.meshes)?;
+        state.serialize_field("images", &self.images)?;
+        state.serialize_field("samplers", &self.samplers)?;
+        state.serialize_field("materials", &self.materials)?;
+        state.serialize_field("textures", &self.textures)?;
 
         state.end()
     }
@@ -184,15 +238,7 @@ impl GLTFNode {
     }
 }
 
-impl Indexable for GLTFNode {
-    fn get_index(&self) -> u32 {
-        self.index
-    }
-
-    fn set_index(&mut self, index: u32) {
-        self.index = index;
-    }
-}
+indexable!(GLTFNode);
 
 #[derive(Debug, Serialize)]
 pub struct GLTFBuffer {
@@ -230,15 +276,7 @@ impl GLTFBufferView {
     }
 }
 
-impl Indexable for GLTFBufferView {
-    fn get_index(&self) -> u32 {
-        self.index
-    }
-
-    fn set_index(&mut self, index: u32) {
-        self.index = index;
-    }
-}
+indexable!(GLTFBufferView);
 
 #[derive(Debug)]
 pub enum GLTFComponentType {
@@ -327,15 +365,7 @@ impl GLTFAccessor {
     }
 }
 
-impl Indexable for GLTFAccessor {
-    fn get_index(&self) -> u32 {
-        self.index
-    }
-
-    fn set_index(&mut self, index: u32) {
-        self.index = index;
-    }
-}
+indexable!(GLTFAccessor);
 
 #[derive(Debug, Serialize)]
 pub struct GLTFMesh {
@@ -344,15 +374,7 @@ pub struct GLTFMesh {
     index: u32,
 }
 
-impl Indexable for GLTFMesh {
-    fn get_index(&self) -> u32 {
-        self.index
-    }
-
-    fn set_index(&mut self, index: u32) {
-        self.index = index;
-    }
-}
+indexable!(GLTFMesh);
 
 impl GLTFMesh {
     pub fn new(primitives: Vec<GLTFPrimitive>) -> Self {
@@ -382,15 +404,17 @@ impl Serialize for GLTFAttributeMap {
 pub struct GLTFPrimitive {
     attributes: GLTFAttributeMap,
     indices: RefItem<GLTFAccessor>,
+    material: RefItem<GLTFMaterial>,
 }
 
 impl GLTFPrimitive {
-    pub fn new(indices: Rc<RefCell<GLTFAccessor>>) -> Self {
+    pub fn new(indices: Rc<RefCell<GLTFAccessor>>, material: Rc<RefCell<GLTFMaterial>>) -> Self {
         Self {
             attributes: GLTFAttributeMap {
                 attributes: Vec::new(),
             },
             indices: RefItem::new(indices),
+            material: RefItem::new(material),
         }
     }
 
@@ -399,5 +423,110 @@ impl GLTFPrimitive {
         self.attributes.attributes.push((attribute, RefItem::new(accessor)));
 
         self
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct GLTFImage {
+    uri: String,
+    #[serde(skip_serializing)]
+    index: u32,
+}
+
+impl GLTFImage {
+    pub fn new(uri: String) -> Self {
+        Self {
+            uri,
+            index: 0,
+        }
+    }
+}
+
+indexable!(GLTFImage);
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GLTFSampler {
+    mag_filter: u32,
+    min_filter: u32,
+    wrap_s: u32,
+    wrap_t: u32,
+    #[serde(skip_serializing)]
+    index: u32,
+}
+
+impl GLTFSampler {
+    pub fn new() -> Self {
+        Self {
+            mag_filter: 9729,
+            min_filter: 9729,
+            wrap_s: 33071,
+            wrap_t: 33071,
+            index: 0,
+        }
+    }
+}
+
+indexable!(GLTFSampler);
+
+#[derive(Debug, Serialize)]
+pub struct GLTFTexture {
+    source: RefItem<GLTFImage>,
+    sampler: RefItem<GLTFSampler>,
+    #[serde(skip_serializing)]
+    index: u32,
+}
+
+indexable!(GLTFTexture);
+
+impl GLTFTexture {
+    pub fn new(source: Rc<RefCell<GLTFImage>>, sampler: Rc<RefCell<GLTFSampler>>) -> Self {
+        Self {
+            source: RefItem::new(source),
+            sampler: RefItem::new(sampler),
+            index: 0,
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct GLTFTextureInfoObject {
+    index: RefItem<GLTFTexture>,
+}
+
+impl GLTFTextureInfoObject {
+    fn new(source: Rc<RefCell<GLTFTexture>>) -> Self {
+        Self {
+            index: RefItem::new(source),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct GLTFPBRMetallicRoughness {
+    base_color_texture: GLTFTextureInfoObject,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GLTFMaterial {
+    pbr_metallic_roughness: GLTFPBRMetallicRoughness,
+    normal_texture: GLTFTextureInfoObject,
+    #[serde(skip_serializing)]
+    index: u32,
+}
+
+indexable!(GLTFMaterial);
+
+impl GLTFMaterial {
+    pub fn new(diffuse: Rc<RefCell<GLTFTexture>>, normal: Rc<RefCell<GLTFTexture>>) -> Self {
+        Self {
+            pbr_metallic_roughness: GLTFPBRMetallicRoughness {
+                base_color_texture: GLTFTextureInfoObject::new(diffuse),
+            },
+            normal_texture: GLTFTextureInfoObject::new(normal),
+            index: 0,
+        }
     }
 }

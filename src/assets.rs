@@ -415,6 +415,11 @@ type ImportMap = Vec<FObjectImport>;
 trait NewableWithNameMap: std::fmt::Debug + TraitSerialize {
     fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self>
     where Self: Sized;
+
+    // This seems ridiculous... but there's no way I'm satisifying the requirements for Any on this trait
+    fn get_properties(&self) -> ParserResult<&Vec<FPropertyTag>> {
+        Err(ParserError::new(format!("Not implemented for this type")))
+    }
 }
 
 serialize_trait_object!(NewableWithNameMap);
@@ -430,7 +435,7 @@ fn read_fname(reader: &mut ReaderCursor, name_map: &NameMap) -> ParserResult<Str
 }
 
 #[derive(Debug)]
-struct FPackageIndex {
+pub struct FPackageIndex {
     index: i32,
     import: String,
 }
@@ -444,6 +449,10 @@ impl FPackageIndex {
             return import_map.get((index - 1) as usize);
         }
         None
+    }
+
+    pub fn get_import(&self) -> &str {
+        &self.import
     }
 }
 
@@ -550,7 +559,7 @@ impl Serialize for FObjectExport {
 }
 
 #[derive(Debug)]
-struct FText {
+pub struct FText {
     flags: u32,
     history_type: i8,
     namespace: String,
@@ -590,7 +599,7 @@ impl Serialize for FText {
 }
 
 #[derive(Debug, Serialize)]
-struct FSoftObjectPath {
+pub struct FSoftObjectPath {
     asset_path_name: String,
     sub_path_string: String,
 }
@@ -639,8 +648,8 @@ impl NewableWithNameMap for FIntPoint {
     }
 }
 
-#[derive(Debug, Serialize)]
-struct FVector2D {
+#[derive(Debug, Serialize, Copy, Clone)]
+pub struct FVector2D {
     x: f32,
     y: f32,
 }
@@ -651,6 +660,12 @@ impl Newable for FVector2D {
             x: reader.read_f32::<LittleEndian>()?,
             y: reader.read_f32::<LittleEndian>()?,
         })
+    }
+}
+
+impl FVector2D {
+    pub fn get_tuple(&self) -> (f32, f32) {
+        (self.x, self.y)
     }
 }
 
@@ -720,6 +735,10 @@ impl NewableWithNameMap for FStructFallback {
             properties: properties,
         })
     }
+
+    fn get_properties(&self) -> ParserResult<&Vec<FPropertyTag>> {
+        Ok(&self.properties)
+    }
 }
 
 impl Serialize for FStructFallback {
@@ -733,7 +752,7 @@ impl Serialize for FStructFallback {
 }
 
 #[derive(Debug)]
-struct UScriptStruct {
+pub struct UScriptStruct {
     struct_name: String,
     struct_type: Box<NewableWithNameMap>,
 }
@@ -1235,6 +1254,10 @@ impl UScriptStruct {
             struct_type: struct_type,
         })
     }
+    
+    pub fn get_contents(&self) -> &Vec<FPropertyTag> {
+        &self.struct_type.get_properties().unwrap()
+    }
 }
 
 impl Serialize for UScriptStruct {
@@ -1244,7 +1267,7 @@ impl Serialize for UScriptStruct {
 }
 
 #[derive(Debug)]
-struct UScriptArray {
+pub struct UScriptArray {
     tag: Option<Box<FPropertyTag>>,
     data: Vec<FPropertyTagType>,
 }
@@ -1282,6 +1305,17 @@ impl UScriptArray {
             data: contents,
         })
     }
+
+    pub fn get_tag_name(&self) -> &str {
+        match &self.tag {
+            Some(data) => data.get_name(),
+            None => "No name",
+        }
+    }
+
+    pub fn get_data(&self) -> &Vec<FPropertyTagType> {
+        &self.data
+    }
 }
 
 impl Serialize for UScriptArray {
@@ -1295,7 +1329,7 @@ impl Serialize for UScriptArray {
 }
 
 #[derive(Debug)]
-struct UScriptMap {
+pub struct UScriptMap {
     map_data: Vec<(FPropertyTagType, FPropertyTagType)>,
 }
 
@@ -1364,7 +1398,7 @@ impl Serialize for UScriptMap {
 }
 
 #[derive(Debug, Serialize)]
-struct UInterfaceProperty {
+pub struct UInterfaceProperty {
     interface_number: u32,
 }
 
@@ -1390,7 +1424,7 @@ enum FPropertyTagData {
 
 #[derive(Debug, Serialize)]
 #[serde(untagged)]
-enum FPropertyTagType {
+pub enum FPropertyTagType {
     BoolProperty(bool),
     StructProperty(UScriptStruct),
     ObjectProperty(FPackageIndex),
@@ -1469,7 +1503,7 @@ impl FPropertyTagType {
 }
 
 #[derive(Debug)]
-struct FPropertyTag {
+pub struct FPropertyTag {
     name: String,
     property_type: String,
     tag_data: FPropertyTagData,
@@ -1477,6 +1511,19 @@ struct FPropertyTag {
     array_index: i32,
     property_guid: Option<FGuid>,
     tag: Option<FPropertyTagType>,
+}
+
+impl FPropertyTag {
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn get_data(&self) -> &FPropertyTagType {
+        match &self.tag {
+            Some(data) => data,
+            None => panic!("no data"),
+        }
+    }
 }
 
 // I have no idea how to do this properly.
@@ -1797,7 +1844,7 @@ impl FPackedNormal {
 }
 
 #[derive(Debug, Serialize)]
-struct FVector2DHalf {
+pub struct FVector2DHalf {
     x: f16,
     y: f16,
 }
@@ -1808,6 +1855,15 @@ impl Newable for FVector2DHalf {
             x: f16::from_bits(reader.read_u16::<LittleEndian>()?),
             y: f16::from_bits(reader.read_u16::<LittleEndian>()?),
         })
+    }
+}
+
+impl FVector2DHalf {
+    pub fn get_vector(&self) -> FVector2D {
+        FVector2D {
+            x: self.x.to_f32(),
+            y: self.y.to_f32(),
+        }
     }
 }
 
@@ -1837,7 +1893,7 @@ impl<T> TStaticMeshVertexTangent<T> {
 }
 
 #[derive(Debug, Serialize)]
-struct TStaticMeshVertexUV<T> {
+pub struct TStaticMeshVertexUV<T> {
     value: T,
 }
 
@@ -1849,6 +1905,12 @@ impl<T> Newable for TStaticMeshVertexUV<T> where T: Newable {
     }
 }
 
+impl<T> TStaticMeshVertexUV<T> {
+    pub fn get_val(&self) -> &T {
+        &self.value
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub enum FStaticMeshVertexDataTangent {
     High(Vec<TStaticMeshVertexTangent<FPackedRGBA16N>>),
@@ -1856,7 +1918,7 @@ pub enum FStaticMeshVertexDataTangent {
 }
 
 #[derive(Debug, Serialize)]
-enum FStaticMeshVertexDataUV {
+pub enum FStaticMeshVertexDataUV {
     High(Vec<TStaticMeshVertexUV<FVector2D>>),
     Low(Vec<TStaticMeshVertexUV<FVector2DHalf>>),
 }
@@ -1901,6 +1963,10 @@ impl FStaticMeshVertexBuffer {
 
     pub fn get_tangents(&self) -> &FStaticMeshVertexDataTangent {
         &self.tangents
+    }
+    
+    pub fn get_texcoords(&self) -> &FStaticMeshVertexDataUV {
+        &self.uvs
     }
 }
 
@@ -1983,10 +2049,16 @@ impl Newable for FBoxSphereBounds {
 }
 
 #[derive(Debug, Serialize)]
-struct FSkeletalMaterial {
+pub struct FSkeletalMaterial {
     material_interface: FPackageIndex,
     material_slot_name: String,
     uv_channel_data: FMeshUVChannelInfo,
+}
+
+impl FSkeletalMaterial {
+    pub fn get_interface(&self) -> &str {
+        &self.material_interface.import
+    }
 }
 
 impl NewableWithNameMap for FSkeletalMaterial {
@@ -2256,7 +2328,7 @@ pub trait PackageExport: std::fmt::Debug {
 
 /// A UObject is a struct for all of the parsed properties of an object
 #[derive(Debug)]
-struct UObject {
+pub struct UObject {
     export_type: String,
     properties: Vec<FPropertyTag>,
 }
@@ -2288,6 +2360,10 @@ impl UObject {
         }
 
         Ok(properties)
+    }
+
+    pub fn get_properties(&self) -> &Vec<FPropertyTag> {
+        &self.properties
     }
 }
 
@@ -2465,6 +2541,10 @@ impl USkeletalMesh {
 
     pub fn get_first_lod(&self) -> &FSkeletalMeshRenderData {
         self.lod_models.get(0).unwrap()
+    }
+
+    pub fn get_materials(&self) -> &Vec<FSkeletalMaterial> {
+        &self.materials
     }
 }
 

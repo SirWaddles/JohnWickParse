@@ -107,11 +107,23 @@ fn create_rgb_from_bc5(bytes: Vec<u8>, width: u32, height: u32) -> Vec<u8> {
                 let y_off = g / 4;
                 res[get_pixel_loc(width, x_block * 4 + x_off, y_block * 4 + y_off, 1)] = g_bytes[g];
             }
-            
+            for b in 0..16 {
+                let x_off = b % 4;
+                let y_off = b / 4;
+                let b_val = get_z_normal(r_bytes[b], g_bytes[b]);
+                res[get_pixel_loc(width, x_block * 4 + x_off, y_block * 4 + y_off, 2)] = b_val;
+            }
         }
     }
 
     res
+}
+
+fn get_z_normal(x: u8, y: u8) -> u8 {
+    let xf = ((x as f32) / 127.5) - 1.0;
+    let yf = ((y as f32) / 127.5) - 1.0;
+    let zval = (1.0 - xf*xf - yf*yf).max(0.0).sqrt().min(1.0);
+    ((zval * 127.0) + 128.0) as u8 
 }
 
 fn decode_bc3_block(buf_in: &mut Cursor<Vec<u8>>) -> ParserResult<[u8;16]> {

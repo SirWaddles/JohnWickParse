@@ -13,7 +13,7 @@ pub struct GLTFContainer {
 
 pub fn decode_mesh(package: Package, path: &str) -> ParserResult<GLTFContainer> {
     let filepath = Path::new(path);
-    let filename = filepath.file_name().unwrap().to_str().unwrap().to_owned() + ".bin";
+    let filename = filepath.file_name().unwrap().to_str().unwrap().to_owned();
     let package_export = package.get_export_move(0)?;
     if let Ok(mesh) = package_export.downcast::<USkeletalMesh>() {
         return decode_skeletal_mesh(*mesh, filename);
@@ -22,10 +22,13 @@ pub fn decode_mesh(package: Package, path: &str) -> ParserResult<GLTFContainer> 
     Err(ParserError::new(format!("Package not supported")))
 }
 
-fn decode_skeletal_mesh(mesh: USkeletalMesh, buffer_name: String) -> ParserResult<GLTFContainer> {
+fn decode_skeletal_mesh(mesh: USkeletalMesh, asset_name: String) -> ParserResult<GLTFContainer> {
     let mut buffer: Vec<u8> = Vec::new();
     let mut mesh_data = GLTFItem::new();
 
+    let material = mesh.get_materials()[0].get_interface();
+    let material = load_material(&mut mesh_data, material);
+    let material = mesh_data.add_material(material);
     let lod = mesh.get_first_lod();
     let position_verts = lod.get_position_buffer().get_verts();
     let position_size = write_verts_buffer(position_verts, &mut buffer)?;
@@ -110,10 +113,34 @@ fn decode_skeletal_mesh(mesh: USkeletalMesh, buffer_name: String) -> ParserResul
         )
     );
 
-    let mesh_primitive = GLTFPrimitive::new(index_accessor)
+    let uvs = lod.get_static_buffer().get_texcoords();
+    let uvs: Vec<FVector2D> = match uvs {
+        FStaticMeshVertexDataUV::High(data) => {
+            data.into_iter().map(|v| v.get_val().clone()).collect()
+        },
+        FStaticMeshVertexDataUV::Low(data) => {
+            data.iter().map(|v| v.get_val().get_vector()).collect()
+        },
+    };
+    let uv_buffer_view = mesh_data.add_buffer_view({
+        let startpos = buffer.len();
+        let length = write_vert2_buffer(&uvs, &mut buffer)?;
+        GLTFBufferView::new(startpos as u32, length)
+    });
+    let uv_accessor = mesh_data.add_accessor(
+        GLTFAccessor::new(
+            uv_buffer_view,
+            GLTFComponentType::Float, uvs.len() as u32,
+            "VEC2",
+            GLTFAccessorValue::None, GLTFAccessorValue::None
+        )
+    );
+
+    let mesh_primitive = GLTFPrimitive::new(index_accessor, material)
         .add_attribute("POSITION", mesh_accessor)
         .add_attribute("TANGENT", tangent_accessor)
-        .add_attribute("NORMAL", normal_accessor);
+        .add_attribute("NORMAL", normal_accessor)
+        .add_attribute("TEXCOORD_0", uv_accessor);
     let mesh_obj = GLTFMesh::new(vec![mesh_primitive]);
     let mesh_obj = mesh_data.add_mesh(mesh_obj);
 
@@ -121,13 +148,90 @@ fn decode_skeletal_mesh(mesh: USkeletalMesh, buffer_name: String) -> ParserResul
     mesh_data.add_node(mesh_node);
 
     
-    let buffer_desc = GLTFBuffer::new(buffer.len() as u32, buffer_name);
+    let buffer_desc = GLTFBuffer::new(buffer.len() as u32, asset_name.clone() + ".bin");
     mesh_data.add_buffer(buffer_desc);
 
     Ok(GLTFContainer {
         buffer,
         data: mesh_data,
     })
+}
+
+fn load_material(mesh_data: &mut GLTFItem, material_name: &str) -> GLTFMaterial {
+    let material_package = Package::from_file(&("materials/".to_owned() + material_name)).unwrap();
+    let material_export = material_package.get_export_move(0).unwrap();
+    let material_export = match material_export.downcast::<UObject>() {
+        Ok(export) => export,
+        Err(_) => panic!("not a UObject"),
+    };
+    let material_export = *material_export;
+    let texture_vals: Vec<&FPropertyTag> = material_export.get_properties().iter().filter(|v| v.get_name() == "TextureParameterValues").collect();
+    let texture_vals = texture_vals[0].get_data();
+    let texture_vals = match texture_vals {
+        FPropertyTagType::ArrayProperty(data) => data,
+        _ => panic!("not an array"),
+    };
+
+    let textures: Vec<(String, String)> = texture_vals.get_data().iter().map(|v| {
+        let val_struct = match v {
+            FPropertyTagType::StructProperty(data) => data.get_contents(),
+            _ => panic!("not a struct"),
+        };
+
+        let texture_name = val_struct.iter().fold(None, |acc, x| {
+            if x.get_name() == "ParameterValue" {
+                return match x.get_data() {
+                    FPropertyTagType::ObjectProperty(index) => Some(index.get_import()),
+                    _ => panic!("Not an FPackageIndex"),
+                };
+            }
+            acc
+        }).unwrap();
+
+        let texture_type = val_struct.iter().fold(None, |acc, x| {
+            if x.get_name() == "ParameterInfo" {
+                return match x.get_data() {
+                    FPropertyTagType::StructProperty(val_props) => {
+                        val_props.get_contents().iter().fold(None, |acc, y| {
+                            if y.get_name() == "Name" {
+                                return match y.get_data() {
+                                    FPropertyTagType::NameProperty(name) => Some(name),
+                                    _ => panic!("Not a name"),
+                                }
+                            }
+                            acc
+                        })
+                    },
+                    _ => panic!("Not a struct"),
+                }
+            }
+            acc
+        }).unwrap();
+        (texture_type.to_owned(), texture_name.to_owned())
+    }).collect();
+
+    let diffuse_uri = textures.iter().fold(None, |acc, v| {
+        if &v.0 == "Diffuse" {
+            return Some(&v.1);
+        }
+        acc
+    }).unwrap();
+
+    let normal_uri = textures.iter().fold(None, |acc, v| {
+        if &v.0 == "Normals" {
+            return Some(&v.1);
+        }
+        acc
+    }).unwrap();
+
+    let diffuse_image = mesh_data.add_image(GLTFImage::new("textures/".to_owned() + diffuse_uri + ".png"));
+    let normal_image = mesh_data.add_image(GLTFImage::new("textures/".to_owned() + normal_uri + ".png"));
+    let default_sampler = mesh_data.add_sampler(GLTFSampler::new());
+
+    let diffuse_texture = mesh_data.add_texture(GLTFTexture::new(diffuse_image, default_sampler.clone()));
+    let normal_texture = mesh_data.add_texture(GLTFTexture::new(normal_image, default_sampler.clone()));
+
+    GLTFMaterial::new(diffuse_texture, normal_texture)
 }
 
 fn get_vert_maximum(verts: &Vec<FVector>) -> ParserResult<GLTFAccessorValue> {
@@ -180,6 +284,19 @@ fn write_verts_buffer(verts: &Vec<FVector>, buffer: &mut Vec<u8>) -> ParserResul
     }
 
     Ok(verts.len() as u32 * 3 * 4)
+}
+
+fn write_vert2_buffer(verts: &Vec<FVector2D>, buffer: &mut Vec<u8>) -> ParserResult<u32> {
+    let mut cursor = Cursor::new(buffer);
+    cursor.seek(SeekFrom::End(0)).unwrap();
+    for i in 0..verts.len() {
+        let vert = verts[i].get_tuple();
+        // Unreal is left-handed, GLTF is right handed..... or the other way around
+        cursor.write_f32::<LittleEndian>(vert.0)?;
+        cursor.write_f32::<LittleEndian>(vert.1)?;
+    }
+
+    Ok(verts.len() as u32 * 2 * 4)
 }
 
 fn write_verts_buffer4(verts: &Vec<FVector4>, buffer: &mut Vec<u8>) -> ParserResult<u32> {
