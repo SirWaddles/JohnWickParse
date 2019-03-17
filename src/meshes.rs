@@ -249,7 +249,8 @@ fn get_translation_matrix(translation: (f32, f32, f32)) -> glm::Mat4 {
 }
 
 fn normalize_quat(q: (f32, f32, f32, f32)) -> (f32, f32, f32, f32) {
-    let n = 1.0 / (q.0*q.0 + q.1*q.1 + q.2*q.2 + q.3*q.3).sqrt();
+    let length = (q.0*q.0 + q.1*q.1 + q.2*q.2 + q.3*q.3).sqrt();
+    let n = 1.0 / length;
     (n * q.0, n * q.1, n * q.2, n * q.3)
 }
 
@@ -259,12 +260,13 @@ fn get_rotation_matrix(qun: (f32, f32, f32, f32)) -> glm::Mat4 {
     let qy = q.1;
     let qz = q.2;
     let qw = q.3;
-    glm::mat4(
+    let mat = glm::mat4(
         1.0 - 2.0*qy*qy - 2.0*qz*qz, 2.0*qx*qy - 2.0*qz*qw, 2.0*qx*qz + 2.0*qy*qw, 0.0,
         2.0*qx*qy + 2.0*qz*qw, 1.0 - 2.0*qx*qx - 2.0*qz*qz, 2.0*qy*qz - 2.0*qx*qw, 0.0,
         2.0*qx*qz - 2.0*qy*qw, 2.0*qy*qz + 2.0*qx*qw, 1.0 - 2.0*qx*qx - 2.0*qy*qy, 0.0,
         0.0, 0.0, 0.0, 1.0
-    )
+    );
+    glm::builtin::transpose(&mat)
 }
 
 fn calculate_bind_matrix(node_index: i32, bone_list: &Vec<FMeshBoneInfo>, bone_nodes: &Vec<Rc<RefCell<GLTFNode>>>) -> glm::Mat4 {
@@ -277,16 +279,18 @@ fn calculate_bind_matrix(node_index: i32, bone_list: &Vec<FMeshBoneInfo>, bone_n
         active_index = bone_list[active_index as usize].get_parent_index();
     }
 
-    let mut transform_matrix = glm::mat4(  1.0, 0.0, 0.0, 0.0,
-                            0.0, 1.0, 0.0, 0.0,
-                            0.0, 0.0, 1.0, 0.0,
-                            0.0, 0.0, 0.0, 1.0);
+    let mut transform_matrix = 
+        glm::mat4(  1.0, 0.0, 0.0, 0.0,
+                    0.0, 1.0, 0.0, 0.0,
+                    0.0, 0.0, 1.0, 0.0,
+                    0.0, 0.0, 0.0, 1.0);
 
-    transforms.iter().fold(transform_matrix, |acc, transform| {
+    let final_mat = transforms.iter().rev().fold(transform_matrix, |acc, transform| {
         let translate = get_translation_matrix(transform.0);
         let rotate = get_rotation_matrix(transform.1);
-        acc * (translate * rotate)
-    })
+        acc * translate * rotate
+    });
+    glm::builtin::inverse(&final_mat)
 }
 
 fn write_glm_vec(vec: glm::Vec4, cursor: &mut Cursor<&mut Vec<u8>>) -> ParserResult<()> {
