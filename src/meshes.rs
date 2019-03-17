@@ -290,7 +290,11 @@ fn calculate_bind_matrix(node_index: i32, bone_list: &Vec<FMeshBoneInfo>, bone_n
         let rotate = get_rotation_matrix(transform.1);
         acc * translate * rotate
     });
-    glm::builtin::inverse(&final_mat)
+    let mut inverse = glm::builtin::inverse(&final_mat);
+    // I think glm::inverse has a precision issue - without setting it results in
+    // values like 0.999999 and 1.000001, which cause issues.
+    inverse.as_array_mut()[3].as_array_mut()[3] = 1.0;
+    inverse
 }
 
 fn write_glm_vec(vec: glm::Vec4, cursor: &mut Cursor<&mut Vec<u8>>) -> ParserResult<()> {
