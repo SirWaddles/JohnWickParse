@@ -202,6 +202,12 @@ fn read_tarray_n<S>(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &
     Ok(container)
 }
 
+impl Newable for u8 {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        Ok(reader.read_u8()?)
+    }
+}
+
 impl Newable for String {
     fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
         read_string(reader)
@@ -2271,6 +2277,21 @@ impl NewableWithNameMap for FReferenceSkeleton {
 }
 
 #[derive(Debug, Serialize)]
+struct FReferencePose {
+    pose_name: String,
+    reference_pose: Vec<FTransform>,
+}
+
+impl NewableWithNameMap for FReferencePose {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+        Ok(Self {
+            pose_name: read_fname(reader, name_map)?,
+            reference_pose: read_tarray(reader)?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
 struct FClothingSectionData {
     asset_guid: FGuid,
     asset_lod_index: i32,
@@ -2716,7 +2737,10 @@ struct UAnimSequence {
     compressed_scale_offsets: FCompressedOffsetData,
     compressed_segments: Vec<FCompressedSegment>,
     compressed_track_to_skeleton_table: Vec<i32>,
-    //compressed_curve_data: Vec<FSmartName>,
+    compressed_curve_data: UObject,
+    compressed_raw_data_size: i32,
+    compressed_num_frames: i32,
+    compressed_stream: Vec<u8>,
 }
 
 impl PackageExport for UAnimSequence {
@@ -2747,14 +2771,60 @@ impl UAnimSequence {
         let compressed_segments = read_tarray(reader)?;
         let compressed_track_to_skeleton_table = read_tarray(reader)?;
         //let compressed_curve_names = read_tarray_n(reader, name_map, import_map)?;
-        let compressed_curve_data = UObject::serialize_properties(reader, name_map, import_map)?;
-        println!("{:#?}", compressed_curve_data);
+        let compressed_curve_data = UObject {
+            properties: UObject::serialize_properties(reader, name_map, import_map)?,
+            export_type: "RawCurveData".to_owned(),
+        };
+
+        let compressed_raw_data_size = reader.read_i32::<LittleEndian>()?;
+        let compressed_num_frames = reader.read_i32::<LittleEndian>()?;
+        let compressed_stream = read_tarray(reader)?;
+
+        let _use_raw_data = reader.read_u32::<LittleEndian>()? != 0;
+        let _serialize_guid = reader.read_u32::<LittleEndian>()? != 0;
+
+        println!("compressed stream: {}", compressed_stream.len());
 
         Ok(Self {
             super_object, skeleton_guid,
             key_encoding_format, translation_compression_format, rotation_compression_format, scale_compression_format,
             compressed_track_offsets, compressed_scale_offsets, compressed_segments,
-            compressed_track_to_skeleton_table,
+            compressed_track_to_skeleton_table, compressed_curve_data, compressed_raw_data_size, compressed_num_frames,
+            compressed_stream,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct USkeleton {
+    super_object: UObject,
+    reference_skeleton: FReferenceSkeleton,
+    anim_retarget_sources: Vec<(String, FReferencePose)>,
+}
+
+impl PackageExport for USkeleton {
+    fn get_export_type(&self) -> &str {
+        "Skeleton"
+    }
+}
+
+impl USkeleton {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
+        let super_object = UObject::new(reader, name_map, import_map, "Skeleton")?;
+        let reference_skeleton = FReferenceSkeleton::new_n(reader, name_map, import_map)?;
+
+        let mut anim_retarget_sources = Vec::new();
+        let anim_length = reader.read_u32::<LittleEndian>()?;
+        for _i in 0..anim_length {
+            let retarget_name = read_fname(reader, name_map)?;
+            let retarget_pose = FReferencePose::new_n(reader, name_map, import_map)?;
+            anim_retarget_sources.push((retarget_name, retarget_pose));
+        }
+
+        Ok(Self {
+            super_object, 
+            reference_skeleton,
+            anim_retarget_sources,
         })
     }
 }
@@ -2819,6 +2889,7 @@ impl Package {
                 "DataTable" => Box::new(UDataTable::new(&mut cursor, &name_map, &import_map)?),
                 "SkeletalMesh" => Box::new(USkeletalMesh::new(&mut cursor, &name_map, &import_map)?),
                 "AnimSequence" => Box::new(UAnimSequence::new(&mut cursor, &name_map, &import_map)?),
+                "Skeleton" => Box::new(USkeleton::new(&mut cursor, &name_map, &import_map)?),
                 _ => Box::new(UObject::new(&mut cursor, &name_map, &import_map, export_type)?),
             };
             let valid_pos = position + v.serial_size as u64;
@@ -2904,9 +2975,15 @@ impl Serialize for Package {
             }
             if let Some(mesh) = e.downcast_ref::<USkeletalMesh>() {
                 seq.serialize_element(&mesh)?;
+                continue;
             }
             if let Some(animation) = e.downcast_ref::<UAnimSequence>() {
                 seq.serialize_element(&animation)?;
+                continue;
+            }
+            if let Some(skeleton) = e.downcast_ref::<USkeleton>() {
+                seq.serialize_element(&skeleton)?;
+                continue;
             }
             seq.serialize_element("None")?;
         }
