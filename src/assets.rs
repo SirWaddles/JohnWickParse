@@ -1224,6 +1224,75 @@ impl NewableWithNameMap for FWeightedRandomSampler {
     }
 }
 
+#[derive(Debug, Serialize)]
+struct FRichCurveKey {
+    interp_mode: u8,
+    tangent_mode: u8,
+    tangent_weight_mode: u8,
+    time: f32,
+    arrive_tangent: f32,
+    arrive_tangent_weight: f32,
+    leave_tangent: f32,
+    leave_tangent_weight: f32,
+}
+
+impl NewableWithNameMap for FRichCurveKey {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+        Ok(Self {
+            interp_mode: reader.read_u8()?,
+            tangent_mode: reader.read_u8()?,
+            tangent_weight_mode: reader.read_u8()?,
+            time: reader.read_f32::<LittleEndian>()?,
+            arrive_tangent: reader.read_f32::<LittleEndian>()?,
+            arrive_tangent_weight: reader.read_f32::<LittleEndian>()?,
+            leave_tangent: reader.read_f32::<LittleEndian>()?,
+            leave_tangent_weight: reader.read_f32::<LittleEndian>()?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FCompressedOffsetData {
+    offset_data: Vec<i32>,
+    strip_size: i32,
+}
+
+#[derive(Debug, Serialize)]
+struct FSmartName {
+    display_name: String,
+}
+
+impl NewableWithNameMap for FSmartName {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+        Ok(Self {
+            display_name: read_fname(reader, name_map)?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FCompressedSegment {
+    start_frame: i32,
+    num_frames: i32,
+    byte_stream_offset: i32,
+    translation_compression_format: u8,
+    rotation_compression_format: u8,
+    scale_compression_format: u8,
+}
+
+impl Newable for FCompressedSegment {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        Ok(Self {
+            start_frame: reader.read_i32::<LittleEndian>()?,
+            num_frames: reader.read_i32::<LittleEndian>()?,
+            byte_stream_offset: reader.read_i32::<LittleEndian>()?,
+            translation_compression_format: reader.read_u8()?,
+            rotation_compression_format: reader.read_u8()?,
+            scale_compression_format: reader.read_u8()?,
+        })
+    }
+}
+
 impl UScriptStruct {
     fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, struct_name: &str) -> ParserResult<Self> {
         let err = |v| ParserError::add(v, format!("Struct Type: {}", struct_name));
@@ -1253,6 +1322,8 @@ impl UScriptStruct {
             "MovieSceneSegmentIdentifier" => Box::new(FI32::new_n(reader, name_map, import_map).map_err(err)?),
             "MovieSceneSequenceID" => Box::new(FU32::new_n(reader, name_map, import_map).map_err(err)?),
             "MovieSceneEvaluationKey" => Box::new(FMovieSceneEvaluationKey::new_n(reader, name_map, import_map).map_err(err)?),
+            "SmartName" => Box::new(FSmartName::new_n(reader, name_map, import_map).map_err(err)?),
+            "RichCurveKey" => Box::new(FRichCurveKey::new_n(reader, name_map, import_map).map_err(err)?),
             _ => Box::new(FStructFallback::new_n(reader, name_map, import_map).map_err(err)?),
         };
         Ok(Self {
@@ -1310,13 +1381,6 @@ impl UScriptArray {
             tag: array_tag,
             data: contents,
         })
-    }
-
-    pub fn get_tag_name(&self) -> &str {
-        match &self.tag {
-            Some(data) => data.get_name(),
-            None => "No name",
-        }
     }
 
     pub fn get_data(&self) -> &Vec<FPropertyTagType> {
@@ -2122,6 +2186,7 @@ pub struct FTransform {
     scale_3d: FVector,
 }
 
+#[allow(dead_code)]
 impl FTransform {
     pub fn get_rotation(&self) -> &FQuat {
         &self.rotation
@@ -2639,6 +2704,61 @@ impl PackageExport for USkeletalMesh {
     }
 }
 
+#[derive(Debug, Serialize)]
+struct UAnimSequence {
+    super_object: UObject,
+    skeleton_guid: FGuid,
+    key_encoding_format: u8,
+    translation_compression_format: u8,
+    rotation_compression_format: u8,
+    scale_compression_format: u8,
+    compressed_track_offsets: Vec<i32>,
+    compressed_scale_offsets: FCompressedOffsetData,
+    compressed_segments: Vec<FCompressedSegment>,
+    compressed_track_to_skeleton_table: Vec<i32>,
+    //compressed_curve_data: Vec<FSmartName>,
+}
+
+impl PackageExport for UAnimSequence {
+    fn get_export_type(&self) -> &str {
+        "AnimSequence"
+    }
+}
+
+impl UAnimSequence {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
+        let super_object = UObject::new(reader, name_map, import_map, "AnimSequence")?;
+        let skeleton_guid = FGuid::new(reader)?;
+        let _flags = FStripDataFlags::new(reader)?;
+        let use_compressed_data = reader.read_u32::<LittleEndian>()? != 0;
+        if !use_compressed_data {
+            return Err(ParserError::new(format!("Could not decode AnimSequence")));
+        }
+        let key_encoding_format = reader.read_u8()?;
+        let translation_compression_format = reader.read_u8()?;
+        let rotation_compression_format = reader.read_u8()?;
+        let scale_compression_format = reader.read_u8()?;
+        let compressed_track_offsets = read_tarray(reader)?;
+        let compressed_scale_offsets = FCompressedOffsetData {
+            offset_data: read_tarray(reader)?,
+            strip_size: reader.read_i32::<LittleEndian>()?,
+        };
+
+        let compressed_segments = read_tarray(reader)?;
+        let compressed_track_to_skeleton_table = read_tarray(reader)?;
+        //let compressed_curve_names = read_tarray_n(reader, name_map, import_map)?;
+        let compressed_curve_data = UObject::serialize_properties(reader, name_map, import_map)?;
+        println!("{:#?}", compressed_curve_data);
+
+        Ok(Self {
+            super_object, skeleton_guid,
+            key_encoding_format, translation_compression_format, rotation_compression_format, scale_compression_format,
+            compressed_track_offsets, compressed_scale_offsets, compressed_segments,
+            compressed_track_to_skeleton_table,
+        })
+    }
+}
+
 /// A Package is the collection of parsed data from a uasset/uexp file combo
 /// 
 /// It contains a number of 'Exports' which could be of any type implementing the `PackageExport` trait
@@ -2698,6 +2818,7 @@ impl Package {
                 "Texture2D" => Box::new(Texture2D::new(&mut cursor, &name_map, &import_map, asset_length, export_size, &mut ubulk_cursor)?),
                 "DataTable" => Box::new(UDataTable::new(&mut cursor, &name_map, &import_map)?),
                 "SkeletalMesh" => Box::new(USkeletalMesh::new(&mut cursor, &name_map, &import_map)?),
+                "AnimSequence" => Box::new(UAnimSequence::new(&mut cursor, &name_map, &import_map)?),
                 _ => Box::new(UObject::new(&mut cursor, &name_map, &import_map, export_type)?),
             };
             let valid_pos = position + v.serial_size as u64;
@@ -2783,6 +2904,9 @@ impl Serialize for Package {
             }
             if let Some(mesh) = e.downcast_ref::<USkeletalMesh>() {
                 seq.serialize_element(&mesh)?;
+            }
+            if let Some(animation) = e.downcast_ref::<UAnimSequence>() {
+                seq.serialize_element(&animation)?;
             }
             seq.serialize_element("None")?;
         }

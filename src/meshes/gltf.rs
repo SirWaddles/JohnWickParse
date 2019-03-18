@@ -324,6 +324,7 @@ impl GLTFBufferView {
 indexable!(GLTFBufferView);
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum GLTFComponentType {
     Byte,
     UnsignedByte,

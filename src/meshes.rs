@@ -158,7 +158,6 @@ fn decode_skeletal_mesh(mesh: USkeletalMesh, asset_name: String) -> ParserResult
     let mesh_node = mesh_data.add_node(mesh_node);
 
     setup_skeleton(&mut mesh_data, mesh.get_skeleton(), mesh_node.clone(), &mut buffer);
-
     
     let buffer_desc = GLTFBuffer::new(buffer.len() as u32, asset_name.clone() + ".bin");
     mesh_data.add_buffer(buffer_desc);
@@ -279,7 +278,7 @@ fn calculate_bind_matrix(node_index: i32, bone_list: &Vec<FMeshBoneInfo>, bone_n
         active_index = bone_list[active_index as usize].get_parent_index();
     }
 
-    let mut transform_matrix = 
+    let transform_matrix = 
         glm::mat4(  1.0, 0.0, 0.0, 0.0,
                     0.0, 1.0, 0.0, 0.0,
                     0.0, 0.0, 1.0, 0.0,
