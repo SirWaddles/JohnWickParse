@@ -1077,6 +1077,14 @@ impl FQuat {
             w: 1.0,
         }
     }
+
+    fn rebuild_w(&mut self) {
+        let ww = 1.0 - (self.X*self.X + self.Y*self.Y + self.Z*self.Z);
+        self.w = match ww > 0.0 {
+            true => ww.sqrt(),
+            false => 0.0,
+        };
+    }
 }
 
 impl NewableWithNameMap for FQuat {
@@ -2891,9 +2899,9 @@ impl UAnimSequence {
             let mut rotates: Vec<FQuat> = Vec::new();
             let mut scales: Vec<FVector> = Vec::new();
             { // Translation
-                let header = FAnimKeyHeader::new(&mut reader)?;
                 let offset = self.compressed_track_offsets[track_i * 2];
                 if offset != -1 {
+                    let header = FAnimKeyHeader::new(&mut reader)?;
                     let mut min = FVector::unit();
                     let mut max = FVector::unit();
 
@@ -2934,10 +2942,9 @@ impl UAnimSequence {
             }
 
             { // Rotation
-                let header = FAnimKeyHeader::new(&mut reader)?;
                 let offset = self.compressed_track_offsets[(track_i * 2) + 1];
                 if offset != -1 {
-
+                    let header = FAnimKeyHeader::new(&mut reader)?;
                 } else {
                     rotates.push(FQuat::unit());
                 }
