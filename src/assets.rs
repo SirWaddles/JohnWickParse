@@ -1062,6 +1062,21 @@ impl FQuat {
     pub fn get_tuple(&self) -> (f32, f32, f32, f32) {
         (self.x, self.y, self.z, self.w)
     }
+
+    fn new_raw(x: f32, y: f32, z: f32, w: f32) -> Self {
+        Self {
+            x, y, z, w,
+        }
+    }
+
+    fn unit() -> Self {
+        Self {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+            w: 1.0,
+        }
+    }
 }
 
 impl NewableWithNameMap for FQuat {
@@ -1091,6 +1106,20 @@ pub struct FVector {
 impl FVector {
     pub fn get_tuple(&self) -> (f32, f32, f32) {
         (self.x, self.y, self.z)
+    }
+
+    fn new_raw(x: f32, y: f32, z: f32) -> Self {
+        Self {
+            x, y, z,
+        }
+    }
+
+    fn unit() -> Self {
+        Self {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        }
     }
 }
 
@@ -2726,6 +2755,59 @@ impl PackageExport for USkeletalMesh {
 }
 
 #[derive(Debug, Serialize)]
+enum AnimationCompressionFormat {
+	None,
+	Float96NoW,
+	Fixed48NoW,
+	IntervalFixed32NoW,
+	Fixed32NoW,
+	Float32NoW,
+	Identity,
+}
+
+#[derive(Debug, Serialize)]
+struct FAnimKeyHeader {
+    key_format: AnimationCompressionFormat,
+    component_mask: u32,
+    num_keys: u32,
+    has_time_tracks: bool,
+}
+
+impl Newable for FAnimKeyHeader {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        let packed = reader.read_u32::<LittleEndian>()?;
+        let key_format_i = packed >> 28;
+        let key_format = match key_format_i {
+            0 => AnimationCompressionFormat::None,
+            1 => AnimationCompressionFormat::Float96NoW,
+            2 => AnimationCompressionFormat::Fixed48NoW,
+            3 => AnimationCompressionFormat::IntervalFixed32NoW,
+            4 => AnimationCompressionFormat::Fixed32NoW,
+            5 => AnimationCompressionFormat::Float32NoW,
+            6 => AnimationCompressionFormat::Identity,
+            _ => panic!("unsupported format"),
+        };
+        let component_mask = (packed >> 24) & 0xF;
+        let num_keys = packed & 0xFFFFFF;
+        Ok(Self {
+            key_format,
+            component_mask,
+            num_keys,
+            has_time_tracks: (component_mask & 8) != 0,
+        })
+    }
+}
+
+struct FTrack {
+    translation: Vec<FVector>,
+    rotation: Vec<FQuat>,
+    scale: Vec<FVector>,
+}
+
+// I've based a lot of the AnimSequence stuff on the UModel implementation (thanks gildor)
+// Mostly because the compression is very confusing, but also, the unreal version I have
+// seems to have compression data as an array of FSmartNames.
+#[derive(Debug, Serialize)]
 struct UAnimSequence {
     super_object: UObject,
     skeleton_guid: FGuid,
@@ -2770,7 +2852,6 @@ impl UAnimSequence {
 
         let compressed_segments = read_tarray(reader)?;
         let compressed_track_to_skeleton_table = read_tarray(reader)?;
-        //let compressed_curve_names = read_tarray_n(reader, name_map, import_map)?;
         let compressed_curve_data = UObject {
             properties: UObject::serialize_properties(reader, name_map, import_map)?,
             export_type: "RawCurveData".to_owned(),
@@ -2783,15 +2864,98 @@ impl UAnimSequence {
         let _use_raw_data = reader.read_u32::<LittleEndian>()? != 0;
         let _serialize_guid = reader.read_u32::<LittleEndian>()? != 0;
 
-        println!("compressed stream: {}", compressed_stream.len());
-
-        Ok(Self {
+        let mut result = Self {
             super_object, skeleton_guid,
             key_encoding_format, translation_compression_format, rotation_compression_format, scale_compression_format,
             compressed_track_offsets, compressed_scale_offsets, compressed_segments,
             compressed_track_to_skeleton_table, compressed_curve_data, compressed_raw_data_size, compressed_num_frames,
             compressed_stream,
-        })
+        };
+
+        let tracks = result.read_tracks()?;
+
+        Ok(result)
+    }
+
+    fn read_tracks(&self) -> ParserResult<Vec<FTrack>> {
+        if self.key_encoding_format != 2 {
+            return Err(ParserError::new(format!("Can only parse PerTrackCompression")));
+        }
+        let mut reader = ReaderCursor::new(self.compressed_stream.clone());
+        let num_tracks = self.compressed_track_offsets.len() / 2;
+
+        let mut tracks = Vec::new();
+
+        for track_i in 0..num_tracks {
+            let mut translates: Vec<FVector> = Vec::new();
+            let mut rotates: Vec<FQuat> = Vec::new();
+            let mut scales: Vec<FVector> = Vec::new();
+            { // Translation
+                let header = FAnimKeyHeader::new(&mut reader)?;
+                let offset = self.compressed_track_offsets[track_i * 2];
+                if offset != -1 {
+                    let mut min = FVector::unit();
+                    let mut max = FVector::unit();
+
+                    if let AnimationCompressionFormat::IntervalFixed32NoW = header.key_format {
+                        if header.component_mask & 1 != 0 {
+                            min.x = reader.read_f32::<LittleEndian>()?;
+                            max.x = reader.read_f32::<LittleEndian>()?;
+                        }
+                        if header.component_mask & 2 != 0 {
+                            min.y = reader.read_f32::<LittleEndian>()?;
+                            max.y = reader.read_f32::<LittleEndian>()?;
+                        }
+                        if header.component_mask & 4 != 0 {
+                            min.z = reader.read_f32::<LittleEndian>()?;
+                            max.z = reader.read_f32::<LittleEndian>()?;
+                        }
+                    }
+
+                    for key in 0..header.num_keys {
+                        let translate = match header.key_format {
+                            AnimationCompressionFormat::None | AnimationCompressionFormat::Float96NoW => {
+                                let mut fvec = FVector::unit();
+                                if header.component_mask & 7 != 0 {
+                                    if header.component_mask & 1 != 0 { fvec.x = reader.read_f32::<LittleEndian>()?; }
+                                    if header.component_mask & 2 != 0 { fvec.x = reader.read_f32::<LittleEndian>()?; }
+                                    if header.component_mask & 4 != 0 { fvec.z = reader.read_f32::<LittleEndian>()?; }
+                                } else {
+                                    fvec = FVector::new(&mut reader)?;
+                                }
+                                fvec
+                            },
+                            _ => panic!("key format: {:#?}", header.key_format),
+                        };
+                    }
+                } else {
+                    translates.push(FVector::unit());
+                }
+            }
+
+            { // Rotation
+                let header = FAnimKeyHeader::new(&mut reader)?;
+                let offset = self.compressed_track_offsets[(track_i * 2) + 1];
+                if offset != -1 {
+
+                } else {
+                    rotates.push(FQuat::unit());
+                }
+            }
+
+            /*
+                rotate: ,
+                scale: self.compressed_scale_offsets.offset_data[track_i * self.compressed_scale_offsets.strip_size as usize],
+            }*/
+
+            tracks.push(FTrack {
+                translation: translates,
+                rotation: rotates,
+                scale: scales,
+            });
+        }
+
+        Ok(tracks)
     }
 }
 
