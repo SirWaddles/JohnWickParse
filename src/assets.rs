@@ -1079,7 +1079,7 @@ impl FQuat {
     }
 
     fn rebuild_w(&mut self) {
-        let ww = 1.0 - (self.X*self.X + self.Y*self.Y + self.Z*self.Z);
+        let ww = 1.0 - (self.x*self.x + self.y*self.y + self.z*self.z);
         self.w = match ww > 0.0 {
             true => ww.sqrt(),
             false => 0.0,
@@ -1127,6 +1127,14 @@ impl FVector {
             x: 0.0,
             y: 0.0,
             z: 0.0,
+        }
+    }
+
+    fn unit_scale() -> Self {
+        Self {
+            x: 1.0,
+            y: 1.0,
+            z: 1.0,
         }
     }
 }
@@ -2785,6 +2793,8 @@ impl Newable for FAnimKeyHeader {
     fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
         let packed = reader.read_u32::<LittleEndian>()?;
         let key_format_i = packed >> 28;
+        let component_mask = (packed >> 24) & 0xF;
+        let num_keys = packed & 0xFFFFFF;
         let key_format = match key_format_i {
             0 => AnimationCompressionFormat::None,
             1 => AnimationCompressionFormat::Float96NoW,
@@ -2793,10 +2803,9 @@ impl Newable for FAnimKeyHeader {
             4 => AnimationCompressionFormat::Fixed32NoW,
             5 => AnimationCompressionFormat::Float32NoW,
             6 => AnimationCompressionFormat::Identity,
-            _ => panic!("unsupported format"),
+            _ => return Err(ParserError::new(format!("Unsupported format: {} {} {}: {}", key_format_i, component_mask, num_keys, packed))),
         };
-        let component_mask = (packed >> 24) & 0xF;
-        let num_keys = packed & 0xFFFFFF;
+        
         Ok(Self {
             key_format,
             component_mask,
@@ -2806,10 +2815,14 @@ impl Newable for FAnimKeyHeader {
     }
 }
 
+#[derive(Debug, Serialize)]
 struct FTrack {
     translation: Vec<FVector>,
     rotation: Vec<FQuat>,
     scale: Vec<FVector>,
+    translation_times: Option<Vec<f32>>,
+    rotation_times: Option<Vec<f32>>,
+    scale_times: Option<Vec<f32>>,
 }
 
 // I've based a lot of the AnimSequence stuff on the UModel implementation (thanks gildor)
@@ -2830,13 +2843,77 @@ struct UAnimSequence {
     compressed_curve_data: UObject,
     compressed_raw_data_size: i32,
     compressed_num_frames: i32,
+    #[serde(skip_serializing)]
     compressed_stream: Vec<u8>,
+    tracks: Option<Vec<FTrack>>,
 }
 
 impl PackageExport for UAnimSequence {
     fn get_export_type(&self) -> &str {
         "AnimSequence"
     }
+}
+
+fn align_reader(reader: &mut ReaderCursor) -> ParserResult<()>{
+    let offset_pos = (reader.position() % 4) as i64;
+    if offset_pos == 0 { return Ok(()); }
+    reader.seek(SeekFrom::Current(4 - offset_pos))?;
+    Ok(())
+}
+
+fn decode_fixed48(val: u16) -> f32 {
+    (val as f32) - 255.0
+}
+
+fn decode_fixed48_q(val: u16) -> f32 {
+    (((val as i32) - 32767) as f32) / 32767.0
+}
+
+const Y_MASK: u32 = 0x001ffc00;
+const X_MASK: u32 = 0x000003ff;
+
+fn decode_fixed32_vec(val: u32, min: &FVector, max: &FVector) -> FVector {
+    let z = val >> 21;
+    let y = (val & Y_MASK) >> 10;
+    let x = val & X_MASK;
+    let fx = ((((x as i32) - 511) as f32) / 511.0) * max.x + min.x;
+    let fy = ((((y as i32) - 1023) as f32) / 1023.0) * max.y + min.y;
+    let fz = ((((z as i32) - 1023) as f32) / 1023.0) * max.z + min.z;
+    FVector {
+        x: fx,
+        y: fy,
+        z: fz,
+    }
+}
+
+fn decode_fixed32_quat(val: u32, min: &FVector, max: &FVector) -> FQuat {
+    let x = val >> 21;
+    let y = (val & Y_MASK) >> 10;
+    let z = val & X_MASK; // ignore the mismatch, it's still correct
+    let fx = ((((x as i32) - 1023) as f32) / 1023.0) * max.x + min.x;
+    let fy = ((((y as i32) - 1023) as f32) / 1023.0) * max.y + min.y;
+    let fz = ((((z as i32) - 511) as f32) / 511.0) * max.z + min.z;
+    let mut rquat = FQuat::new_raw(fx, fy, fz, 1.0);
+    rquat.rebuild_w();
+    rquat
+}
+
+fn read_times(reader: &mut ReaderCursor, num_keys: u32, num_frames: u32) -> ParserResult<Vec<f32>> {
+    if num_keys <= 1 { return Ok(Vec::new()); }
+    align_reader(reader)?;
+    let mut times: Vec<f32> = Vec::new();
+
+    if num_frames < 256 {
+        for _i in 0..num_keys {
+            times.push((reader.read_u8()?) as f32);
+        }
+    } else {
+        for _i in 0..num_keys {
+            times.push((reader.read_u16::<LittleEndian>()?) as f32);
+        }
+    }
+    
+    Ok(times)
 }
 
 impl UAnimSequence {
@@ -2878,10 +2955,11 @@ impl UAnimSequence {
             compressed_track_offsets, compressed_scale_offsets, compressed_segments,
             compressed_track_to_skeleton_table, compressed_curve_data, compressed_raw_data_size, compressed_num_frames,
             compressed_stream,
+            tracks: None,
         };
 
         let tracks = result.read_tracks()?;
-
+        result.tracks = Some(tracks);
         Ok(result)
     }
 
@@ -2891,6 +2969,8 @@ impl UAnimSequence {
         }
         let mut reader = ReaderCursor::new(self.compressed_stream.clone());
         let num_tracks = self.compressed_track_offsets.len() / 2;
+        // TODO: Use UObject property instead.
+        let num_frames = self.compressed_num_frames;
 
         let mut tracks = Vec::new();
 
@@ -2898,10 +2978,13 @@ impl UAnimSequence {
             let mut translates: Vec<FVector> = Vec::new();
             let mut rotates: Vec<FQuat> = Vec::new();
             let mut scales: Vec<FVector> = Vec::new();
+            let mut translation_times = None;
+            let mut rotation_times = None;
+            let mut scale_times = None;
             { // Translation
                 let offset = self.compressed_track_offsets[track_i * 2];
                 if offset != -1 {
-                    let header = FAnimKeyHeader::new(&mut reader)?;
+                    let header = FAnimKeyHeader::new(&mut reader).map_err(|v| ParserError::add(v, format!("Translation error: {} {}", reader.position(), track_i)))?;
                     let mut min = FVector::unit();
                     let mut max = FVector::unit();
 
@@ -2933,9 +3016,29 @@ impl UAnimSequence {
                                 }
                                 fvec
                             },
+                            AnimationCompressionFormat::Fixed48NoW => {
+                                let mut fvec = FVector::unit();
+                                if header.component_mask & 1 != 0 { fvec.x = decode_fixed48(reader.read_u16::<LittleEndian>()?); }
+                                if header.component_mask & 2 != 0 { fvec.x = decode_fixed48(reader.read_u16::<LittleEndian>()?); }
+                                if header.component_mask & 4 != 0 { fvec.z = decode_fixed48(reader.read_u16::<LittleEndian>()?); }
+                                fvec
+                            },
+                            AnimationCompressionFormat::IntervalFixed32NoW => {
+                                let val = reader.read_u32::<LittleEndian>()?;
+                                decode_fixed32_vec(val, &min, &max)
+                            },
                             _ => panic!("key format: {:#?}", header.key_format),
                         };
+
+                        translates.push(translate);
                     }
+
+                    if header.has_time_tracks {
+                        translation_times = Some(read_times(&mut reader, header.num_keys, num_frames as u32)?);
+                    }
+                    align_reader(&mut reader)?;
+                    
+                    println!("anim track: {} 0 {}", track_i, reader.position());
                 } else {
                     translates.push(FVector::unit());
                 }
@@ -2944,21 +3047,142 @@ impl UAnimSequence {
             { // Rotation
                 let offset = self.compressed_track_offsets[(track_i * 2) + 1];
                 if offset != -1 {
-                    let header = FAnimKeyHeader::new(&mut reader)?;
+                    let header = FAnimKeyHeader::new(&mut reader).map_err(|v| ParserError::add(v, format!("Rotation error: {} {}", reader.position(), track_i)))?;
+                    let mut min = FVector::unit();
+                    let mut max = FVector::unit();
+
+                    if let AnimationCompressionFormat::IntervalFixed32NoW = header.key_format {
+                        if header.component_mask & 1 != 0 {
+                            min.x = reader.read_f32::<LittleEndian>()?;
+                            max.x = reader.read_f32::<LittleEndian>()?;
+                        }
+                        if header.component_mask & 2 != 0 {
+                            min.y = reader.read_f32::<LittleEndian>()?;
+                            max.y = reader.read_f32::<LittleEndian>()?;
+                        }
+                        if header.component_mask & 4 != 0 {
+                            min.z = reader.read_f32::<LittleEndian>()?;
+                            max.z = reader.read_f32::<LittleEndian>()?;
+                        }
+                    }
+
+                    for key in 0..header.num_keys {
+                        let rotate = match header.key_format {
+                            AnimationCompressionFormat::None | AnimationCompressionFormat::Float96NoW => {
+                                let mut fvec = FVector::unit();
+                                if header.component_mask & 7 != 0 {
+                                    if header.component_mask & 1 != 0 { fvec.x = reader.read_f32::<LittleEndian>()?; }
+                                    if header.component_mask & 2 != 0 { fvec.x = reader.read_f32::<LittleEndian>()?; }
+                                    if header.component_mask & 4 != 0 { fvec.z = reader.read_f32::<LittleEndian>()?; }
+                                } else {
+                                    fvec = FVector::new(&mut reader)?;
+                                }
+                                let mut fquat = FQuat {
+                                    x: fvec.x,
+                                    y: fvec.y,
+                                    z: fvec.z,
+                                    w: 0.0,
+                                };
+                                fquat.rebuild_w();
+                                fquat
+                            },
+                            AnimationCompressionFormat::Fixed48NoW => {
+                                let mut fquat = FQuat::unit();
+                                if header.component_mask & 1 != 0 { fquat.x = decode_fixed48_q(reader.read_u16::<LittleEndian>()?); }
+                                if header.component_mask & 2 != 0 { fquat.x = decode_fixed48_q(reader.read_u16::<LittleEndian>()?); }
+                                if header.component_mask & 4 != 0 { fquat.z = decode_fixed48_q(reader.read_u16::<LittleEndian>()?); }
+                                fquat.rebuild_w();
+                                fquat
+                            },
+                            AnimationCompressionFormat::IntervalFixed32NoW => {
+                                let val = reader.read_u32::<LittleEndian>()?;
+                                decode_fixed32_quat(val, &min, &max)
+                            },
+                            _ => panic!("key format: {:#?}", header.key_format),
+                        };
+
+                        rotates.push(rotate);
+                        
+                    }
+
+                    if header.has_time_tracks {
+                        rotation_times = Some(read_times(&mut reader, header.num_keys, num_frames as u32)?);
+                    }
+                    align_reader(&mut reader)?;
+                    println!("anim track: {} 1 {}", track_i, reader.position());
                 } else {
                     rotates.push(FQuat::unit());
                 }
             }
 
-            /*
-                rotate: ,
-                scale: self.compressed_scale_offsets.offset_data[track_i * self.compressed_scale_offsets.strip_size as usize],
-            }*/
+            { // Scale
+                let offset = self.compressed_scale_offsets.offset_data[track_i * self.compressed_scale_offsets.strip_size as usize];
+                if offset != 1 {
+                    let header = FAnimKeyHeader::new(&mut reader).map_err(|v| ParserError::add(v, format!("Scale error: {} {}", reader.position(), track_i)))?;
+                    let mut min = FVector::unit();
+                    let mut max = FVector::unit();
+
+                    if let AnimationCompressionFormat::IntervalFixed32NoW = header.key_format {
+                        if header.component_mask & 1 != 0 {
+                            min.x = reader.read_f32::<LittleEndian>()?;
+                            max.x = reader.read_f32::<LittleEndian>()?;
+                        }
+                        if header.component_mask & 2 != 0 {
+                            min.y = reader.read_f32::<LittleEndian>()?;
+                            max.y = reader.read_f32::<LittleEndian>()?;
+                        }
+                        if header.component_mask & 4 != 0 {
+                            min.z = reader.read_f32::<LittleEndian>()?;
+                            max.z = reader.read_f32::<LittleEndian>()?;
+                        }
+                    }
+
+                    for key in 0..header.num_keys {
+                        let scale = match header.key_format {
+                            AnimationCompressionFormat::None | AnimationCompressionFormat::Float96NoW => {
+                                let mut fvec = FVector::unit_scale();
+                                if header.component_mask & 7 != 0 {
+                                    if header.component_mask & 1 != 0 { fvec.x = reader.read_f32::<LittleEndian>()?; }
+                                    if header.component_mask & 2 != 0 { fvec.x = reader.read_f32::<LittleEndian>()?; }
+                                    if header.component_mask & 4 != 0 { fvec.z = reader.read_f32::<LittleEndian>()?; }
+                                } else {
+                                    fvec = FVector::new(&mut reader)?;
+                                }
+                                fvec
+                            },
+                            AnimationCompressionFormat::Fixed48NoW => {
+                                let mut fvec = FVector::unit_scale();
+                                if header.component_mask & 1 != 0 { fvec.x = decode_fixed48(reader.read_u16::<LittleEndian>()?); }
+                                if header.component_mask & 2 != 0 { fvec.x = decode_fixed48(reader.read_u16::<LittleEndian>()?); }
+                                if header.component_mask & 4 != 0 { fvec.z = decode_fixed48(reader.read_u16::<LittleEndian>()?); }
+                                fvec
+                            },
+                            AnimationCompressionFormat::IntervalFixed32NoW => {
+                                let val = reader.read_u32::<LittleEndian>()?;
+                                decode_fixed32_vec(val, &min, &max)
+                            },
+                            _ => panic!("key format: {:#?}", header.key_format),
+                        };
+
+                        scales.push(scale);
+                    }
+
+                    if header.has_time_tracks {
+                        scale_times = Some(read_times(&mut reader, header.num_keys, num_frames as u32)?);
+                    }
+                    align_reader(&mut reader)?;
+                    println!("track info: {} {} {:?}", header.component_mask, header.num_keys, header.key_format);
+                    println!("anim track: {} 2 {}", track_i, reader.position());
+                } else {
+                    scales.push(FVector::unit_scale());
+                }
+            }
 
             tracks.push(FTrack {
                 translation: translates,
                 rotation: rotates,
                 scale: scales,
+                translation_times, rotation_times, scale_times,
             });
         }
 
