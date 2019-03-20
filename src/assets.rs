@@ -1344,6 +1344,21 @@ impl Newable for FCompressedSegment {
     }
 }
 
+#[derive(Debug, Serialize)]
+struct FSimpleCurveKey {
+    time: f32,
+    value: f32,
+}
+
+impl NewableWithNameMap for FSimpleCurveKey {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+        Ok(Self {
+            time: reader.read_f32::<LittleEndian>()?,
+            value: reader.read_f32::<LittleEndian>()?,
+        })
+    } 
+}
+
 impl UScriptStruct {
     fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, struct_name: &str) -> ParserResult<Self> {
         let err = |v| ParserError::add(v, format!("Struct Type: {}", struct_name));
@@ -1375,6 +1390,7 @@ impl UScriptStruct {
             "MovieSceneEvaluationKey" => Box::new(FMovieSceneEvaluationKey::new_n(reader, name_map, import_map).map_err(err)?),
             "SmartName" => Box::new(FSmartName::new_n(reader, name_map, import_map).map_err(err)?),
             "RichCurveKey" => Box::new(FRichCurveKey::new_n(reader, name_map, import_map).map_err(err)?),
+            "SimpleCurveKey" => Box::new(FSimpleCurveKey::new_n(reader, name_map, import_map).map_err(err)?),
             _ => Box::new(FStructFallback::new_n(reader, name_map, import_map).map_err(err)?),
         };
         Ok(Self {
@@ -3224,6 +3240,53 @@ impl USkeleton {
     }
 }
 
+#[derive(Debug, Serialize)]
+enum ECurveTableMode {
+    Empty,
+    SimpleCurves,
+    RichCurves,
+}
+
+#[derive(Debug, Serialize)]
+struct UCurveTable {
+    super_object: UObject,
+    curve_table_mode: ECurveTableMode,
+    row_map: Vec<(String, UObject)>,
+}
+
+impl UCurveTable {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
+        let super_object = UObject::new(reader, name_map, import_map, "CurveTable")?;
+        let num_rows = reader.read_i32::<LittleEndian>()?;
+        let curve_table_mode = reader.read_u8()?;
+        let curve_table_mode = match curve_table_mode {
+            0 => ECurveTableMode::Empty,
+            1 => ECurveTableMode::SimpleCurves,
+            2 => ECurveTableMode::RichCurves,
+            _ => panic!("unsupported curve mode"),
+        };
+
+        let mut row_map = Vec::new();
+        for i in 0..num_rows {
+            let row_name = read_fname(reader, name_map)?;
+            let row_type = match curve_table_mode {
+                ECurveTableMode::Empty => "Empty",
+                ECurveTableMode::SimpleCurves => "SimpleCurveKey",
+                ECurveTableMode::RichCurves => "RichCurveKey,"
+            }.to_owned();
+            let row_curve = UObject {
+                properties: UObject::serialize_properties(reader, name_map, import_map)?,
+                export_type: row_type.to_owned(),
+            };
+            row_map.push((row_name, row_curve));
+        }
+
+        Ok(Self {
+            super_object, curve_table_mode, row_map,
+        })
+    }
+}
+
 /// A Package is the collection of parsed data from a uasset/uexp file combo
 /// 
 /// It contains a number of 'Exports' which could be of any type implementing the `PackageExport` trait
@@ -3285,6 +3348,7 @@ impl Package {
                 "SkeletalMesh" => Box::new(USkeletalMesh::new(&mut cursor, &name_map, &import_map)?),
                 "AnimSequence" => Box::new(UAnimSequence::new(&mut cursor, &name_map, &import_map)?),
                 "Skeleton" => Box::new(USkeleton::new(&mut cursor, &name_map, &import_map)?),
+                "CurveTable" => Box::new(UCurveTable::new(&mut cursor, &name_map, &import_map)?),
                 _ => Box::new(UObject::new(&mut cursor, &name_map, &import_map, export_type)?),
             };
             let valid_pos = position + v.serial_size as u64;
@@ -3378,6 +3442,10 @@ impl Serialize for Package {
             }
             if let Some(skeleton) = e.downcast_ref::<USkeleton>() {
                 seq.serialize_element(&skeleton)?;
+                continue;
+            }
+            if let Some(curve_table) = e.downcast_ref::<UCurveTable>() {
+                seq.serialize_element(&curve_table)?;
                 continue;
             }
             seq.serialize_element("None")?;
