@@ -4,14 +4,8 @@ use std::rc::Rc;
 use byteorder::{LittleEndian, WriteBytesExt};
 use std::path::Path;
 use crate::assets::*;
-mod gltf;
+pub mod gltf;
 use gltf::*;
-
-
-pub struct GLTFContainer {
-    pub buffer: Vec<u8>,
-    pub data: GLTFItem,
-}
 
 pub fn decode_mesh(package: Package, path: &str) -> ParserResult<GLTFContainer> {
     let filepath = Path::new(path);

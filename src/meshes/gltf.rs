@@ -2,6 +2,11 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use serde::ser::{Serialize, Serializer, SerializeStruct, SerializeSeq, SerializeMap};
 
+pub struct GLTFContainer {
+    pub buffer: Vec<u8>,
+    pub data: GLTFItem,
+}
+
 pub trait Indexable {
     fn get_index(&self) -> u32;
     fn set_index(&mut self, index: u32);
@@ -86,6 +91,7 @@ pub struct GLTFItem {
     textures: Vec<RefOwn<GLTFTexture>>,
     materials: Vec<RefOwn<GLTFMaterial>>,
     skins: Vec<RefOwn<GLTFSkin>>,
+    animations: Vec<RefOwn<GLTFAnimation>>,
 }
 
 impl GLTFItem {
@@ -110,6 +116,7 @@ impl GLTFItem {
             textures: Vec::new(),
             materials: Vec::new(),
             skins: Vec::new(),
+            animations: Vec::new(),
         }
     }
 
@@ -170,6 +177,12 @@ impl GLTFItem {
         self.skins.push(RefOwn::new(counted.clone()));
         counted
     }
+
+    pub fn add_animation(&mut self, animation: GLTFAnimation) -> Rc<RefCell<GLTFAnimation>> {
+        let counted = Rc::new(RefCell::new(animation));
+        self.animations.push(RefOwn::new(counted.clone()));
+        counted
+    }
 }
 
 impl Serialize for GLTFItem {
@@ -182,8 +195,9 @@ impl Serialize for GLTFItem {
         reindex_indexable(&self.samplers);
         reindex_indexable(&self.materials);
         reindex_indexable(&self.textures);
+        reindex_indexable(&self.animations);
 
-        let mut state = serializer.serialize_struct("GLTFItem", 13)?;
+        let mut state = serializer.serialize_struct("GLTFItem", 14)?;
         state.serialize_field("asset", &self.asset)?;
         state.serialize_field("scene", &self.scene)?;
         state.serialize_field("scenes", &self.scenes)?;
@@ -197,6 +211,7 @@ impl Serialize for GLTFItem {
         state.serialize_field("materials", &self.materials)?;
         state.serialize_field("textures", &self.textures)?;
         state.serialize_field("skins", &self.skins)?;
+        state.serialize_field("animations", &self.animations)?;
 
         state.end()
     }
@@ -611,4 +626,75 @@ impl GLTFSkin {
         self.bind_inverse_matrix = Some(RefItem::new(accessor));
         self
     }
+}
+
+#[derive(Debug)]
+pub enum GLTFInterpolation {
+    Linear,
+    Step,
+    CubicSpline,
+}
+
+impl Serialize for GLTFInterpolation {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        serializer.serialize_str(
+            match self {
+                GLTFInterpolation::Linear => "LINEAR",
+                GLTFInterpolation::Step => "STEP",
+                GLTFInterpolation::CubicSpline => "CUBICSPLINE",
+            }
+        )
+    }
+}
+
+#[derive(Debug)]
+pub struct GLTFAnimation {
+    channels: Vec<GLTFChannel>,
+    samplers: Vec<RefOwn<GLTFAnimationSampler>>,
+    index: u32,
+}
+
+indexable!(GLTFAnimation);
+
+impl GLTFAnimation {
+    pub fn add_sampler(&mut self, sampler: GLTFAnimationSampler) -> Rc<RefCell<GLTFAnimationSampler>> {
+        let counted = Rc::new(RefCell::new(sampler));
+        self.samplers.push(RefOwn::new(counted.clone()));
+        counted
+    }
+}
+
+impl Serialize for GLTFAnimation {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        reindex_indexable(&self.samplers);
+
+        let mut state = serializer.serialize_struct("GLTFAnimation", 2)?;
+        state.serialize_field("samplers", &self.samplers)?;
+        state.serialize_field("channels", &self.channels)?;
+
+        state.end()
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct GLTFChannel {
+    sampler: RefItem<GLTFAnimationSampler>,
+    target: GLTFAnimationTarget,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GLTFAnimationSampler {
+    input: RefItem<GLTFAccessor>,
+    interpolation: GLTFInterpolation,
+    output: RefItem<GLTFAccessor>,
+    #[serde(skip_serializing)]
+    index: u32,
+}
+
+indexable!(GLTFAnimationSampler);
+
+#[derive(Debug, Serialize)]
+pub struct GLTFAnimationTarget {
+    path: &'static str,
+    extras: String, // going to keep the bone name here
 }

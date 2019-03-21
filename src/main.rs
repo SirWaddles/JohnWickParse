@@ -17,6 +17,7 @@ mod assets;
 mod archives;
 mod texture;
 mod meshes;
+mod anims;
 
 #[derive(Debug)]
 struct CommandError {
@@ -100,6 +101,24 @@ fn mesh(params: &[String]) -> CommandResult {
 
     let mut bin_file = fs::File::create(path.to_owned() + ".bin").unwrap();
     bin_file.write_all(&mesh.buffer).unwrap();
+
+    Ok(())
+}
+
+fn anim(params: &[String]) -> CommandResult {
+    let path = match params.get(0) {
+        Some(data) => data,
+        None => return cerr("No path specified"),
+    };
+
+    let package = assets::Package::from_file(path)?;
+    let anim = anims::decode_anim(package, path)?;
+    let serial_anim = serde_json::to_string(&anim.data).unwrap();
+    let mut gltf_file = fs::File::create(path.to_owned() + ".gltf").unwrap();
+    gltf_file.write_all(serial_anim.as_bytes()).unwrap();
+
+    let mut bin_file = fs::File::create(path.to_owned() + ".bin").unwrap();
+    bin_file.write_all(&anim.buffer).unwrap();
 
     Ok(())
 }
@@ -196,6 +215,7 @@ fn main() {
         "extract" => extract(params),
         "texture" => texture(params),
         "mesh" => mesh(params),
+        "anim" => anim(params),
         _ => {
             println!("Invalid command");
             Ok(())

@@ -2845,7 +2845,7 @@ struct FTrack {
 // Mostly because the compression is very confusing, but also, the unreal version I have
 // seems to have compression data as an array of FSmartNames.
 #[derive(Debug, Serialize)]
-struct UAnimSequence {
+pub struct UAnimSequence {
     super_object: UObject,
     skeleton_guid: FGuid,
     key_encoding_format: u8,
@@ -3019,7 +3019,7 @@ impl UAnimSequence {
                         }
                     }
 
-                    for key in 0..header.num_keys {
+                    for _key in 0..header.num_keys {
                         let translate = match header.key_format {
                             AnimationCompressionFormat::None | AnimationCompressionFormat::Float96NoW => {
                                 let mut fvec = FVector::unit();
@@ -3054,9 +3054,7 @@ impl UAnimSequence {
                     }
                     align_reader(&mut reader)?;
                     
-                    println!("anim track: {} 0 {}", track_i, reader.position());
-                } else {
-                    translates.push(FVector::unit());
+                    //println!("anim track: {} 0 {}", track_i, reader.position());
                 }
             }
 
@@ -3082,7 +3080,7 @@ impl UAnimSequence {
                         }
                     }
 
-                    for key in 0..header.num_keys {
+                    for _key in 0..header.num_keys {
                         let rotate = match header.key_format {
                             AnimationCompressionFormat::None | AnimationCompressionFormat::Float96NoW => {
                                 let mut fvec = FVector::unit();
@@ -3125,9 +3123,8 @@ impl UAnimSequence {
                         rotation_times = Some(read_times(&mut reader, header.num_keys, num_frames as u32)?);
                     }
                     align_reader(&mut reader)?;
-                    println!("anim track: {} 1 {}", track_i, reader.position());
-                } else {
-                    rotates.push(FQuat::unit());
+                    //println!("track info: {} {} {:?}", header.component_mask, header.num_keys, header.key_format);
+                    //println!("anim track: {} 1 {}", track_i, reader.position());
                 }
             }
 
@@ -3153,7 +3150,7 @@ impl UAnimSequence {
                         }
                     }
 
-                    for key in 0..header.num_keys {
+                    for _key in 0..header.num_keys {
                         let scale = match header.key_format {
                             AnimationCompressionFormat::None | AnimationCompressionFormat::Float96NoW => {
                                 let mut fvec = FVector::unit_scale();
@@ -3187,10 +3184,8 @@ impl UAnimSequence {
                         scale_times = Some(read_times(&mut reader, header.num_keys, num_frames as u32)?);
                     }
                     align_reader(&mut reader)?;
-                    println!("track info: {} {} {:?}", header.component_mask, header.num_keys, header.key_format);
-                    println!("anim track: {} 2 {}", track_i, reader.position());
-                } else {
-                    scales.push(FVector::unit_scale());
+                    //println!("track info: {} {} {:?}", header.component_mask, header.num_keys, header.key_format);
+                    //println!("anim track: {} 2 {}", track_i, reader.position());
                 }
             }
 
@@ -3267,7 +3262,7 @@ impl UCurveTable {
         };
 
         let mut row_map = Vec::new();
-        for i in 0..num_rows {
+        for _i in 0..num_rows {
             let row_name = read_fname(reader, name_map)?;
             let row_type = match curve_table_mode {
                 ECurveTableMode::Empty => "Empty",
@@ -3395,6 +3390,10 @@ impl Package {
         };
 
         Self::from_buffer(uasset_buf, uexp_buf, ubulk_buf)
+    }
+
+    pub fn get_exports(self) -> Vec<Box<Any>> {
+        self.exports
     }
 
     /// Returns a reference to an export
