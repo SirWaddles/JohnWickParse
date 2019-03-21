@@ -2979,6 +2979,15 @@ impl UAnimSequence {
         Ok(result)
     }
 
+    pub fn get_super_object(&self) -> &UObject {
+        &self.super_object
+    }
+
+    pub fn get_track_map(&self) -> Vec<i32> {
+        // use UObject later
+        self.compressed_track_to_skeleton_table.clone()
+    }
+
     fn read_tracks(&self) -> ParserResult<Vec<FTrack>> {
         if self.key_encoding_format != 2 {
             return Err(ParserError::new(format!("Can only parse PerTrackCompression")));
@@ -3202,7 +3211,7 @@ impl UAnimSequence {
 }
 
 #[derive(Debug, Serialize)]
-struct USkeleton {
+pub struct USkeleton {
     super_object: UObject,
     reference_skeleton: FReferenceSkeleton,
     anim_retarget_sources: Vec<(String, FReferencePose)>,
@@ -3232,6 +3241,10 @@ impl USkeleton {
             reference_skeleton,
             anim_retarget_sources,
         })
+    }
+
+    pub fn get_reference(&self) -> &FReferenceSkeleton {
+        &self.reference_skeleton
     }
 }
 
