@@ -2832,13 +2832,40 @@ impl Newable for FAnimKeyHeader {
 }
 
 #[derive(Debug, Serialize)]
-struct FTrack {
+pub struct FTrack {
     translation: Vec<FVector>,
     rotation: Vec<FQuat>,
     scale: Vec<FVector>,
     translation_times: Option<Vec<f32>>,
     rotation_times: Option<Vec<f32>>,
     scale_times: Option<Vec<f32>>,
+}
+
+impl FTrack {
+    fn build_times(num_frames: i32) -> Vec<f32> {
+        let mut times = Vec::new();
+        for i in 0..num_frames {
+            times.push(i as f32);
+        }
+        times
+    }
+
+    pub fn get_translation_times(&self, num_frames: i32) -> Option<Vec<f32>> {
+        if self.translation.len() <= 0 {
+            return None;
+        }
+        if self.translation.len() == 1 {
+            return Some(vec![0.0]);
+        }
+        match &self.translation_times {
+            Some(times) => Some(times.clone()),
+            None => Some(Self::build_times(num_frames)),
+        }
+    }
+
+    pub fn get_translation(&self) -> &Vec<FVector> {
+        &self.translation
+    }
 }
 
 // I've based a lot of the AnimSequence stuff on the UModel implementation (thanks gildor)
@@ -2986,6 +3013,14 @@ impl UAnimSequence {
     pub fn get_track_map(&self) -> Vec<i32> {
         // use UObject later
         self.compressed_track_to_skeleton_table.clone()
+    }
+
+    pub fn get_num_frames(&self) -> i32 {
+        self.compressed_num_frames
+    }
+
+    pub fn get_tracks(self) -> Vec<FTrack> {
+        self.tracks.unwrap()
     }
 
     fn read_tracks(&self) -> ParserResult<Vec<FTrack>> {

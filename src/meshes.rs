@@ -224,7 +224,7 @@ fn write_weights_buffer(weights: &FSkinWeightVertexBuffer, buffer: &mut Vec<u8>,
     Ok(weights.len() as u32 * 4)
 }
 
-fn transform_translation_tuple(val: (f32, f32, f32)) -> (f32, f32, f32) {
+pub fn transform_translation_tuple(val: (f32, f32, f32)) -> (f32, f32, f32) {
     (val.0 * 0.01, val.2 * 0.01, val.1 * 0.01)
 }
 

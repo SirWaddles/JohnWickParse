@@ -366,6 +366,7 @@ impl Serialize for GLTFComponentType {
 #[derive(Debug)]
 pub enum GLTFAccessorValue {
     Vec3Float(f32, f32, f32),
+    ScalarFloat(f32),
     None,
 }
 
@@ -386,6 +387,11 @@ impl Serialize for GLTFAccessorValue {
                 seq.serialize_element(x)?;
                 seq.serialize_element(y)?;
                 seq.serialize_element(z)?;
+                seq.end()
+            },
+            GLTFAccessorValue::ScalarFloat(x) => {
+                let mut seq = serializer.serialize_seq(Some(1))?;
+                seq.serialize_element(x)?;
                 seq.end()
             },
             GLTFAccessorValue::None => {
@@ -657,10 +663,22 @@ pub struct GLTFAnimation {
 indexable!(GLTFAnimation);
 
 impl GLTFAnimation {
+    pub fn new() -> Self {
+        Self {
+            channels: Vec::new(),
+            samplers: Vec::new(),
+            index: 0,
+        }
+    }
+
     pub fn add_sampler(&mut self, sampler: GLTFAnimationSampler) -> Rc<RefCell<GLTFAnimationSampler>> {
         let counted = Rc::new(RefCell::new(sampler));
         self.samplers.push(RefOwn::new(counted.clone()));
         counted
+    }
+
+    pub fn add_channel(&mut self, channel: GLTFChannel) {
+        self.channels.push(channel);
     }
 }
 
@@ -682,6 +700,15 @@ pub struct GLTFChannel {
     target: GLTFAnimationTarget,
 }
 
+impl GLTFChannel {
+    pub fn new(sampler: Rc<RefCell<GLTFAnimationSampler>>, target: GLTFAnimationTarget) -> Self {
+        Self {
+            sampler: RefItem::new(sampler),
+            target,
+        }
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct GLTFAnimationSampler {
     input: RefItem<GLTFAccessor>,
@@ -691,10 +718,30 @@ pub struct GLTFAnimationSampler {
     index: u32,
 }
 
+impl GLTFAnimationSampler {
+    pub fn new(input: Rc<RefCell<GLTFAccessor>>, output: Rc<RefCell<GLTFAccessor>>, interpolation: GLTFInterpolation) -> Self {
+        Self {
+            input: RefItem::new(input),
+            output: RefItem::new(output),
+            interpolation,
+            index: 0,
+        }
+    }
+}
+
 indexable!(GLTFAnimationSampler);
 
 #[derive(Debug, Serialize)]
 pub struct GLTFAnimationTarget {
     path: &'static str,
     extras: String, // going to keep the bone name here
+}
+
+impl GLTFAnimationTarget {
+    pub fn new(path: &'static str, bone_name: String) -> Self {
+        Self {
+            path,
+            extras: bone_name,
+        }
+    }
 }
