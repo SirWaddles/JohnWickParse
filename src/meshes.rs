@@ -228,7 +228,7 @@ pub fn transform_translation_tuple(val: (f32, f32, f32)) -> (f32, f32, f32) {
     (val.0 * 0.01, val.2 * 0.01, val.1 * 0.01)
 }
 
-fn transform_rotation_tuple(val: (f32, f32, f32, f32)) -> (f32, f32, f32, f32) {
+pub fn transform_rotation_tuple(val: (f32, f32, f32, f32)) -> (f32, f32, f32, f32) {
     (val.0, val.2, val.1, val.3 * -1.0)
 }
 

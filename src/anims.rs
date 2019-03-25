@@ -1,7 +1,7 @@
 use std::io::{Cursor, Seek, SeekFrom};
 use byteorder::{LittleEndian, WriteBytesExt};
 use std::path::Path;
-use crate::meshes::{transform_translation_tuple};
+use crate::meshes::*;
 use crate::meshes::gltf::*;
 use crate::assets::*;
 
@@ -60,6 +60,18 @@ pub fn write_verts_buffer(verts: &Vec<FVector>, cursor: &mut Cursor<&mut Vec<u8>
     Ok(verts.len() as u32 * 3 * 4)
 }
 
+pub fn write_quats_buffer(quats: &Vec<FQuat>, cursor: &mut Cursor<&mut Vec<u8>>) -> ParserResult<u32> {
+    for quaternion in quats {
+        let quat = transform_rotation_tuple(quaternion.conjugate().get_tuple());
+        cursor.write_f32::<LittleEndian>(quat.0)?;
+        cursor.write_f32::<LittleEndian>(quat.1)?;
+        cursor.write_f32::<LittleEndian>(quat.2)?;
+        cursor.write_f32::<LittleEndian>(quat.3)?;
+    }
+
+    Ok(quats.len() as u32 * 4 * 4)
+}
+
 fn write_times(times: Vec<f32>, cursor: &mut Cursor<&mut Vec<u8>>) -> ParserResult<u32> {
     let len = times.len() as u32;
     for time in times {
@@ -111,7 +123,50 @@ fn write_track(track: &FTrack, buffer: &mut Vec<u8>, item: &mut GLTFItem, anim: 
 
     let t_channel = anim.add_channel(GLTFChannel::new(
         t_sampler, GLTFAnimationTarget::new(
-            "translation", bone_name
+            "translation", bone_name.clone()
+        )
+    ));
+
+    // copy-pasted from above, not sure how to dry this.
+    let r_times = match track.get_rotation_times(num_frames) {
+        Some(times) => times,
+        None => return Ok(()), // skip track
+    };
+    let r_times_len = r_times.len() as u32;
+    let r_times_max: f32 = r_times.iter().fold(0.0, |acc, v| {
+        match *v > acc {
+            true => *v,
+            false => acc,
+        }
+    });
+    let r_times_input_view = item.add_buffer_view({
+        let startpos = cursor.position();
+        let length = write_times(r_times, &mut cursor)?;
+        GLTFBufferView::new(startpos as u32, length)
+    });
+    let r_times_output_view = item.add_buffer_view({
+        let startpos = cursor.position();
+        let length = write_quats_buffer(track.get_rotation(), &mut cursor)?;
+        GLTFBufferView::new(startpos as u32, length)
+    });
+
+    let r_input_accessor = item.add_accessor(GLTFAccessor::new(
+        r_times_input_view, GLTFComponentType::Float, r_times_len, "SCALAR",
+        GLTFAccessorValue::ScalarFloat(0.0), GLTFAccessorValue::ScalarFloat(r_times_max)
+    ));
+
+    let r_output_accessor = item.add_accessor(GLTFAccessor::new(
+        r_times_output_view, GLTFComponentType::Float, track.get_rotation().len() as u32, "VEC4",
+        GLTFAccessorValue::None, GLTFAccessorValue::None 
+    ));
+
+    let r_sampler = anim.add_sampler(GLTFAnimationSampler::new(
+        r_input_accessor, r_output_accessor, GLTFInterpolation::Linear
+    ));
+
+    let r_channel = anim.add_channel(GLTFChannel::new(
+        r_sampler, GLTFAnimationTarget::new(
+            "rotation", bone_name.clone()
         )
     ));
 

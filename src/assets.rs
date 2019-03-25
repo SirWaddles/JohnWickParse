@@ -123,6 +123,10 @@ pub fn read_string(reader: &mut ReaderCursor) -> ParserResult<String> {
         return Err(ParserError::new(format!("String length too large ({}), likely a read error.", length)));
     }
 
+    if length == 0 {
+        return Ok("".to_owned());
+    }
+
     let mut fstr;
 
     if length < 0 {
@@ -1084,6 +1088,15 @@ impl FQuat {
             true => ww.sqrt(),
             false => 0.0,
         };
+    }
+
+    pub fn conjugate(&self) -> Self {
+        Self {
+            x: -self.x,
+            y: -self.y,
+            z: -self.z,
+            w: self.w,
+        }
     }
 }
 
@@ -2866,6 +2879,23 @@ impl FTrack {
     pub fn get_translation(&self) -> &Vec<FVector> {
         &self.translation
     }
+
+    pub fn get_rotation(&self) -> &Vec<FQuat> {
+        &self.rotation
+    }
+
+    pub fn get_rotation_times(&self, num_frames: i32) -> Option<Vec<f32>> {
+        if self.rotation.len() <= 0 {
+            return None;
+        }
+        if self.rotation.len() == 1 {
+            return Some(vec![0.0]);
+        }
+        match &self.rotation_times {
+            Some(times) => Some(times.clone()),
+            None => Some(Self::build_times(num_frames)),
+        }
+    }
 }
 
 // I've based a lot of the AnimSequence stuff on the UModel implementation (thanks gildor)
@@ -2987,10 +3017,17 @@ impl UAnimSequence {
 
         let compressed_raw_data_size = reader.read_i32::<LittleEndian>()?;
         let compressed_num_frames = reader.read_i32::<LittleEndian>()?;
-        let compressed_stream = read_tarray(reader)?;
+        let num_bytes = reader.read_i32::<LittleEndian>()?;
+        let use_bulk_data_load = reader.read_u32::<LittleEndian>()? != 0;
+        if use_bulk_data_load {
+            panic!("Does not support BulkData for Animations");
+        }
+        let mut compressed_stream = vec![0u8;num_bytes as usize];
+        reader.read_exact(&mut compressed_stream)?;
 
-        let _use_raw_data = reader.read_u32::<LittleEndian>()? != 0;
-        let _serialize_guid = reader.read_u32::<LittleEndian>()? != 0;
+        /*let _curve_codec_path = read_string(reader)?;
+        let _num_curve_bytes = reader.read_i32::<LittleEndian>()?;*/
+        let _use_raw_data_only = reader.read_u32::<LittleEndian>()? != 0;
 
         let mut result = Self {
             super_object, skeleton_guid,
