@@ -3038,7 +3038,13 @@ impl UAnimSequence {
             tracks: None,
         };
 
-        let tracks = result.read_tracks()?;
+        let tracks = match result.read_tracks() {
+            Ok(data) => data,
+            Err(err) => {
+                println!("Error reading compressed track data: {:#?}", err);
+                return Ok(result);
+            },
+        };
         result.tracks = Some(tracks);
         Ok(result)
     }
@@ -3211,7 +3217,7 @@ impl UAnimSequence {
 
             { // Scale
                 let offset = self.compressed_scale_offsets.offset_data[track_i * self.compressed_scale_offsets.strip_size as usize];
-                if offset != 1 {
+                if offset != -1 {
                     let header = FAnimKeyHeader::new(&mut reader).map_err(|v| ParserError::add(v, format!("Scale error: {} {}", reader.position(), track_i)))?;
                     let mut min = FVector::unit();
                     let mut max = FVector::unit();
