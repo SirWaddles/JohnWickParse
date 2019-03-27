@@ -3284,6 +3284,10 @@ impl UAnimSequence {
             });
         }
 
+        if reader.position() != self.compressed_stream.len() as u64 {
+            println!("Could not read tracks correctly, {} bytes remaining", self.compressed_stream.len() as u64 - reader.position());
+        }
+
         Ok(tracks)
     }
 }

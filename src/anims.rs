@@ -85,10 +85,10 @@ fn write_track(track: &FTrack, buffer: &mut Vec<u8>, item: &mut GLTFItem, anim: 
     let mut cursor = Cursor::new(buffer);
     cursor.seek(SeekFrom::End(0)).unwrap();
 
-    let t_times = match track.get_translation_times(num_frames) {
+    let t_times: Vec<f32> = match track.get_translation_times(num_frames) {
         Some(times) => times,
         None => return Ok(()), // skip track
-    };
+    }.into_iter().map(|v| v / 30.0).collect();
     let t_times_len = t_times.len() as u32;
     let t_times_max: f32 = t_times.iter().fold(0.0, |acc, v| {
         match *v > acc {
@@ -128,10 +128,10 @@ fn write_track(track: &FTrack, buffer: &mut Vec<u8>, item: &mut GLTFItem, anim: 
     ));
 
     // copy-pasted from above, not sure how to dry this.
-    let r_times = match track.get_rotation_times(num_frames) {
+    let r_times: Vec<f32> = match track.get_rotation_times(num_frames) {
         Some(times) => times,
         None => return Ok(()), // skip track
-    };
+    }.into_iter().map(|v| v / 30.0).collect();
     let r_times_len = r_times.len() as u32;
     let r_times_max: f32 = r_times.iter().fold(0.0, |acc, v| {
         match *v > acc {
