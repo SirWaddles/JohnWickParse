@@ -71,7 +71,7 @@ fn decode_skeletal_mesh_section(mesh_data: &mut GLTFItem, buffer: &mut Vec<u8>, 
     let index_view = match indices {
         FMultisizeIndexContainer::Indices16(data) => {
             let startpos = buffer.len();
-            let length = write_u16_buffer(&data[start_indices..end_indices], buffer, section.get_base_index() as u16)?;
+            let length = write_u16_buffer(&data[start_indices..end_indices], buffer, section.get_base_index() as u32)?;
             align_writer(buffer)?;
             GLTFBufferView::new(startpos as u32, length)
         },
@@ -556,12 +556,12 @@ fn write_verts_buffer43(verts: &Vec<FVector4>, buffer: &mut Vec<u8>) -> ParserRe
     Ok(verts.len() as u32 * 3 * 4)
 }
 
-fn write_u16_buffer(data: &[u16], buffer: &mut Vec<u8>, offset: u16) -> ParserResult<u32> {
+fn write_u16_buffer(data: &[u16], buffer: &mut Vec<u8>, offset: u32) -> ParserResult<u32> {
     let mut cursor = Cursor::new(buffer);
     cursor.seek(SeekFrom::End(0)).unwrap();
 
     for item in data {
-        cursor.write_u16::<LittleEndian>(*item - offset)?;
+        cursor.write_u16::<LittleEndian>(((*item as u32) - offset) as u16)?;
     }
 
     Ok(data.len() as u32 * 2)
