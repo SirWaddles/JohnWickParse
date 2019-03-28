@@ -24,33 +24,61 @@ pub fn decode_mesh(package: Package, path: &str) -> ParserResult<GLTFContainer> 
 fn decode_skeletal_mesh(mesh: USkeletalMesh, asset_name: String) -> ParserResult<GLTFContainer> {
     let mut buffer: Vec<u8> = Vec::new();
     let mut mesh_data = GLTFItem::new();
-
-    let material = mesh.get_materials()[0].get_interface();
-    let material = load_material(&mut mesh_data, material)?;
-    let material = mesh_data.add_material(material);
+    let materials = mesh.get_materials().clone();
     let lod = mesh.get_first_lod();
-    let position_verts = lod.get_position_buffer().get_verts();
-    let position_size = write_verts_buffer(position_verts, &mut buffer)?;
-    let position_buffer_view = GLTFBufferView::new(0, position_size);
+
+    let mut primitives = Vec::new();
+    for section in lod.get_sections() {
+        primitives.push(decode_skeletal_mesh_section(&mut mesh_data, &mut buffer, &lod, section, &materials)?);
+    }
+
+    let mesh_obj = mesh_data.add_mesh(GLTFMesh::new(primitives));
+    let mesh_node = mesh_data.add_node(GLTFNode::new().set_mesh(mesh_obj));
+
+    setup_skeleton(&mut mesh_data, mesh.get_skeleton(), mesh_node.clone(), &mut buffer);
+
+    let buffer_desc = GLTFBuffer::new(buffer.len() as u32, asset_name.clone() + ".bin");
+    mesh_data.add_buffer(buffer_desc);
+
+    Ok(GLTFContainer {
+        buffer,
+        data: mesh_data,
+    })
+}
+
+fn decode_skeletal_mesh_section(mesh_data: &mut GLTFItem, buffer: &mut Vec<u8>, lod: &FSkeletalMeshRenderData,
+        section: &FSkelMeshRenderSection, materials: &Vec<FSkeletalMaterial>) -> ParserResult<GLTFPrimitive> {
+    let material = materials[section.get_material_index() as usize].get_interface();
+    let material = load_material(mesh_data, material)?;
+    let material = mesh_data.add_material(material);
+    
+    let start_pos = buffer.len() as u32;
+    let start_verts = section.get_base_index() as usize;
+    let end_verts = section.get_num_verts() as usize + start_verts;
+    let position_verts = &lod.get_position_buffer().get_verts()[start_verts..end_verts];
+    let position_size = write_verts_buffer(position_verts, buffer)?;
+    let position_buffer_view = GLTFBufferView::new(start_pos, position_size);
     let buffer_view = mesh_data.add_buffer_view(position_buffer_view);
 
-    let vert_minimum = get_vert_minimum(&position_verts)?;
-    let vert_maximum = get_vert_maximum(&position_verts)?;
+    let vert_minimum = get_vert_minimum(position_verts)?;
+    let vert_maximum = get_vert_maximum(position_verts)?;
     let mesh_accessor = GLTFAccessor::new(buffer_view, GLTFComponentType::Float, position_verts.len() as u32, "VEC3", vert_minimum, vert_maximum);
     let mesh_accessor = mesh_data.add_accessor(mesh_accessor);
 
     let indices = lod.get_indices();
+    let start_indices = section.get_base_triangle_index() as usize;
+    let end_indices = (section.get_num_triangles() * 3) as usize + start_indices;
     let index_view = match indices {
         FMultisizeIndexContainer::Indices16(data) => {
             let startpos = buffer.len();
-            let length = write_u16_buffer(data, &mut buffer)?;
-            align_writer(&mut buffer);
+            let length = write_u16_buffer(&data[start_indices..end_indices], buffer, section.get_base_index() as u16)?;
+            align_writer(buffer)?;
             GLTFBufferView::new(startpos as u32, length)
         },
         FMultisizeIndexContainer::Indices32(data) => {
             let startpos = buffer.len();
-            let length = write_u32_buffer(data, &mut buffer)?;
-            align_writer(&mut buffer);
+            let length = write_u32_buffer(&data[start_indices..end_indices], buffer, section.get_base_index() as u32)?;
+            align_writer(buffer)?;
             GLTFBufferView::new(startpos as u32, length)
         },
     };
@@ -58,10 +86,10 @@ fn decode_skeletal_mesh(mesh: USkeletalMesh, asset_name: String) -> ParserResult
 
     let index_accessor = match indices {
         FMultisizeIndexContainer::Indices16(data) => {
-            GLTFAccessor::new(index_view, GLTFComponentType::UnsignedShort, data.len() as u32, "SCALAR", GLTFAccessorValue::None, GLTFAccessorValue::None)
+            GLTFAccessor::new(index_view, GLTFComponentType::UnsignedShort, (section.get_num_triangles() * 3) as u32, "SCALAR", GLTFAccessorValue::None, GLTFAccessorValue::None)
         },
         FMultisizeIndexContainer::Indices32(data) => {
-            GLTFAccessor::new(index_view, GLTFComponentType::UnsignedInt, data.len() as u32, "SCALAR", GLTFAccessorValue::None, GLTFAccessorValue::None)
+            GLTFAccessor::new(index_view, GLTFComponentType::UnsignedInt, (section.get_num_triangles() * 3) as u32, "SCALAR", GLTFAccessorValue::None, GLTFAccessorValue::None)
         },
     };
     let index_accessor = mesh_data.add_accessor(index_accessor);
@@ -73,12 +101,13 @@ fn decode_skeletal_mesh(mesh: USkeletalMesh, asset_name: String) -> ParserResult
             Vec::new()
         },
         FStaticMeshVertexDataTangent::Low(data) => {
-            data.iter().map(|v| v.get_tangent().get_vector()).collect()
+            data[start_verts..end_verts].iter().map(|v| v.get_tangent().get_vector()).collect()
         },
     };
+    println!("{} {}", tangent_vectors.len(), end_verts - start_verts);
     let tangent_buffer_view = {
         let startpos = buffer.len();
-        let length = write_verts_buffer4(&tangent_vectors, &mut buffer)?;
+        let length = write_verts_buffer4(&tangent_vectors, buffer)?;
         GLTFBufferView::new(startpos as u32, length)
     };
     let tangent_buffer_view = mesh_data.add_buffer_view(tangent_buffer_view);
@@ -97,12 +126,12 @@ fn decode_skeletal_mesh(mesh: USkeletalMesh, asset_name: String) -> ParserResult
             Vec::new()
         },
         FStaticMeshVertexDataTangent::Low(data) => {
-            data.iter().map(|v| v.get_normal().get_vector()).collect()
+            data[start_verts..end_verts].iter().map(|v| v.get_normal().get_vector()).collect()
         },
     };
     let normal_buffer_view = mesh_data.add_buffer_view({
         let startpos = buffer.len();
-        let length = write_verts_buffer43(&normal_vectors, &mut buffer)?;
+        let length = write_verts_buffer43(&normal_vectors, buffer)?;
         GLTFBufferView::new(startpos as u32, length)
     });
     let normal_accessor = mesh_data.add_accessor(
@@ -117,15 +146,15 @@ fn decode_skeletal_mesh(mesh: USkeletalMesh, asset_name: String) -> ParserResult
     let uvs = lod.get_static_buffer().get_texcoords();
     let uvs: Vec<FVector2D> = match uvs {
         FStaticMeshVertexDataUV::High(data) => {
-            data.into_iter().map(|v| v.get_val().clone()).collect()
+            data[start_verts..end_verts].into_iter().map(|v| v.get_val().clone()).collect()
         },
         FStaticMeshVertexDataUV::Low(data) => {
-            data.iter().map(|v| v.get_val().get_vector()).collect()
+            data[start_verts..end_verts].iter().map(|v| v.get_val().get_vector()).collect()
         },
     };
     let uv_buffer_view = mesh_data.add_buffer_view({
         let startpos = buffer.len();
-        let length = write_vert2_buffer(&uvs, &mut buffer)?;
+        let length = write_vert2_buffer(&uvs, buffer)?;
         GLTFBufferView::new(startpos as u32, length)
     });
     let uv_accessor = mesh_data.add_accessor(
@@ -138,8 +167,8 @@ fn decode_skeletal_mesh(mesh: USkeletalMesh, asset_name: String) -> ParserResult
     );
 
     let weight_buffer = lod.get_weight_buffer();
-    let weight_accs = make_weight_accessors(weight_buffer, &mut buffer, &mut mesh_data, lod.get_sections(), 0)?;
-    let weight_accs2 = make_weight_accessors(weight_buffer, &mut buffer, &mut mesh_data, lod.get_sections(), 4)?;
+    let weight_accs = make_weight_accessors(weight_buffer, buffer, mesh_data, section, 0)?;
+    let weight_accs2 = make_weight_accessors(weight_buffer, buffer, mesh_data, section, 4)?;
 
     let mesh_primitive = GLTFPrimitive::new(index_accessor, material)
         .add_attribute("POSITION", mesh_accessor)
@@ -150,75 +179,61 @@ fn decode_skeletal_mesh(mesh: USkeletalMesh, asset_name: String) -> ParserResult
         .add_attribute("WEIGHTS_0", weight_accs.1)
         .add_attribute("JOINTS_1", weight_accs2.0)
         .add_attribute("WEIGHTS_1", weight_accs2.1);
-    let mesh_obj = GLTFMesh::new(vec![mesh_primitive]);
-    let mesh_obj = mesh_data.add_mesh(mesh_obj);
 
-    let mesh_node = GLTFNode::new().set_mesh(mesh_obj);
-    let mesh_node = mesh_data.add_node(mesh_node);
-
-    setup_skeleton(&mut mesh_data, mesh.get_skeleton(), mesh_node.clone(), &mut buffer);
-    
-    let buffer_desc = GLTFBuffer::new(buffer.len() as u32, asset_name.clone() + ".bin");
-    mesh_data.add_buffer(buffer_desc);
-
-    Ok(GLTFContainer {
-        buffer,
-        data: mesh_data,
-    })
+    Ok(mesh_primitive)
 }
 
-fn make_weight_accessors(weights: &FSkinWeightVertexBuffer, buffer: &mut Vec<u8>, mesh_data: &mut GLTFItem, sections: &Vec<FSkelMeshRenderSection>, off: usize) 
+fn make_weight_accessors(weights: &FSkinWeightVertexBuffer, buffer: &mut Vec<u8>, mesh_data: &mut GLTFItem, section: &FSkelMeshRenderSection, off: usize) 
     -> ParserResult<(Rc<RefCell<GLTFAccessor>>, Rc<RefCell<GLTFAccessor>>)> {
     let joint_buffer_view = mesh_data.add_buffer_view({
         let startpos = buffer.len();
-        let length = write_joints_buffer(weights, buffer, sections, off)?;
+        let length = write_joints_buffer(weights, buffer, section, off)?;
         GLTFBufferView::new(startpos as u32, length)
     });
     let joint_accessor = mesh_data.add_accessor(GLTFAccessor::new(
         joint_buffer_view,
-        GLTFComponentType::UnsignedShort, weights.get_length(),
+        GLTFComponentType::UnsignedShort, section.get_num_verts() as u32,
         "VEC4", GLTFAccessorValue::None, GLTFAccessorValue::None
     ));
 
     let weight_buffer_view = mesh_data.add_buffer_view({
         let startpos = buffer.len();
-        let length = write_weights_buffer(weights, buffer, off)?;
+        let length = write_weights_buffer(weights, buffer, section, off)?;
         GLTFBufferView::new(startpos as u32, length)
     });
     let weight_accessor = mesh_data.add_accessor(GLTFAccessor::new(
         weight_buffer_view,
-        GLTFComponentType::UnsignedByte, weights.get_length(),
+        GLTFComponentType::UnsignedByte, section.get_num_verts() as u32,
         "VEC4", GLTFAccessorValue::None, GLTFAccessorValue::None
     ).set_normalized(true));
 
     Ok((joint_accessor, weight_accessor))
 }
 
-fn write_joints_buffer(weights: &FSkinWeightVertexBuffer, buffer: &mut Vec<u8>, sections: &Vec<FSkelMeshRenderSection>, off: usize) -> ParserResult<u32> {
+fn write_joints_buffer(weights: &FSkinWeightVertexBuffer, buffer: &mut Vec<u8>, section: &FSkelMeshRenderSection, off: usize) -> ParserResult<u32> {
     let mut cursor = Cursor::new(buffer);
     cursor.seek(SeekFrom::End(0)).unwrap();
     let weights = weights.get_weights();
 
-    for section in sections {
-        let bone_map = section.get_bone_map();
-        for i in 0..section.get_num_verts() {
-            let weight = &weights[i as usize + section.get_base_index() as usize];
-            let index = weight.get_bone_index();
-            cursor.write_u16::<LittleEndian>(bone_map[index[0 + off] as usize])?;
-            cursor.write_u16::<LittleEndian>(bone_map[index[1 + off] as usize])?;
-            cursor.write_u16::<LittleEndian>(bone_map[index[2 + off] as usize])?;
-            cursor.write_u16::<LittleEndian>(bone_map[index[3 + off] as usize])?;
-        }
+    let bone_map = section.get_bone_map();
+    for i in 0..section.get_num_verts() {
+        let weight = &weights[i as usize + section.get_base_index() as usize];
+        let index = weight.get_bone_index();
+        cursor.write_u16::<LittleEndian>(bone_map[index[0 + off] as usize])?;
+        cursor.write_u16::<LittleEndian>(bone_map[index[1 + off] as usize])?;
+        cursor.write_u16::<LittleEndian>(bone_map[index[2 + off] as usize])?;
+        cursor.write_u16::<LittleEndian>(bone_map[index[3 + off] as usize])?;
     }
 
-    Ok(weights.len() as u32 * 4 * 2)
+    Ok(section.get_num_verts() as u32 * 4 * 2)
 }
 
-fn write_weights_buffer(weights: &FSkinWeightVertexBuffer, buffer: &mut Vec<u8>, off: usize) -> ParserResult<u32> {
+fn write_weights_buffer(weights: &FSkinWeightVertexBuffer, buffer: &mut Vec<u8>, section: &FSkelMeshRenderSection, off: usize) -> ParserResult<u32> {
     let mut cursor = Cursor::new(buffer);
     cursor.seek(SeekFrom::End(0)).unwrap();
     let weights = weights.get_weights();
-    for weight in weights {
+    for i in 0..section.get_num_verts() {
+        let weight = &weights[i as usize + section.get_base_index() as usize];
         let index = weight.get_bone_weight();
         cursor.write_u8(index[0 + off])?;
         cursor.write_u8(index[1 + off])?;
@@ -226,7 +241,7 @@ fn write_weights_buffer(weights: &FSkinWeightVertexBuffer, buffer: &mut Vec<u8>,
         cursor.write_u8(index[3 + off])?;
     }
 
-    Ok(weights.len() as u32 * 4)
+    Ok(section.get_num_verts() as u32 * 4)
 }
 
 pub fn transform_translation_tuple(val: (f32, f32, f32)) -> (f32, f32, f32) {
@@ -437,7 +452,7 @@ fn load_material(mesh_data: &mut GLTFItem, material_name: &str) -> ParserResult<
     Ok(GLTFMaterial::new(diffuse_texture, normal_texture))
 }
 
-fn get_vert_maximum(verts: &Vec<FVector>) -> ParserResult<GLTFAccessorValue> {
+fn get_vert_maximum(verts: &[FVector]) -> ParserResult<GLTFAccessorValue> {
     let mut vec = transform_translation_tuple(verts.get(0).unwrap().get_tuple());
 
     for vert in verts {
@@ -456,7 +471,7 @@ fn get_vert_maximum(verts: &Vec<FVector>) -> ParserResult<GLTFAccessorValue> {
     Ok(GLTFAccessorValue::Vec3Float(vec.0, vec.1, vec.2))
 }
 
-fn get_vert_minimum(verts: &Vec<FVector>) -> ParserResult<GLTFAccessorValue> {
+fn get_vert_minimum(verts: &[FVector]) -> ParserResult<GLTFAccessorValue> {
     let mut vec = transform_translation_tuple(verts.get(0).unwrap().get_tuple());
 
     for vert in verts {
@@ -475,7 +490,7 @@ fn get_vert_minimum(verts: &Vec<FVector>) -> ParserResult<GLTFAccessorValue> {
     Ok(GLTFAccessorValue::Vec3Float(vec.0, vec.1, vec.2))
 }
 
-fn write_verts_buffer(verts: &Vec<FVector>, buffer: &mut Vec<u8>) -> ParserResult<u32> {
+fn write_verts_buffer(verts: &[FVector], buffer: &mut Vec<u8>) -> ParserResult<u32> {
     let mut cursor = Cursor::new(buffer);
     cursor.seek(SeekFrom::End(0)).unwrap();
     for i in 0..verts.len() {
@@ -541,23 +556,23 @@ fn write_verts_buffer43(verts: &Vec<FVector4>, buffer: &mut Vec<u8>) -> ParserRe
     Ok(verts.len() as u32 * 3 * 4)
 }
 
-fn write_u16_buffer(data: &Vec<u16>, buffer: &mut Vec<u8>) -> ParserResult<u32> {
+fn write_u16_buffer(data: &[u16], buffer: &mut Vec<u8>, offset: u16) -> ParserResult<u32> {
     let mut cursor = Cursor::new(buffer);
     cursor.seek(SeekFrom::End(0)).unwrap();
 
     for item in data {
-        cursor.write_u16::<LittleEndian>(*item)?;
+        cursor.write_u16::<LittleEndian>(*item - offset)?;
     }
 
     Ok(data.len() as u32 * 2)
 }
 
-fn write_u32_buffer(data: &Vec<u32>, buffer: &mut Vec<u8>) -> ParserResult<u32> {
+fn write_u32_buffer(data: &[u32], buffer: &mut Vec<u8>, offset: u32) -> ParserResult<u32> {
     let mut cursor = Cursor::new(buffer);
     cursor.seek(SeekFrom::End(0)).unwrap();
 
     for item in data {
-        cursor.write_u32::<LittleEndian>(*item)?;
+        cursor.write_u32::<LittleEndian>(*item - offset)?;
     }
 
     Ok(data.len() as u32 * 4)

@@ -444,7 +444,7 @@ fn read_fname(reader: &mut ReaderCursor, name_map: &NameMap) -> ParserResult<Str
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FPackageIndex {
     index: i32,
     import: String,
@@ -1929,8 +1929,8 @@ pub struct FPositionVertexBuffer {
 }
 
 impl FPositionVertexBuffer {
-    pub fn get_verts(&self) -> &Vec<FVector> {
-        &self.verts
+    pub fn get_verts(&self) -> &[FVector] {
+        &self.verts[..]
     }
 }
 
@@ -2246,7 +2246,7 @@ impl Newable for FBoxSphereBounds {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct FSkeletalMaterial {
     material_interface: FPackageIndex,
     material_slot_name: String,
@@ -2269,7 +2269,7 @@ impl NewableWithNameMap for FSkeletalMaterial {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 struct FMeshUVChannelInfo {
     initialised: bool,
     override_densities: bool,
@@ -2470,6 +2470,18 @@ impl FSkelMeshRenderSection {
 
     pub fn get_base_index(&self) -> u32 {
         self.base_vertex_index
+    }
+
+    pub fn get_num_triangles(&self) -> i32 {
+        self.num_triangles
+    }
+
+    pub fn get_base_triangle_index(&self) -> i32 {
+        self.base_index
+    }
+
+    pub fn get_material_index(&self) -> i16 {
+        self.material_index
     }
 }
 
