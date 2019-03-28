@@ -48,9 +48,13 @@ mesh1.nodes.forEach((v, idx) => {
     node_names[v.name] = idx;
 });
 let added_nodes = [];
+let existing_nodes = [];
 mesh2.nodes.forEach(v => {
     if (!v.hasOwnProperty('name')) return;
-    if (node_names.hasOwnProperty(v.name)) return;
+    if (node_names.hasOwnProperty(v.name)) {
+        existing_nodes.push(v);
+        return;
+    }
     let new_index = final_mesh.nodes.length;
     node_names[v.name] = new_index;
     final_mesh.nodes.push(v);
@@ -58,7 +62,51 @@ mesh2.nodes.forEach(v => {
 });
 
 added_nodes.forEach(v => {
-    
+    if (!v.hasOwnProperty('children')) return;
+    v.children = v.children.map(e => node_names[mesh2.nodes[e].name]);
+});
+
+existing_nodes.forEach(v => {
+    if (!v.hasOwnProperty('name')) return;
+    if (!v.hasOwnProperty('children')) return;
+    let real_node = final_mesh.nodes[node_names[v.name]];
+    if (!real_node.hasOwnProperty('children')) {
+        real_node.children = [];
+    }
+
+    for (let i = 0; i < v.children.length; i++) {
+        let child = v.children[i];
+        let child_node = node_names[mesh2.nodes[child].name];
+        if (!real_node.children.includes(child_node)) {
+            real_node.children.push(child_node);
+        }
+    }
+});
+
+mesh2.meshes.forEach(v => {
+    v.primitives = v.primitives.map(primitive => {
+        primitive.indices += mesh1.accessors.length;
+        primitive.material += mesh1.materials.length;
+        for (attribute in primitive.attributes) {
+            primitive.attributes[attribute] += mesh1.accessors.length;
+        }
+
+        return primitive;
+    });
+    final_mesh.meshes.push(v);
+});
+
+mesh2.skins.forEach(v => {
+    v.joints = v.joints.map(e => node_names[mesh2.nodes[e].name]);
+    v.inverseBindMatrices += mesh1.accessors.length;
+    final_mesh.skins.push(v);
+});
+
+// hard coded for now
+final_mesh.scenes[0].nodes.push(final_mesh.nodes.length);
+final_mesh.nodes.push({
+    mesh: mesh1.meshes.length,
+    skin: mesh1.skins.length,
 });
 
 fs.writeFileSync('./merged.gltf', JSON.stringify(final_mesh));

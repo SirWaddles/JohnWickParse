@@ -104,7 +104,6 @@ fn decode_skeletal_mesh_section(mesh_data: &mut GLTFItem, buffer: &mut Vec<u8>, 
             data[start_verts..end_verts].iter().map(|v| v.get_tangent().get_vector()).collect()
         },
     };
-    println!("{} {}", tangent_vectors.len(), end_verts - start_verts);
     let tangent_buffer_view = {
         let startpos = buffer.len();
         let length = write_verts_buffer4(&tangent_vectors, buffer)?;
