@@ -10,9 +10,12 @@ use gltf::*;
 pub fn decode_mesh(package: Package, path: &str) -> ParserResult<GLTFContainer> {
     let filepath = Path::new(path);
     let filename = filepath.file_name().unwrap().to_str().unwrap().to_owned();
-    let package_export = package.get_export_move(0)?;
-    if let Ok(mesh) = package_export.downcast::<USkeletalMesh>() {
-        return decode_skeletal_mesh(*mesh, filename);
+
+    let exports = package.get_exports();
+    for export in exports {
+        if let Ok(mesh) = export.downcast::<USkeletalMesh>() {
+            return decode_skeletal_mesh(*mesh, filename);
+        }
     }
 
     Err(ParserError::new(format!("Package not supported")))
@@ -23,7 +26,7 @@ fn decode_skeletal_mesh(mesh: USkeletalMesh, asset_name: String) -> ParserResult
     let mut mesh_data = GLTFItem::new();
 
     let material = mesh.get_materials()[0].get_interface();
-    let material = load_material(&mut mesh_data, material);
+    let material = load_material(&mut mesh_data, material)?;
     let material = mesh_data.add_material(material);
     let lod = mesh.get_first_lod();
     let position_verts = lod.get_position_buffer().get_verts();
@@ -41,11 +44,13 @@ fn decode_skeletal_mesh(mesh: USkeletalMesh, asset_name: String) -> ParserResult
         FMultisizeIndexContainer::Indices16(data) => {
             let startpos = buffer.len();
             let length = write_u16_buffer(data, &mut buffer)?;
+            align_writer(&mut buffer);
             GLTFBufferView::new(startpos as u32, length)
         },
         FMultisizeIndexContainer::Indices32(data) => {
             let startpos = buffer.len();
             let length = write_u32_buffer(data, &mut buffer)?;
+            align_writer(&mut buffer);
             GLTFBufferView::new(startpos as u32, length)
         },
     };
@@ -355,9 +360,9 @@ fn setup_skeleton(mesh_data: &mut GLTFItem, skeleton: &FReferenceSkeleton, root_
     root_node.set_skin(skin);
 }
 
-fn load_material(mesh_data: &mut GLTFItem, material_name: &str) -> GLTFMaterial {
-    let material_package = Package::from_file(&("materials/".to_owned() + material_name)).unwrap();
-    let material_export = material_package.get_export_move(0).unwrap();
+fn load_material(mesh_data: &mut GLTFItem, material_name: &str) -> ParserResult<GLTFMaterial> {
+    let material_package = Package::from_file(&("materials/".to_owned() + material_name))?;
+    let material_export = material_package.get_export_move(0)?;
     let material_export = match material_export.downcast::<UObject>() {
         Ok(export) => export,
         Err(_) => panic!("not a UObject"),
@@ -429,7 +434,7 @@ fn load_material(mesh_data: &mut GLTFItem, material_name: &str) -> GLTFMaterial 
     let diffuse_texture = mesh_data.add_texture(GLTFTexture::new(diffuse_image, default_sampler.clone()));
     let normal_texture = mesh_data.add_texture(GLTFTexture::new(normal_image, default_sampler.clone()));
 
-    GLTFMaterial::new(diffuse_texture, normal_texture)
+    Ok(GLTFMaterial::new(diffuse_texture, normal_texture))
 }
 
 fn get_vert_maximum(verts: &Vec<FVector>) -> ParserResult<GLTFAccessorValue> {
@@ -482,6 +487,16 @@ fn write_verts_buffer(verts: &Vec<FVector>, buffer: &mut Vec<u8>) -> ParserResul
     }
 
     Ok(verts.len() as u32 * 3 * 4)
+}
+
+fn align_writer(buffer: &mut Vec<u8>) -> ParserResult<()>{
+    let mut writer = Cursor::new(buffer);
+    writer.seek(SeekFrom::End(0)).unwrap();
+    let offset_pos = (writer.position() % 4) as i64;
+    for _i in 0..offset_pos {
+        writer.write_u8(0)?;
+    }
+    Ok(())
 }
 
 fn write_vert2_buffer(verts: &Vec<FVector2D>, buffer: &mut Vec<u8>) -> ParserResult<u32> {

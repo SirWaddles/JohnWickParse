@@ -712,14 +712,20 @@ struct FColor {
     a: u8,
 }
 
-impl NewableWithNameMap for FColor {
-    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+impl Newable for FColor {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
         Ok(Self {
             b: reader.read_u8()?,
             g: reader.read_u8()?,
             r: reader.read_u8()?,
             a: reader.read_u8()?,
         })
+    }
+}
+
+impl NewableWithNameMap for FColor {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+        Self::new(reader)
     }
 }
 
@@ -2198,6 +2204,32 @@ impl FSkinWeightVertexBuffer {
 }
 
 #[derive(Debug, Serialize)]
+pub struct FColorVertexBuffer {
+    stride: i32,
+    num_verts: i32,
+    colours: Vec<FColor>,
+}
+
+impl Newable for FColorVertexBuffer {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        let flags = FStripDataFlags::new(reader)?;
+        let stride = reader.read_i32::<LittleEndian>()?;
+        let num_verts = reader.read_i32::<LittleEndian>()?;
+        let colours = match !flags.is_data_stripped_for_server() && num_verts > 0 {
+            true => {
+                let _element_size = reader.read_i32::<LittleEndian>()?;
+                read_tarray(reader)?
+            },
+            false => Vec::new(),
+        };
+
+        Ok(Self {
+            stride, num_verts, colours,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
 struct FBoxSphereBounds {
     origin: FVector,
     box_extend: FVector,
@@ -2443,14 +2475,17 @@ impl FSkelMeshRenderSection {
 
 impl NewableWithNameMap for FSkelMeshRenderSection {
     fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
-        let _flags = FStripDataFlags::new(reader)?;
+        let flags = FStripDataFlags::new(reader)?;
         let material_index = reader.read_i16::<LittleEndian>()?;
         let base_index = reader.read_i32::<LittleEndian>()?;
         let num_triangles = reader.read_i32::<LittleEndian>()?;
 
         let _recompute_tangent = reader.read_u32::<LittleEndian>()? != 0;
         let _cast_shadow = reader.read_u32::<LittleEndian>()? != 0;
-        let base_vertex_index = reader.read_u32::<LittleEndian>()?;
+        let mut base_vertex_index = 0;
+        if !flags.is_data_stripped_for_server() {
+            base_vertex_index = reader.read_u32::<LittleEndian>()?;
+        }
         let cloth_mapping_data = read_tarray(reader)?;
         let bone_map = read_tarray(reader)?;
         let num_vertices = reader.read_i32::<LittleEndian>()?;
@@ -2477,6 +2512,7 @@ pub struct FSkeletalMeshRenderData {
     position_vertex_buffer: FPositionVertexBuffer,
     static_mesh_vertex_buffer: Option<FStaticMeshVertexBuffer>,
     skin_weight_vertex_buffer: Option<FSkinWeightVertexBuffer>,
+    colour_vertex_buffer: Option<FColorVertexBuffer>,
 }
 
 impl FSkeletalMeshRenderData {
@@ -2505,10 +2541,8 @@ impl FSkeletalMeshRenderData {
     pub fn get_sections(&self) -> &Vec<FSkelMeshRenderSection> {
         &self.sections
     }
-}
 
-impl NewableWithNameMap for FSkeletalMeshRenderData {
-    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, has_vertex_colors: bool) -> ParserResult<Self> {
         let flags = FStripDataFlags::new(reader)?;
         let sections = read_tarray_n(reader, name_map, import_map)?;
         let indices = FMultisizeIndexContainer::new(reader)?;
@@ -2523,13 +2557,20 @@ impl NewableWithNameMap for FSkeletalMeshRenderData {
         let static_mesh_vertex_buffer = FStaticMeshVertexBuffer::new(reader)?;
         let skin_weight_vertex_buffer = FSkinWeightVertexBuffer::new(reader)?;
 
+        let colour_vertex_buffer = match has_vertex_colors {
+            true => {
+                Some(FColorVertexBuffer::new(reader)?)
+            },
+            false => None,
+        };
+
         if flags.is_class_data_stripped(1) {
 
         }
 
         Ok(Self {
             sections, indices, active_bone_indices, required_bones, position_vertex_buffer,
-            static_mesh_vertex_buffer, skin_weight_vertex_buffer,
+            static_mesh_vertex_buffer, skin_weight_vertex_buffer, colour_vertex_buffer,
         })
     }
 }
@@ -2605,6 +2646,15 @@ impl UObject {
 
     pub fn get_properties(&self) -> &Vec<FPropertyTag> {
         &self.properties
+    }
+
+    pub fn get_property(&self, name: &str) -> Option<&FPropertyTagType> {
+        self.properties.iter().fold(None, |acc, v| {
+            if v.get_name() == name {
+                return Some(v.get_data());
+            }
+            acc
+        })
     }
 }
 
@@ -2755,6 +2805,15 @@ pub struct USkeletalMesh {
 impl USkeletalMesh {
     fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
         let super_object = UObject::new(reader, name_map, import_map, "SkeletalMesh")?;
+        let has_vertex_colors = match super_object.get_property("bHasVertexColors") {
+            Some(property_data) => {
+                match property_data {
+                    FPropertyTagType::BoolProperty(property_bool) => *property_bool,
+                    _ => false,
+                }
+            },
+            None => false,
+        };
         let flags = FStripDataFlags::new(reader)?;
         let imported_bounds = FBoxSphereBounds::new(reader)?;
         let materials: Vec<FSkeletalMaterial> = read_tarray_n(reader, name_map, import_map)?;
@@ -2765,13 +2824,14 @@ impl USkeletalMesh {
         }
 
         let cooked = reader.read_u32::<LittleEndian>()? != 0;
-        if cooked {
-            println!("cooked data present");
+        if !cooked {
+            return Err(ParserError::new(format!("Asset does not contain cooked data.")));
         }
-        let lod_models = match cooked {
-            true => read_tarray_n(reader, name_map, import_map)?,
-            false => Vec::new(),
-        };
+        let num_models = reader.read_u32::<LittleEndian>()?;
+        let mut lod_models = Vec::new();
+        for _i in 0..num_models {
+            lod_models.push(FSkeletalMeshRenderData::new(reader, name_map, import_map, has_vertex_colors)?);
+        }
 
         let _serialize_guid = reader.read_u32::<LittleEndian>()?;
 
@@ -3463,7 +3523,7 @@ impl Package {
         let ubulk_file = file_path.to_owned() + ".ubulk";
 
         // read asset file
-        let mut asset = File::open(asset_file)?;
+        let mut asset = File::open(asset_file).map_err(|v| ParserError::new(format!("Could not find file: {}", file_path)))?;
         let mut uasset_buf = Vec::new();
         asset.read_to_end(&mut uasset_buf)?;
 
