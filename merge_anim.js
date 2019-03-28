@@ -3,8 +3,8 @@ const fs = require('fs');
 let mesh_path = process.argv[2];
 let anim_path = process.argv[3];
 
-let anim = JSON.parse(fs.readFileSync(anim_path));
 let mesh = JSON.parse(fs.readFileSync(mesh_path));
+let anim = JSON.parse(fs.readFileSync(anim_path));
 
 let final_mesh = JSON.parse(fs.readFileSync(mesh_path));
 
