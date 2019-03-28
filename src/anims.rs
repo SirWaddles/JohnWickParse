@@ -49,6 +49,10 @@ fn decode_anim_type(anim: UAnimSequence, asset_name: String) -> ParserResult<GLT
     })
 }
 
+fn transform_rotation_tuple2(q: (f32, f32, f32 ,f32)) -> (f32, f32, f32, f32) {
+    (q.0, q.2, q.1, q.3)
+}
+
 pub fn write_verts_buffer(verts: &Vec<FVector>, cursor: &mut Cursor<&mut Vec<u8>>) -> ParserResult<u32> {
     for vector in verts {
         let vert = transform_translation_tuple(vector.get_tuple());
@@ -62,7 +66,7 @@ pub fn write_verts_buffer(verts: &Vec<FVector>, cursor: &mut Cursor<&mut Vec<u8>
 
 pub fn write_quats_buffer(quats: &Vec<FQuat>, cursor: &mut Cursor<&mut Vec<u8>>) -> ParserResult<u32> {
     for quaternion in quats {
-        let quat = transform_rotation_tuple(quaternion.conjugate().get_tuple());
+        let quat = transform_rotation_tuple2(quaternion.conjugate().get_tuple());
         cursor.write_f32::<LittleEndian>(quat.0)?;
         cursor.write_f32::<LittleEndian>(quat.1)?;
         cursor.write_f32::<LittleEndian>(quat.2)?;

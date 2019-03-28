@@ -3112,7 +3112,7 @@ impl UAnimSequence {
                                 let mut fvec = FVector::unit();
                                 if header.component_mask & 7 != 0 {
                                     if header.component_mask & 1 != 0 { fvec.x = reader.read_f32::<LittleEndian>()?; }
-                                    if header.component_mask & 2 != 0 { fvec.x = reader.read_f32::<LittleEndian>()?; }
+                                    if header.component_mask & 2 != 0 { fvec.y = reader.read_f32::<LittleEndian>()?; }
                                     if header.component_mask & 4 != 0 { fvec.z = reader.read_f32::<LittleEndian>()?; }
                                 } else {
                                     fvec = FVector::new(&mut reader)?;
@@ -3122,7 +3122,7 @@ impl UAnimSequence {
                             AnimationCompressionFormat::Fixed48NoW => {
                                 let mut fvec = FVector::unit();
                                 if header.component_mask & 1 != 0 { fvec.x = decode_fixed48(reader.read_u16::<LittleEndian>()?); }
-                                if header.component_mask & 2 != 0 { fvec.x = decode_fixed48(reader.read_u16::<LittleEndian>()?); }
+                                if header.component_mask & 2 != 0 { fvec.y = decode_fixed48(reader.read_u16::<LittleEndian>()?); }
                                 if header.component_mask & 4 != 0 { fvec.z = decode_fixed48(reader.read_u16::<LittleEndian>()?); }
                                 fvec
                             },
@@ -3173,7 +3173,7 @@ impl UAnimSequence {
                                 let mut fvec = FVector::unit();
                                 if header.component_mask & 7 != 0 {
                                     if header.component_mask & 1 != 0 { fvec.x = reader.read_f32::<LittleEndian>()?; }
-                                    if header.component_mask & 2 != 0 { fvec.x = reader.read_f32::<LittleEndian>()?; }
+                                    if header.component_mask & 2 != 0 { fvec.y = reader.read_f32::<LittleEndian>()?; }
                                     if header.component_mask & 4 != 0 { fvec.z = reader.read_f32::<LittleEndian>()?; }
                                 } else {
                                     fvec = FVector::new(&mut reader)?;
@@ -3190,7 +3190,7 @@ impl UAnimSequence {
                             AnimationCompressionFormat::Fixed48NoW => {
                                 let mut fquat = FQuat::unit();
                                 if header.component_mask & 1 != 0 { fquat.x = decode_fixed48_q(reader.read_u16::<LittleEndian>()?); }
-                                if header.component_mask & 2 != 0 { fquat.x = decode_fixed48_q(reader.read_u16::<LittleEndian>()?); }
+                                if header.component_mask & 2 != 0 { fquat.y = decode_fixed48_q(reader.read_u16::<LittleEndian>()?); }
                                 if header.component_mask & 4 != 0 { fquat.z = decode_fixed48_q(reader.read_u16::<LittleEndian>()?); }
                                 fquat.rebuild_w();
                                 fquat
@@ -3243,7 +3243,7 @@ impl UAnimSequence {
                                 let mut fvec = FVector::unit_scale();
                                 if header.component_mask & 7 != 0 {
                                     if header.component_mask & 1 != 0 { fvec.x = reader.read_f32::<LittleEndian>()?; }
-                                    if header.component_mask & 2 != 0 { fvec.x = reader.read_f32::<LittleEndian>()?; }
+                                    if header.component_mask & 2 != 0 { fvec.y = reader.read_f32::<LittleEndian>()?; }
                                     if header.component_mask & 4 != 0 { fvec.z = reader.read_f32::<LittleEndian>()?; }
                                 } else {
                                     fvec = FVector::new(&mut reader)?;
@@ -3253,7 +3253,7 @@ impl UAnimSequence {
                             AnimationCompressionFormat::Fixed48NoW => {
                                 let mut fvec = FVector::unit_scale();
                                 if header.component_mask & 1 != 0 { fvec.x = decode_fixed48(reader.read_u16::<LittleEndian>()?); }
-                                if header.component_mask & 2 != 0 { fvec.x = decode_fixed48(reader.read_u16::<LittleEndian>()?); }
+                                if header.component_mask & 2 != 0 { fvec.y = decode_fixed48(reader.read_u16::<LittleEndian>()?); }
                                 if header.component_mask & 4 != 0 { fvec.z = decode_fixed48(reader.read_u16::<LittleEndian>()?); }
                                 fvec
                             },
