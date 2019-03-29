@@ -19,7 +19,7 @@ pub fn decode_anim(package: Package, path: &str) -> ParserResult<GLTFContainer> 
     Err(ParserError::new(format!("Package not supported")))
 }
 
-fn decode_anim_type(anim: UAnimSequence, asset_name: String) -> ParserResult<GLTFContainer> {
+pub fn decode_anim_type(anim: UAnimSequence, asset_name: String) -> ParserResult<GLTFContainer> {
     let mut buffer: Vec<u8> = Vec::new();
     let mut item = GLTFItem::new();
 

@@ -3138,6 +3138,41 @@ impl UAnimSequence {
         self.tracks.unwrap()
     }
 
+    pub fn find_track(&self, track_id: i32) -> Option<usize> {
+        let track_map = &self.compressed_track_to_skeleton_table;
+        for i in 0..track_map.len() {
+            if track_id == track_map[i] {
+                return Some(i);
+            }
+        }
+        None
+    }
+
+    pub fn add_tracks(&mut self, to_add: UAnimSequence) {
+        let track_map = to_add.get_track_map();
+        let tracks = to_add.get_tracks();
+
+        for (i, track_id) in track_map.into_iter().enumerate() {
+            let self_track_id = self.find_track(track_id);
+            if let None = self_track_id { continue; }
+            let track = match &mut self.tracks {
+                Some(self_tracks) => self_tracks,
+                None => return,
+            }.get_mut(self_track_id.unwrap() as usize).unwrap();
+            let track_add = &tracks[i];
+            for (e, translate) in track_add.translation.iter().enumerate() {
+                match track.translation.get_mut(e) {
+                    Some(translate_self) => {
+                        translate_self.x += translate.x;
+                        translate_self.y += translate.y;
+                        translate_self.z += translate.z;
+                    },
+                    None => continue,
+                }
+            }
+        }
+    }
+
     fn read_tracks(&self) -> ParserResult<Vec<FTrack>> {
         if self.key_encoding_format != 2 {
             return Err(ParserError::new(format!("Can only parse PerTrackCompression")));

@@ -123,6 +123,39 @@ fn anim(params: &[String]) -> CommandResult {
     Ok(())
 }
 
+fn add_anim(params: &[String]) -> CommandResult {
+    let path1 = match params.get(0) {
+        Some(data) => data,
+        None => return cerr("No path specified"),
+    };
+
+    let path2 = match params.get(1) {
+        Some(data) => data,
+        None => return cerr("No path specified"),
+    };
+
+    let package1 = assets::Package::from_file(path1)?.get_export_move(0)?;
+    let package2 = assets::Package::from_file(path2)?.get_export_move(0)?;
+    let mut anim1 = *package1.downcast::<assets::UAnimSequence>().unwrap();
+    let anim2 = *package2.downcast::<assets::UAnimSequence>().unwrap();
+
+    anim1.add_tracks(anim2);
+
+    let serial_package = serde_json::to_string(&anim1).unwrap();
+    let mut file = fs::File::create(path1.to_owned() + ".merge.json").unwrap();
+    file.write_all(serial_package.as_bytes()).unwrap();
+
+    /*let anim = anims::decode_anim_type(anim1, "merged_anim".to_owned())?;
+    let serial_anim = serde_json::to_string(&anim.data).unwrap();
+    let mut gltf_file = fs::File::create(path1.to_owned() + ".merge.gltf").unwrap();
+    gltf_file.write_all(serial_anim.as_bytes()).unwrap();
+
+    let mut bin_file = fs::File::create(path1.to_owned() + ".merge.bin").unwrap();
+    bin_file.write_all(&anim.buffer).unwrap();*/
+
+    Ok(())
+}
+
 fn filelist(params: &[String]) -> CommandResult {
     let path = match params.get(0) {
         Some(data) => data,
@@ -216,6 +249,7 @@ fn main() {
         "texture" => texture(params),
         "mesh" => mesh(params),
         "anim" => anim(params),
+        "add_anim" => add_anim(params),
         _ => {
             println!("Invalid command");
             Ok(())
