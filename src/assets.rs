@@ -2793,7 +2793,10 @@ impl UDataTable {
 
         for _i in 0..num_rows {
             let row_name = read_fname(reader, name_map)?;
-            let row_object = UObject::new(reader, name_map, import_map, "RowStruct")?;
+            let row_object = UObject {
+                properties: UObject::serialize_properties(reader, name_map, import_map)?,
+                export_type: "RowStruct".to_owned(),
+            };
             rows.push((row_name, row_object));
         }
         
