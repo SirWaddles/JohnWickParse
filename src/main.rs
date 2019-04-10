@@ -141,17 +141,17 @@ fn add_anim(params: &[String]) -> CommandResult {
 
     anim1.add_tracks(anim2);
 
-    let serial_package = serde_json::to_string(&anim1).unwrap();
+    /*let serial_package = serde_json::to_string(&anim1).unwrap();
     let mut file = fs::File::create(path1.to_owned() + ".merge.json").unwrap();
-    file.write_all(serial_package.as_bytes()).unwrap();
+    file.write_all(serial_package.as_bytes()).unwrap();*/
 
-    /*let anim = anims::decode_anim_type(anim1, "merged_anim".to_owned())?;
+    let anim = anims::decode_anim_type(anim1, "merged_anim".to_owned())?;
     let serial_anim = serde_json::to_string(&anim.data).unwrap();
     let mut gltf_file = fs::File::create(path1.to_owned() + ".merge.gltf").unwrap();
     gltf_file.write_all(serial_anim.as_bytes()).unwrap();
 
     let mut bin_file = fs::File::create(path1.to_owned() + ".merge.bin").unwrap();
-    bin_file.write_all(&anim.buffer).unwrap();*/
+    bin_file.write_all(&anim.buffer).unwrap();
 
     Ok(())
 }

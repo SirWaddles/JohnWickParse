@@ -1104,6 +1104,15 @@ impl FQuat {
             w: self.w,
         }
     }
+
+    fn normalize(&mut self) {
+        let length = (self.x*self.x + self.y*self.y + self.z*self.z + self.w*self.w).sqrt();
+        let n = 1.0 / length;
+        self.x = n * self.x;
+        self.y = n * self.y;
+        self.z = n * self.z;
+        self.w = n * self.w;
+    }
 }
 
 impl NewableWithNameMap for FQuat {
@@ -3166,6 +3175,17 @@ impl UAnimSequence {
                         translate_self.x += translate.x;
                         translate_self.y += translate.y;
                         translate_self.z += translate.z;
+                    },
+                    None => continue,
+                }
+            }
+            for (e, rotate) in track_add.rotation.iter().enumerate() {
+                match track.rotation.get_mut(e) {
+                    Some(rotate_self) => {
+                        rotate_self.x += rotate.x;
+                        rotate_self.y += rotate.y;
+                        rotate_self.z += rotate.z;
+                        rotate_self.normalize();
                     },
                     None => continue,
                 }

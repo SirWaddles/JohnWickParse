@@ -5,7 +5,7 @@ use crate::assets::{FGuid, Newable, ReaderCursor, read_string, read_tarray, Pars
 use crate::rijndael;
 
 const PAK_MAGIC: u32 = 0x5A6F12E1;
-const PAK_SIZE: u32 = 8 + 16 + 20 + 1 + 16;
+const PAK_SIZE: u32 = 8 + 16 + 20 + 1 + 16 + (32 * 5);
 
 #[allow(dead_code)]
 pub struct FPakInfo {
