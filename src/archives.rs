@@ -224,4 +224,8 @@ impl PakExtractor {
 
         buffer
     }
+
+    pub fn get_mount_point(&self) -> &str {
+        &self.index.mount_point
+    }
 }
