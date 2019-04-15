@@ -2270,10 +2270,17 @@ impl FSkeletalMaterial {
 
 impl NewableWithNameMap for FSkeletalMaterial {
     fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
+        let material_interface = FPackageIndex::new_n(reader, name_map, import_map)?;
+        let serialize_slot_name = reader.read_u32::<LittleEndian>()? != 0;
+        let material_slot_name = match serialize_slot_name {
+            true => read_fname(reader, name_map)?,
+            false => "".to_owned(),
+        };
+        let uv_channel_data = FMeshUVChannelInfo::new(reader)?;
         Ok(Self {
-            material_interface: FPackageIndex::new_n(reader, name_map, import_map)?,
-            material_slot_name: read_fname(reader, name_map)?,
-            uv_channel_data: FMeshUVChannelInfo::new(reader)?,
+            material_interface,
+            material_slot_name,
+            uv_channel_data,
         })
     }
 }
