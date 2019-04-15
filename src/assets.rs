@@ -3004,7 +3004,7 @@ pub struct UAnimSequence {
     compressed_scale_offsets: FCompressedOffsetData,
     compressed_segments: Vec<FCompressedSegment>,
     compressed_track_to_skeleton_table: Vec<i32>,
-    compressed_curve_data: UObject,
+    compressed_curve_names: Vec<FSmartName>,
     compressed_raw_data_size: i32,
     compressed_num_frames: i32,
     #[serde(skip_serializing)]
@@ -3101,10 +3101,7 @@ impl UAnimSequence {
 
         let compressed_segments = read_tarray(reader)?;
         let compressed_track_to_skeleton_table = read_tarray(reader)?;
-        let compressed_curve_data = UObject {
-            properties: UObject::serialize_properties(reader, name_map, import_map)?,
-            export_type: "RawCurveData".to_owned(),
-        };
+        let compressed_curve_names = read_tarray_n(reader, name_map, import_map)?;
 
         let compressed_raw_data_size = reader.read_i32::<LittleEndian>()?;
         let compressed_num_frames = reader.read_i32::<LittleEndian>()?;
@@ -3124,7 +3121,7 @@ impl UAnimSequence {
             super_object, skeleton_guid,
             key_encoding_format, translation_compression_format, rotation_compression_format, scale_compression_format,
             compressed_track_offsets, compressed_scale_offsets, compressed_segments,
-            compressed_track_to_skeleton_table, compressed_curve_data, compressed_raw_data_size, compressed_num_frames,
+            compressed_track_to_skeleton_table, compressed_curve_names, compressed_raw_data_size, compressed_num_frames,
             compressed_stream,
             tracks: None,
         };
