@@ -79,6 +79,36 @@ impl NewableWithNameMap for FMaterialUniformExpressionVectorParameter {
 }
 
 #[derive(Debug, Serialize)]
+struct FMaterialUniformExpressionTexture {
+    texture_index: i32,
+    sampler_source: i32,
+}
+
+impl NewableWithNameMap for FMaterialUniformExpressionTexture {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+        Ok(Self {
+            texture_index: reader.read_i32::<LittleEndian>()?,
+            sampler_source: reader.read_i32::<LittleEndian>()?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FMaterialUniformExpressionTextureParameter {
+    super_expression: FMaterialUniformExpressionTexture,
+    parameter_info: FMaterialParameterInfo,
+}
+
+impl NewableWithNameMap for FMaterialUniformExpressionTextureParameter {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
+        Ok(Self {
+            parameter_info: FMaterialParameterInfo::new_n(reader, name_map, import_map)?,
+            super_expression: FMaterialUniformExpressionTexture::new_n(reader, name_map, import_map)?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
 struct FMaterialUniformExpressionAppendVector {
     a: FMaterialUniformExpression,
     b: FMaterialUniformExpression,
@@ -115,12 +145,114 @@ impl NewableWithNameMap for FMaterialUniformExpressionFoldedMath {
 }
 
 #[derive(Debug, Serialize)]
+struct FMaterialUniformExpressionComponentSwizzle {
+    x: FMaterialUniformExpression,
+    index_r: u8,
+    index_g: u8,
+    index_b: u8,
+    index_a: u8,
+    num_elements: u8,
+}
+
+impl NewableWithNameMap for FMaterialUniformExpressionComponentSwizzle {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
+        Ok(Self {
+            x: FMaterialUniformExpression::new_n(reader, name_map, import_map)?,
+            index_r: reader.read_u8()?,
+            index_g: reader.read_u8()?,
+            index_b: reader.read_u8()?,
+            index_a: reader.read_u8()?,
+            num_elements: reader.read_u8()?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FMaterialUniformExpressionClamp {
+    input: FMaterialUniformExpression,
+    min: FMaterialUniformExpression,
+    max: FMaterialUniformExpression,
+}
+
+impl NewableWithNameMap for FMaterialUniformExpressionClamp {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
+        Ok(Self {
+            input: FMaterialUniformExpression::new_n(reader, name_map, import_map)?,
+            min: FMaterialUniformExpression::new_n(reader, name_map, import_map)?,
+            max: FMaterialUniformExpression::new_n(reader, name_map, import_map)?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FMaterialUniformExpressionAbs {
+    x: FMaterialUniformExpression,
+}
+
+impl NewableWithNameMap for FMaterialUniformExpressionAbs {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
+        Ok(Self {
+            x: FMaterialUniformExpression::new_n(reader, name_map, import_map)?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FMaterialUniformExpressionMax {
+    a: FMaterialUniformExpression,
+    b: FMaterialUniformExpression,
+}
+
+impl NewableWithNameMap for FMaterialUniformExpressionMax {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
+        Ok(Self {
+            a: FMaterialUniformExpression::new_n(reader, name_map, import_map)?,
+            b: FMaterialUniformExpression::new_n(reader, name_map, import_map)?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FMaterialUniformExpressionCeil {
+    x: FMaterialUniformExpression,
+}
+
+impl NewableWithNameMap for FMaterialUniformExpressionCeil {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
+        Ok(Self {
+            x: FMaterialUniformExpression::new_n(reader, name_map, import_map)?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct FMaterialUniformExpressionSaturate {
+    input: FMaterialUniformExpression,
+}
+
+impl NewableWithNameMap for FMaterialUniformExpressionSaturate {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
+        Ok(Self {
+            input: FMaterialUniformExpression::new_n(reader, name_map, import_map)?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize)]
 enum ExpressionType {
     ScalarParameter(FMaterialUniformExpressionScalarParameter),
     VectorParameter(FMaterialUniformExpressionVectorParameter),
-    ExpressionConstant(FMaterialUniformExpressionConstant),
+    Constant(FMaterialUniformExpressionConstant),
+    TextureParameter(FMaterialUniformExpressionTextureParameter),
     AppendVector(FMaterialUniformExpressionAppendVector),
     FoldedMath(FMaterialUniformExpressionFoldedMath),
+    ComponentSwizzle(FMaterialUniformExpressionComponentSwizzle),
+    Clamp(FMaterialUniformExpressionClamp),
+    Abs(FMaterialUniformExpressionAbs),
+    Max(FMaterialUniformExpressionMax),
+    Ceil(FMaterialUniformExpressionCeil),
+    Saturate(FMaterialUniformExpressionSaturate),
+    Texture(FMaterialUniformExpressionTexture),
 }
 
 #[derive(Debug, Serialize)]
@@ -142,11 +274,35 @@ impl NewableWithNameMap for FMaterialUniformExpression {
             "FMaterialUniformExpressionVectorParameter" => {
                 ExpressionType::VectorParameter(FMaterialUniformExpressionVectorParameter::new_n(reader, name_map, import_map)?)
             },
+            "FMaterialUniformExpressionTextureParameter" => {
+                ExpressionType::TextureParameter(FMaterialUniformExpressionTextureParameter::new_n(reader, name_map, import_map)?)
+            },
             "FMaterialUniformExpressionFoldedMath" => {
                 ExpressionType::FoldedMath(FMaterialUniformExpressionFoldedMath::new_n(reader, name_map, import_map)?)
             },
             "FMaterialUniformExpressionConstant" => {
-                ExpressionType::ExpressionConstant(FMaterialUniformExpressionConstant::new_n(reader, name_map, import_map)?)
+                ExpressionType::Constant(FMaterialUniformExpressionConstant::new_n(reader, name_map, import_map)?)
+            },
+            "FMaterialUniformExpressionComponentSwizzle" => {
+                ExpressionType::ComponentSwizzle(FMaterialUniformExpressionComponentSwizzle::new_n(reader, name_map, import_map)?)
+            },
+            "FMaterialUniformExpressionClamp" => {
+                ExpressionType::Clamp(FMaterialUniformExpressionClamp::new_n(reader, name_map, import_map)?)
+            },
+            "FMaterialUniformExpressionAbs" => {
+                ExpressionType::Abs(FMaterialUniformExpressionAbs::new_n(reader, name_map, import_map)?)
+            },
+            "FMaterialUniformExpressionMax" => {
+                ExpressionType::Max(FMaterialUniformExpressionMax::new_n(reader, name_map, import_map)?)
+            },
+            "FMaterialUniformExpressionCeil" => {
+                ExpressionType::Ceil(FMaterialUniformExpressionCeil::new_n(reader, name_map, import_map)?)
+            },
+            "FMaterialUniformExpressionSaturate" => {
+                ExpressionType::Saturate(FMaterialUniformExpressionSaturate::new_n(reader, name_map, import_map)?)
+            },
+            "FMaterialUniformExpressionTexture" => {
+                ExpressionType::Texture(FMaterialUniformExpressionTexture::new_n(reader, name_map, import_map)?)
             },
             _ => {
                 return Err(ParserError::new(format!("Incompatible Type: {}", type_name)));
@@ -162,12 +318,22 @@ impl NewableWithNameMap for FMaterialUniformExpression {
 #[derive(Debug, Serialize)]
 struct FUniformExpressionSet {
     uniform_vector_expressions: Vec<FMaterialUniformExpression>,
+    uniform_scalar_expressions: Vec<FMaterialUniformExpression>,
+    uniform_2d_texture_expressions: Vec<FMaterialUniformExpression>,
+    uniform_cube_texture_expressions: Vec<FMaterialUniformExpression>,
+    uniform_volume_texture_expresions: Vec<FMaterialUniformExpression>,
+    uniform_external_texture_expressions: Vec<FMaterialUniformExpression>,
 }
 
 impl NewableWithNameMap for FUniformExpressionSet {
     fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
         Ok(Self {
             uniform_vector_expressions: read_tarray_n(reader, name_map, import_map)?,
+            uniform_scalar_expressions: read_tarray_n(reader, name_map, import_map)?,
+            uniform_2d_texture_expressions: read_tarray_n(reader, name_map, import_map)?,
+            uniform_cube_texture_expressions: read_tarray_n(reader, name_map, import_map)?,
+            uniform_volume_texture_expresions: read_tarray_n(reader, name_map, import_map)?,
+            uniform_external_texture_expressions: read_tarray_n(reader, name_map, import_map)?,
         })
     }
 }
@@ -175,12 +341,36 @@ impl NewableWithNameMap for FUniformExpressionSet {
 #[derive(Debug, Serialize)]
 struct FMaterialCompilationOutput {
     uniform_expression_set: FUniformExpressionSet,
+    used_scene_textures: u64,
+    requires_scene_colour_copy: bool,
+    needs_scene_textures: bool,
+    uses_eye_adaptation: bool,
+    modifies_mesh_position: bool,
+    uses_world_position_offset: bool,
+    needs_gbuffer: bool,
+    uses_global_distance_field: bool,
+    uses_pixel_depth_offset: bool,
+    uses_scene_depth_lookup: bool,
+    uses_velocity_scene_texture: bool,
+    uses_distance_cull_fade: bool,
 }
 
 impl NewableWithNameMap for FMaterialCompilationOutput {
     fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
         Ok(Self {
             uniform_expression_set: FUniformExpressionSet::new_n(reader, name_map, import_map)?,
+            used_scene_textures: reader.read_u64::<LittleEndian>()?,
+            requires_scene_colour_copy: reader.read_u32::<LittleEndian>()? != 0,
+            needs_scene_textures: reader.read_u32::<LittleEndian>()? != 0,
+            uses_eye_adaptation: reader.read_u32::<LittleEndian>()? != 0,
+            modifies_mesh_position: reader.read_u32::<LittleEndian>()? != 0,
+            uses_world_position_offset: reader.read_u32::<LittleEndian>()? != 0,
+            needs_gbuffer: reader.read_u32::<LittleEndian>()? != 0,
+            uses_global_distance_field: reader.read_u32::<LittleEndian>()? != 0,
+            uses_pixel_depth_offset: reader.read_u32::<LittleEndian>()? != 0,
+            uses_scene_depth_lookup: reader.read_u32::<LittleEndian>()? != 0,
+            uses_velocity_scene_texture: reader.read_u32::<LittleEndian>()? != 0,
+            uses_distance_cull_fade: reader.read_u32::<LittleEndian>()? != 0,
         })
     }
 }
@@ -188,24 +378,35 @@ impl NewableWithNameMap for FMaterialCompilationOutput {
 #[derive(Debug, Serialize)]
 struct FMaterialShaderMap {
     map_id: FMaterialShaderMapId,
+    friendly_name: String,
     compilation_output: FMaterialCompilationOutput,
 }
 
 impl NewableWithNameMap for FMaterialShaderMap {
     fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
         let map_id = FMaterialShaderMapId::new(reader)?;
-        println!("{:#?} {}", map_id, reader.position());
 
         // Looks like some stuff was added here?
         // It kinda looks like a guid, but there's an extra 4 bytes. So I'm not really sure.
-        let id_guid = FGuid::new(reader)?;
-        let another_val = reader.read_u32::<LittleEndian>()?;
-        let platform = reader.read_i32::<LittleEndian>()?;
-        println!("platform: {} {}", platform, id_guid);
+        let _id_guid = FGuid::new(reader)?;
+        let _another_val = reader.read_u32::<LittleEndian>()?;
+        let _platform = reader.read_i32::<LittleEndian>()?;
         let friendly_name = read_string(reader)?;
-        println!("friendly name: {}", friendly_name);
         let compilation_output = FMaterialCompilationOutput::new_n(reader, name_map, import_map)?;
-        Err(ParserError::new(format!("Not implemented")))
+        println!("pos: {}", reader.position());
+        // No idea what these do
+        let _word1 = reader.read_u32::<LittleEndian>()?;
+        let _word2 = reader.read_u32::<LittleEndian>()?;
+        let _word3 = reader.read_u32::<LittleEndian>()?;
+        let _word4 = reader.read_u16::<LittleEndian>()?;
+        let debug_description = read_string(reader)?;
+        println!("debug: {}", debug_description);
+
+        return Err(ParserError::new(format!("Not implemented: now at position {}", reader.position())));
+
+        Ok(Self {
+            map_id, friendly_name, compilation_output,
+        })
     }
 }
 
