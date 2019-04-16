@@ -85,10 +85,10 @@ fn decode_skeletal_mesh_section(mesh_data: &mut GLTFItem, buffer: &mut Vec<u8>, 
     let index_view = mesh_data.add_buffer_view(index_view);
 
     let index_accessor = match indices {
-        FMultisizeIndexContainer::Indices16(data) => {
+        FMultisizeIndexContainer::Indices16(_data) => {
             GLTFAccessor::new(index_view, GLTFComponentType::UnsignedShort, (section.get_num_triangles() * 3) as u32, "SCALAR", GLTFAccessorValue::None, GLTFAccessorValue::None)
         },
-        FMultisizeIndexContainer::Indices32(data) => {
+        FMultisizeIndexContainer::Indices32(_data) => {
             GLTFAccessor::new(index_view, GLTFComponentType::UnsignedInt, (section.get_num_triangles() * 3) as u32, "SCALAR", GLTFAccessorValue::None, GLTFAccessorValue::None)
         },
     };

@@ -125,7 +125,7 @@ fn write_track(track: &FTrack, buffer: &mut Vec<u8>, item: &mut GLTFItem, anim: 
         t_input_accessor, t_output_accessor, GLTFInterpolation::Linear
     ));
 
-    let t_channel = anim.add_channel(GLTFChannel::new(
+    anim.add_channel(GLTFChannel::new(
         t_sampler, GLTFAnimationTarget::new(
             "translation", bone_name.clone()
         )
@@ -168,7 +168,7 @@ fn write_track(track: &FTrack, buffer: &mut Vec<u8>, item: &mut GLTFItem, anim: 
         r_input_accessor, r_output_accessor, GLTFInterpolation::Linear
     ));
 
-    let r_channel = anim.add_channel(GLTFChannel::new(
+    anim.add_channel(GLTFChannel::new(
         r_sampler, GLTFAnimationTarget::new(
             "rotation", bone_name.clone()
         )
