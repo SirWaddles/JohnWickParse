@@ -2235,7 +2235,7 @@ impl Package {
                 "AnimSequence" => Box::new(UAnimSequence::new(&mut cursor, &name_map, &import_map)?),
                 "Skeleton" => Box::new(USkeleton::new(&mut cursor, &name_map, &import_map)?),
                 "CurveTable" => Box::new(UCurveTable::new(&mut cursor, &name_map, &import_map)?),
-                "MaterialInstanceConstant" => Box::new(material_instance::UMaterialInstanceConstant::new(&mut cursor, &name_map, &import_map)?),
+                //"MaterialInstanceConstant" => Box::new(material_instance::UMaterialInstanceConstant::new(&mut cursor, &name_map, &import_map)?),
                 _ => Box::new(UObject::new(&mut cursor, &name_map, &import_map, export_type)?),
             };
             let valid_pos = position + v.serial_size as u64;

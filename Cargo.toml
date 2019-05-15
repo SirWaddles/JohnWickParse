@@ -1,6 +1,6 @@
 [package]
 name = "john-wick-parse"
-version = "2.1.2"
+version = "2.1.3"
 authors = ["Waddlesworth <github@genj.io>"]
 edition = "2018"
 
