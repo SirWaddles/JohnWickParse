@@ -1509,6 +1509,8 @@ fn read_map_value(reader: &mut ReaderCursor, inner_type: &str, struct_type: &str
         "StructProperty" => FPropertyTagType::StructProperty(UScriptStruct::new(reader, name_map, import_map, struct_type)?),
         "NameProperty" => FPropertyTagType::NameProperty(read_fname(reader, name_map)?),
         "ObjectProperty" => FPropertyTagType::ObjectProperty(FPackageIndex::new_n(reader, name_map, import_map)?),
+		"StrProperty" => FPropertyTagType::StrProperty(read_string(reader)?),
+		"TextProperty" => FPropertyTagType::TextProperty(FText::new(reader)?),
         _ => FPropertyTagType::StructProperty(UScriptStruct::new(reader, name_map, import_map, inner_type)?),
     })
 }
