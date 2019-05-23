@@ -179,6 +179,13 @@ pub struct PakExtractor {
     reader: BufReader<File>,
 }
 
+fn decompress_block(input: &[u8], output_size: u64, compression_method: &str) -> Vec<u8> {
+    match compression_method {
+        "Oodle" => oodle::decompress_stream(output_size, input).unwrap(),
+        _ => Vec::new(),
+    }
+}
+
 #[allow(dead_code)]
 impl PakExtractor {
     /// Create a `PakExtractor` by specifying the path to the pak file on disk, and the encryption key to the file index
@@ -247,12 +254,17 @@ impl PakExtractor {
         }
 
         if file.compression_method != 0 {
+            let mut decompressed_buffer = Vec::new();
             let compression_method = &self.header.compression_methods[(file.compression_method - 1) as usize];
-            if compression_method == "Oodle" {
-                let mut compressed_buffer = buffer.clone();
-                let uncompressed = oodle::decompress_stream(file.uncompressed_size, &mut compressed_buffer).unwrap();
-                buffer = uncompressed;
+
+            for block in &file.compression_blocks {
+                let block_buffer = &buffer[((block.compressed_start - file.struct_size as i64) as usize)..((block.compressed_end - file.struct_size as i64) as usize)];
+                let result_size = std::cmp::min(file.compression_block_size as u64, file.uncompressed_size - decompressed_buffer.len() as u64);
+                let decompressed_block = decompress_block(block_buffer, result_size, compression_method);
+                decompressed_buffer.extend_from_slice(&decompressed_block);
             }
+
+            buffer = decompressed_buffer;
         }
 
         buffer
