@@ -10,6 +10,7 @@ use crate::assets::{ParserResult, ParserError, Package, Texture2D};
 
 pub mod assets;
 pub mod archives;
+mod decompress;
 mod texture;
 mod rijndael;
 

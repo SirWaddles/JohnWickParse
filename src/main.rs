@@ -12,6 +12,7 @@ use std::fs;
 use std::io::Write;
 use std::env;
 
+mod decompress;
 mod rijndael;
 mod assets;
 mod archives;

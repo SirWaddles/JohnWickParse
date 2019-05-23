@@ -3,6 +3,7 @@ use std::fs::File;
 use std::io::{Read, BufReader, Seek, SeekFrom, Cursor};
 use crate::assets::{FGuid, Newable, ReaderCursor, read_string, read_tarray, ParserResult, ParserError};
 use crate::rijndael;
+use crate::decompress::oodle;
 
 const PAK_MAGIC: u32 = 0x5A6F12E1;
 const PAK_SIZE: u32 = 8 + 16 + 20 + 1 + 16 + (32 * 5);
@@ -15,6 +16,7 @@ pub struct FPakInfo {
     index_offset: u64,
     index_size: i64,
     index_hash: [u8; 20],
+    compression_methods: Vec<String>,
 }
 
 #[allow(dead_code)]
@@ -40,6 +42,23 @@ impl Newable for FPakInfo {
         let mut index_hash = [0u8; 20];
         reader.read_exact(&mut index_hash)?;
 
+        let mut compression_methods = Vec::new();
+
+        for _i in 0..5 {
+            let mut bytes = [0u8; 32];
+            reader.read_exact(&mut bytes)?;
+            let mut length = 32;
+            for p in 0..32 {
+                if bytes[p] == 0 {
+                    length = p;
+                    break;
+                }
+            };
+
+            let fstr = std::str::from_utf8(&bytes[0..length])?.to_owned();
+            compression_methods.push(fstr);
+        }
+
         Ok(Self {
             encryption_key_guid,
             encrypted_index,
@@ -47,6 +66,7 @@ impl Newable for FPakInfo {
             index_offset,
             index_size,
             index_hash,
+            compression_methods,
         })
     }
 }
@@ -55,12 +75,15 @@ fn get_index(header: &FPakInfo, reader: &mut BufReader<File>, key: &str) -> Vec<
     let mut ciphertext = vec![0u8; header.index_size as usize];
     reader.seek(SeekFrom::Start(header.index_offset)).unwrap();
     reader.read_exact(&mut ciphertext).unwrap();
+    if !header.encrypted_index {
+        return ciphertext;
+    }
     let key = hex::decode(key).expect("Hex error");
     rijndael::rijndael_decrypt_buf(&ciphertext, &key)
 }
 
 #[allow(dead_code)]
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 struct FPakCompressedBlock {
     compressed_start: i64,
     compressed_end: i64,
@@ -77,14 +100,13 @@ impl Newable for FPakCompressedBlock {
 
 /// Contains the details of a file residing in a `.pak` file
 #[allow(dead_code)]
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct FPakEntry {
     filename: String,
     position: i64,
     size: i64,
-    uncompressed_size: i64,
-    compression_method: i32,
-    hash: [u8; 20],
+    uncompressed_size: u64,
+    compression_method: u32,
     compression_blocks: Vec<FPakCompressedBlock>,
     encrypted: bool,
     compression_block_size: u32,
@@ -97,16 +119,17 @@ impl FPakEntry {
         let seek_point = reader.position();
         let position = reader.read_i64::<LittleEndian>()?;
         let size = reader.read_i64::<LittleEndian>()?;
-        let uncompressed_size = reader.read_i64::<LittleEndian>()?;
-        let compression_method = reader.read_i32::<LittleEndian>()?;
+        let uncompressed_size = reader.read_u64::<LittleEndian>()?;
+        let compression_method = reader.read_u32::<LittleEndian>()?;
         let mut hash = [0u8; 20];
+        reader.read_exact(&mut hash)?;
         let mut compression_blocks: Vec<FPakCompressedBlock> = Vec::new();
         if compression_method != 0 {
             compression_blocks = read_tarray(reader)?;
         }
-        reader.read_exact(&mut hash)?;
+        
         Ok(Self {
-            filename, position, size, uncompressed_size, compression_method, hash, compression_blocks,
+            filename, position, size, uncompressed_size, compression_method, compression_blocks,
             encrypted: reader.read_u8()? != 0,
             compression_block_size: reader.read_u32::<LittleEndian>()?,
             struct_size: reader.position() - seek_point,
@@ -205,6 +228,7 @@ impl PakExtractor {
     pub fn get_file(&mut self, file: &FPakEntry) -> Vec<u8> {
         let start_pos = file.position as u64 + file.struct_size;
         self.reader.seek(SeekFrom::Start(start_pos)).unwrap();
+
         let mut buffer = vec![0u8; file.size as usize];
 
         if file.encrypted {
@@ -220,6 +244,15 @@ impl PakExtractor {
             plain_cursor.read_exact(&mut buffer).unwrap();
         } else {
             self.reader.read_exact(&mut buffer).unwrap();
+        }
+
+        if file.compression_method != 0 {
+            let compression_method = &self.header.compression_methods[(file.compression_method - 1) as usize];
+            if compression_method == "Oodle" {
+                let mut compressed_buffer = buffer.clone();
+                let uncompressed = oodle::decompress_stream(file.uncompressed_size, &mut compressed_buffer).unwrap();
+                buffer = uncompressed;
+            }
         }
 
         buffer

@@ -1389,6 +1389,19 @@ impl NewableWithNameMap for FSimpleCurveKey {
     } 
 }
 
+#[derive(Debug, Serialize)]
+struct FDateTime {
+    date: i64,
+}
+
+impl NewableWithNameMap for FDateTime {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+        Ok(Self {
+            date: reader.read_i64::<LittleEndian>()?,
+        })
+    } 
+}
+
 impl UScriptStruct {
     fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, struct_name: &str) -> ParserResult<Self> {
         let err = |v| ParserError::add(v, format!("Struct Type: {}", struct_name));
@@ -1421,6 +1434,8 @@ impl UScriptStruct {
             "SmartName" => Box::new(FSmartName::new_n(reader, name_map, import_map).map_err(err)?),
             "RichCurveKey" => Box::new(FRichCurveKey::new_n(reader, name_map, import_map).map_err(err)?),
             "SimpleCurveKey" => Box::new(FSimpleCurveKey::new_n(reader, name_map, import_map).map_err(err)?),
+            "DateTime" => Box::new(FDateTime::new_n(reader, name_map, import_map).map_err(err)?),
+            "Timespan" => Box::new(FDateTime::new_n(reader, name_map, import_map).map_err(err)?),
             _ => Box::new(FStructFallback::new_n(reader, name_map, import_map).map_err(err)?),
         };
         Ok(Self {

@@ -14,6 +14,7 @@ erased-serde = "0.3"
 bitreader = "0.3.1"
 glm = "0.2"
 image = { git = "https://github.com/SirWaddles/image" }
+libloading = "0.5"
 
 [dependencies.half]
 version ="1.3"
