@@ -8,6 +8,7 @@ use serde::ser::{Serialize, Serializer, SerializeMap, SerializeSeq};
 use erased_serde::{Serialize as TraitSerialize};
 use byteorder::{LittleEndian, ReadBytesExt};
 
+pub mod locale;
 mod material_instance;
 mod anims;
 mod meshes;
@@ -73,7 +74,7 @@ pub trait Newable {
     fn new(reader: &mut ReaderCursor) -> ParserResult<Self> where Self: Sized;
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct FGuid {
     a: u32,
     b: u32,
