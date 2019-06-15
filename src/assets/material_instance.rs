@@ -9,7 +9,7 @@ struct FMaterialParameterInfo {
 }
 
 impl NewableWithNameMap for FMaterialParameterInfo {
-    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
         Ok(Self {
             name: read_fname(reader, name_map)?,
             association: reader.read_u8()?,
@@ -376,6 +376,7 @@ impl NewableWithNameMap for FMaterialCompilationOutput {
 }
 
 #[derive(Debug, Serialize)]
+#[allow(dead_code)]
 struct FMaterialShaderMap {
     map_id: FMaterialShaderMapId,
     friendly_name: String,
@@ -384,15 +385,15 @@ struct FMaterialShaderMap {
 
 impl NewableWithNameMap for FMaterialShaderMap {
     fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
-        let map_id = FMaterialShaderMapId::new(reader)?;
+        let _map_id = FMaterialShaderMapId::new(reader)?;
 
         // Looks like some stuff was added here?
         // It kinda looks like a guid, but there's an extra 4 bytes. So I'm not really sure.
         let _id_guid = FGuid::new(reader)?;
         let _another_val = reader.read_u32::<LittleEndian>()?;
         let _platform = reader.read_i32::<LittleEndian>()?;
-        let friendly_name = read_string(reader)?;
-        let compilation_output = FMaterialCompilationOutput::new_n(reader, name_map, import_map)?;
+        let _friendly_name = read_string(reader)?;
+        let _compilation_output = FMaterialCompilationOutput::new_n(reader, name_map, import_map)?;
         println!("pos: {}", reader.position());
         // No idea what these do
         let _word1 = reader.read_u32::<LittleEndian>()?;
@@ -404,13 +405,14 @@ impl NewableWithNameMap for FMaterialShaderMap {
 
         return Err(ParserError::new(format!("Not implemented: now at position {}", reader.position())));
 
-        Ok(Self {
+        /*Ok(Self {
             map_id, friendly_name, compilation_output,
-        })
+        })*/
     }
 }
 
 #[derive(Debug, Serialize)]
+#[allow(dead_code)]
 struct FMaterialResourceLocOnDisk {
     offset: u32,
     feature_level: u8,
@@ -432,14 +434,15 @@ pub struct UMaterialInstanceConstant {
     super_object: UObject,
 }
 
+#[allow(dead_code)]
 impl UMaterialInstanceConstant {
     pub(super) fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
         let super_object = UObject::new(reader, name_map, import_map, "MaterialInstanceConstant")?;
         let num_resources = reader.read_i32::<LittleEndian>()?;
 
         let resource_name_map: Vec<FNameEntrySerialized> = read_tarray(reader)?;
-        let locs: Vec<FMaterialResourceLocOnDisk> = read_tarray(reader)?;
-        let num_bytes = reader.read_u32::<LittleEndian>()?;
+        let _locs: Vec<FMaterialResourceLocOnDisk> = read_tarray(reader)?;
+        let _num_bytes = reader.read_u32::<LittleEndian>()?;
 
         let mut shader_maps = Vec::new();
         for _i in 0..num_resources {

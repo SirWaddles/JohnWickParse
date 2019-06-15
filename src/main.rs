@@ -9,9 +9,10 @@ extern crate image;
 
 use std::path::Path;
 use std::fs;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::env;
 
+mod decompress;
 mod rijndael;
 mod assets;
 mod archives;
@@ -230,6 +231,27 @@ fn extract(params: &[String]) -> CommandResult {
     Ok(())
 }
 
+fn locale(params: &[String]) -> CommandResult {
+    let path = match params.get(0) {
+        Some(data) => data,
+        None => return cerr("No path specified"),
+    };
+
+    let mut locres = match fs::File::open(path) {
+        Ok(data) => data,
+        Err(_) => return cerr("Could not read file"),
+    };
+    let mut locres_buf = Vec::new();
+    locres.read_to_end(&mut locres_buf).unwrap();
+
+    let package = assets::locale::FTextLocalizationResource::from_buffer(locres_buf)?;
+    let serial_package = serde_json::to_string(&package).unwrap();
+    let mut file = fs::File::create(path.to_owned() + ".json").unwrap();
+    file.write_all(serial_package.as_bytes()).unwrap();
+
+    Ok(())
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let command = args.get(1);
@@ -250,6 +272,7 @@ fn main() {
         "mesh" => mesh(params),
         "anim" => anim(params),
         "add_anim" => add_anim(params),
+        "locale" => locale(params),
         _ => {
             println!("Invalid command");
             Ok(())
