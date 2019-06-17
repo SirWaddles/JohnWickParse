@@ -66,6 +66,18 @@ fn serialize(params: &[String]) -> CommandResult {
     Ok(())
 }
 
+fn debug(params: &[String]) -> CommandResult {
+    let path = match params.get(0) {
+        Some(data) => data,
+        None => return cerr("No path specified"),
+    };
+
+    let package = assets::Package::from_file(path)?;
+    println!("{:#?}", package);
+
+    Ok(())
+}
+
 fn texture(params: &[String]) -> CommandResult {
     let path = match params.get(0) {
         Some(data) => data,
@@ -273,6 +285,7 @@ fn main() {
         "anim" => anim(params),
         "add_anim" => add_anim(params),
         "locale" => locale(params),
+        "debug" => debug(params),
         _ => {
             println!("Invalid command");
             Ok(())

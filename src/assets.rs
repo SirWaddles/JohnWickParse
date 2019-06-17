@@ -1950,9 +1950,11 @@ impl FTexturePlatformData {
     }
 }
 
-pub trait PackageExport: std::fmt::Debug {
+pub trait PackageExport: std::fmt::Debug + TraitSerialize {
     fn get_export_type(&self) -> &str;
 }
+
+serialize_trait_object!(PackageExport);
 
 /// A UObject is a struct for all of the parsed properties of an object
 #[derive(Debug)]
@@ -2097,6 +2099,12 @@ impl PackageExport for Texture2D {
     }
 }
 
+impl Serialize for Texture2D {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        self.base_object.serialize(serializer)
+    }
+}
+
 #[derive(Debug)]
 pub struct UDataTable {
     super_object: UObject,
@@ -2189,16 +2197,18 @@ impl UCurveTable {
     }
 }
 
+impl PackageExport for UCurveTable {
+    fn get_export_type(&self) -> &str {
+        "CurveTable"
+    }
+}
+
 /// A Package is the collection of parsed data from a uasset/uexp file combo
 /// 
 /// It contains a number of 'Exports' which could be of any type implementing the `PackageExport` trait
 /// Note that exports are of type `dyn Any` and will need to be downcasted to their appropriate types before being usable
-#[derive(Debug)]
 pub struct Package {
     summary: FPackageFileSummary,
-    name_map: NameMap,
-    import_map: ImportMap,
-    export_map: Vec<FObjectExport>,
     exports: Vec<Box<Any>>,
 }
 
@@ -2263,9 +2273,6 @@ impl Package {
 
         Ok(Self {
             summary: summary,
-            name_map: name_map,
-            import_map: import_map,
-            export_map: export_map,
             exports: exports,
         })
     }
@@ -2323,40 +2330,52 @@ impl Package {
     }
 }
 
+impl fmt::Debug for Package {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for export in &self.exports {
+            if let Some(obj) = get_export(export) {
+                write!(f, "{:#?}", obj)?
+            }
+        }
+        write!(f, "{:#?}", self.summary)
+    }
+}
+
+// Still working out how I would ever do this properly. An enum doesn't seem quite right.
+fn get_export(export: &Box<dyn Any>) -> Option<&PackageExport> {
+    if let Some(obj) = export.downcast_ref::<UObject>() {
+        return Some(obj);
+    }
+    if let Some(texture) = export.downcast_ref::<Texture2D>() {
+        return Some(texture);
+    }
+    if let Some(table) = export.downcast_ref::<UDataTable>() {
+        return Some(table);
+    }
+    if let Some(mesh) = export.downcast_ref::<USkeletalMesh>() {
+        return Some(mesh);
+    }
+    if let Some(animation) = export.downcast_ref::<UAnimSequence>() {
+        return Some(animation);
+    }
+    if let Some(skeleton) = export.downcast_ref::<USkeleton>() {
+        return Some(skeleton);
+    }
+    if let Some(curve_table) = export.downcast_ref::<UCurveTable>() {
+        return Some(curve_table);
+    }
+    if let Some(material) = export.downcast_ref::<material_instance::UMaterialInstanceConstant>() {
+        return Some(material);
+    }
+    None
+}
+
 impl Serialize for Package {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
         let mut seq = serializer.serialize_seq(Some(self.summary.export_count as usize))?;
         for e in &self.exports {
-            if let Some(obj) = e.downcast_ref::<UObject>() {
+            if let Some(obj) = get_export(e) {
                 seq.serialize_element(obj)?;
-                continue;
-            }
-            if let Some(texture) = e.downcast_ref::<Texture2D>() {
-                seq.serialize_element(&texture.base_object)?;
-                continue;
-            }
-            if let Some(table) = e.downcast_ref::<UDataTable>() {
-                seq.serialize_element(&table)?;
-                continue;
-            }
-            if let Some(mesh) = e.downcast_ref::<USkeletalMesh>() {
-                seq.serialize_element(&mesh)?;
-                continue;
-            }
-            if let Some(animation) = e.downcast_ref::<UAnimSequence>() {
-                seq.serialize_element(&animation)?;
-                continue;
-            }
-            if let Some(skeleton) = e.downcast_ref::<USkeleton>() {
-                seq.serialize_element(&skeleton)?;
-                continue;
-            }
-            if let Some(curve_table) = e.downcast_ref::<UCurveTable>() {
-                seq.serialize_element(&curve_table)?;
-                continue;
-            }
-            if let Some(material) = e.downcast_ref::<material_instance::UMaterialInstanceConstant>() {
-                seq.serialize_element(&material)?;
                 continue;
             }
             seq.serialize_element("None")?;
