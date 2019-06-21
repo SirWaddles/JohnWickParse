@@ -75,7 +75,7 @@ impl FTextLocalizationResource {
         let localized_strings: Vec<FTextLocalizationResourceString> = read_tarray(&mut reader)?;
         reader.seek(SeekFrom::Start(current_offset))?;
 
-        let entry_count = reader.read_u32::<LittleEndian>()?;
+        let _entry_count = reader.read_u32::<LittleEndian>()?;
         let namespace_count = reader.read_u32::<LittleEndian>()?;
         let mut string_data = Vec::new();
         for _i in 0..namespace_count {

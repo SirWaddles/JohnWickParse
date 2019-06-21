@@ -460,3 +460,9 @@ impl UMaterialInstanceConstant {
         })
     }
 }
+
+impl PackageExport for UMaterialInstanceConstant {
+    fn get_export_type(&self) -> &str {
+        "MaterialInstanceConstant"
+    }
+}
