@@ -1408,6 +1408,7 @@ impl UScriptStruct {
         let err = |v| ParserError::add(v, format!("Struct Type: {}", struct_name));
         let struct_type: Box<NewableWithNameMap> = match struct_name {
             "Vector2D" => Box::new(FVector2D::new_n(reader, name_map, import_map).map_err(err)?),
+			"Box2D" => Box::new(FVector2D::new_n(reader, name_map, import_map).map_err(err)?),
             "LinearColor" => Box::new(FLinearColor::new_n(reader, name_map, import_map).map_err(err)?),
             "Color" => Box::new(FColor::new_n(reader, name_map, import_map).map_err(err)?),
             "GameplayTagContainer" => Box::new(FGameplayTagContainer::new_n(reader, name_map, import_map).map_err(err)?),
