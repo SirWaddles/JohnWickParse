@@ -4,7 +4,7 @@ use std::fs::{File, metadata};
 use std::path::Path;
 use std::any::Any;
 use half::f16;
-use serde::ser::{Serialize, Serializer, SerializeMap, SerializeSeq};
+use serde::ser::{Serialize, Serializer, SerializeMap, SerializeSeq, SerializeStruct};
 use erased_serde::{Serialize as TraitSerialize};
 use byteorder::{LittleEndian, ReadBytesExt};
 
@@ -179,6 +179,18 @@ struct FEngineVersion {
     patch: u16,
     changelist: u32,
     branch: String,
+}
+
+impl FEngineVersion {
+    fn empty() -> Self {
+        Self {
+            major: 0,
+            minor: 0,
+            patch: 0,
+            changelist: 0,
+            branch: "".to_owned(),
+        }
+    }
 }
 
 impl Newable for FEngineVersion {
@@ -366,6 +378,49 @@ struct FPackageFileSummary {
     chunk_ids: Vec<i32>,
     preload_dependency_count: i32,
     preload_dependency_offset: i32,
+}
+
+impl FPackageFileSummary {
+    fn empty() -> Self {
+        Self {
+            tag: 0,
+            legacy_file_version: 0,
+            legacy_ue3_version: 0,
+            file_version_u34: 0,
+            file_version_licensee_ue4: 0,
+            custom_version_container: Vec::new(),
+            total_header_size: 0,
+            folder_name: "".to_owned(),
+            package_flags: 0,
+            name_count: 0,
+            name_offset: 0,
+            gatherable_text_data_count: 0,
+            gatherable_text_data_offset: 0,
+            export_count: 0,
+            export_offset: 0,
+            import_count: 0,
+            import_offset: 0,
+            depends_offset: 0,
+            string_asset_references_count: 0,
+            string_asset_references_offset: 0,
+            searchable_names_offset: 0,
+            thumbnail_table_offset: 0,
+            guid: FGuid {a: 0, b: 0, c: 0, d: 0},
+            generations: Vec::new(),
+            saved_by_engine_version: FEngineVersion::empty(),
+            compatible_with_engine_version: FEngineVersion::empty(),
+            compression_flags: 0,
+            compressed_chunks: Vec::new(),
+            package_source: 0,
+            additional_packages_to_cook: Vec::new(),
+            asset_registry_data_offset: 0,
+            buld_data_start_offset: 0,
+            world_tile_info_data_offset: 0,
+            chunk_ids: Vec::new(),
+            preload_dependency_count: 0,
+            preload_dependency_offset: 0,
+        }
+    }
 }
 
 impl Newable for FPackageFileSummary {
@@ -613,7 +668,10 @@ impl Newable for FText {
 
 impl Serialize for FText {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
-        serializer.serialize_str(&self.source_string)
+        let mut state = serializer.serialize_struct("FText", 2)?;
+        state.serialize_field("string", &self.source_string)?;
+        state.serialize_field("key", &self.key)?;
+        state.end()
     }
 }
 
@@ -2329,6 +2387,13 @@ impl Package {
             Ok(self.exports.swap_remove(index))
         } else {
             Err(ParserError::new(format!("No exports found")))
+        }
+    }
+
+    pub fn empty() -> Self {
+        Self {
+            summary: FPackageFileSummary::empty(),
+            exports: Vec::new(),
         }
     }
 }

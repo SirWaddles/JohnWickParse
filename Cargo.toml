@@ -1,6 +1,6 @@
 [package]
 name = "john-wick-parse"
-version = "2.2.0"
+version = "3.0.0"
 authors = ["Waddlesworth <github@genj.io>"]
 edition = "2018"
 
@@ -13,7 +13,7 @@ serde_derive = "1.0"
 erased-serde = "0.3"
 bitreader = "0.3.1"
 glm = "0.2"
-image = { git = "https://github.com/SirWaddles/image" }
+image = "0.22"
 libloading = "0.5"
 
 [dependencies.half]
