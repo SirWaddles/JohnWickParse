@@ -668,8 +668,9 @@ impl Newable for FText {
 
 impl Serialize for FText {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
-        let mut state = serializer.serialize_struct("FText", 2)?;
+        let mut state = serializer.serialize_struct("FText", 3)?;
         state.serialize_field("string", &self.source_string)?;
+        state.serialize_field("namespace", &self.namespace)?;
         state.serialize_field("key", &self.key)?;
         state.end()
     }
@@ -837,7 +838,7 @@ impl Serialize for FStructFallback {
 #[derive(Debug)]
 pub struct UScriptStruct {
     struct_name: String,
-    struct_type: Box<NewableWithNameMap>,
+    struct_type: Box<dyn NewableWithNameMap>,
 }
 
 #[derive(Debug, Serialize)]
@@ -1464,7 +1465,7 @@ impl NewableWithNameMap for FDateTime {
 impl UScriptStruct {
     fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, struct_name: &str) -> ParserResult<Self> {
         let err = |v| ParserError::add(v, format!("Struct Type: {}", struct_name));
-        let struct_type: Box<NewableWithNameMap> = match struct_name {
+        let struct_type: Box<dyn NewableWithNameMap> = match struct_name {
             "Vector2D" => Box::new(FVector2D::new_n(reader, name_map, import_map).map_err(err)?),
 			"Box2D" => Box::new(FVector2D::new_n(reader, name_map, import_map).map_err(err)?),
             "LinearColor" => Box::new(FLinearColor::new_n(reader, name_map, import_map).map_err(err)?),
@@ -1584,6 +1585,7 @@ fn read_map_value(reader: &mut ReaderCursor, inner_type: &str, struct_type: &str
         "StructProperty" => FPropertyTagType::StructProperty(UScriptStruct::new(reader, name_map, import_map, struct_type)?),
         "NameProperty" => FPropertyTagType::NameProperty(read_fname(reader, name_map)?),
         "ObjectProperty" => FPropertyTagType::ObjectProperty(FPackageIndex::new_n(reader, name_map, import_map)?),
+        "SoftObjectProperty" => FPropertyTagType::SoftObjectProperty(FSoftObjectPath::new_n(reader, name_map, import_map)?),
 		"StrProperty" => FPropertyTagType::StrProperty(read_string(reader)?),
 		"TextProperty" => FPropertyTagType::TextProperty(FText::new(reader)?),
         _ => FPropertyTagType::StructProperty(UScriptStruct::new(reader, name_map, import_map, inner_type)?),
@@ -2270,7 +2272,7 @@ impl PackageExport for UCurveTable {
 /// Note that exports are of type `dyn Any` and will need to be downcasted to their appropriate types before being usable
 pub struct Package {
     summary: FPackageFileSummary,
-    exports: Vec<Box<Any>>,
+    exports: Vec<Box<dyn Any>>,
 }
 
 #[allow(dead_code)]
@@ -2368,7 +2370,7 @@ impl Package {
         Self::from_buffer(uasset_buf, uexp_buf, ubulk_buf)
     }
 
-    pub fn get_exports(self) -> Vec<Box<Any>> {
+    pub fn get_exports(self) -> Vec<Box<dyn Any>> {
         self.exports
     }
 
@@ -2410,7 +2412,7 @@ impl fmt::Debug for Package {
 }
 
 // Still working out how I would ever do this properly. An enum doesn't seem quite right.
-fn get_export(export: &Box<dyn Any>) -> Option<&PackageExport> {
+fn get_export(export: &Box<dyn Any>) -> Option<&dyn PackageExport> {
     if let Some(obj) = export.downcast_ref::<UObject>() {
         return Some(obj);
     }
