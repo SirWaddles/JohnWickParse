@@ -1579,13 +1579,13 @@ pub struct UScriptMap {
 fn read_map_value(reader: &mut ReaderCursor, inner_type: &str, struct_type: &str, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<FPropertyTagType> {
     Ok(match inner_type {
         "BoolProperty" => FPropertyTagType::BoolProperty(reader.read_u8()? != 1),
-        "ByteProperty" => FPropertyTagType::ByteProperty(reader.read_u8()?),
+        "ByteProperty" => FPropertyTagType::ByteProperty(reader.read_u32::<LittleEndian>()? as u8),
         "EnumProperty" => FPropertyTagType::EnumProperty(Some(read_fname(reader, name_map)?)),
         "UInt32Property" => FPropertyTagType::UInt32Property(reader.read_u32::<LittleEndian>()?),
         "StructProperty" => FPropertyTagType::StructProperty(UScriptStruct::new(reader, name_map, import_map, struct_type)?),
         "NameProperty" => FPropertyTagType::NameProperty(read_fname(reader, name_map)?),
         "ObjectProperty" => FPropertyTagType::ObjectProperty(FPackageIndex::new_n(reader, name_map, import_map)?),
-        "SoftObjectProperty" => FPropertyTagType::SoftObjectProperty(FSoftObjectPath::new_n(reader, name_map, import_map)?),
+        "SoftObjectProperty" => FPropertyTagType::SoftObjectPropertyMap(FGuid::new_n(reader, name_map, import_map)?),
 		"StrProperty" => FPropertyTagType::StrProperty(read_string(reader)?),
 		"TextProperty" => FPropertyTagType::TextProperty(FText::new(reader)?),
         _ => FPropertyTagType::StructProperty(UScriptStruct::new(reader, name_map, import_map, inner_type)?),
@@ -1690,6 +1690,7 @@ pub enum FPropertyTagType {
     ByteProperty(u8),
     EnumProperty(Option<String>),
     SoftObjectProperty(FSoftObjectPath),
+    SoftObjectPropertyMap(FGuid),
 }
 
 impl FPropertyTagType {
