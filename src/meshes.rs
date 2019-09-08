@@ -398,7 +398,10 @@ fn load_material(mesh_data: &mut GLTFItem, material_name: &str) -> ParserResult<
         let texture_name = val_struct.iter().fold(None, |acc, x| {
             if x.get_name() == "ParameterValue" {
                 return match x.get_data() {
-                    FPropertyTagType::ObjectProperty(index) => Some(index.get_import()),
+                    FPropertyTagType::ObjectProperty(index) => Some(match index.get_import() {
+                        Some(data) => data.get_name(),
+                        None => panic!("Import does not exist"),
+                    }),
                     _ => panic!("Not an FPackageIndex"),
                 };
             }

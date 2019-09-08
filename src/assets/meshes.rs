@@ -331,7 +331,10 @@ pub struct FSkeletalMaterial {
 
 impl FSkeletalMaterial {
     pub fn get_interface(&self) -> &str {
-        &self.material_interface.import
+        match &self.material_interface.import {
+            Some(data) => &data.object_name,
+            None => panic!("No import exists"),
+        }
     }
 }
 
