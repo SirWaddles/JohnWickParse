@@ -1462,6 +1462,22 @@ impl NewableWithNameMap for FDateTime {
     } 
 }
 
+// I have no idea how this works
+#[derive(Debug, Serialize)]
+pub struct FScriptDelegate {
+    object: i32,
+    name: String,
+}
+
+impl NewableWithNameMap for FScriptDelegate {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+        Ok(Self {
+            object: reader.read_i32::<LittleEndian>()?,
+            name: read_fname(reader, name_map)?,
+        })
+    }
+}
+
 impl UScriptStruct {
     fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, struct_name: &str) -> ParserResult<Self> {
         let err = |v| ParserError::add(v, format!("Struct Type: {}", struct_name));
@@ -1480,6 +1496,7 @@ impl UScriptStruct {
             "PerPlatformInt" => Box::new(FPerPlatformInt::new_n(reader, name_map, import_map).map_err(err)?),
             "SkeletalMeshSamplingLODBuiltData" => Box::new(FWeightedRandomSampler::new_n(reader, name_map, import_map).map_err(err)?),
             "SoftObjectPath" => Box::new(FSoftObjectPath::new_n(reader, name_map, import_map).map_err(err)?),
+            "SoftClassPath" => Box::new(FSoftObjectPath::new_n(reader, name_map, import_map).map_err(err)?),
             "LevelSequenceObjectReferenceMap" => Box::new(FLevelSequenceObjectReferenceMap::new_n(reader, name_map, import_map).map_err(err)?),
             "FrameNumber" => Box::new(FI32::new_n(reader, name_map, import_map).map_err(err)?),
             "SectionEvaluationDataTree" => Box::new(FSectionEvaluationDataTree::new_n(reader, name_map, import_map).map_err(err)?),
@@ -1581,6 +1598,7 @@ fn read_map_value(reader: &mut ReaderCursor, inner_type: &str, struct_type: &str
         "BoolProperty" => FPropertyTagType::BoolProperty(reader.read_u8()? != 1),
         "ByteProperty" => FPropertyTagType::ByteProperty(reader.read_u32::<LittleEndian>()? as u8),
         "EnumProperty" => FPropertyTagType::EnumProperty(Some(read_fname(reader, name_map)?)),
+        "IntProperty" => FPropertyTagType::IntProperty(reader.read_i32::<LittleEndian>()?),
         "UInt32Property" => FPropertyTagType::UInt32Property(reader.read_u32::<LittleEndian>()?),
         "StructProperty" => FPropertyTagType::StructProperty(UScriptStruct::new(reader, name_map, import_map, struct_type)?),
         "NameProperty" => FPropertyTagType::NameProperty(read_fname(reader, name_map)?),
@@ -1677,6 +1695,7 @@ pub enum FPropertyTagType {
     StructProperty(UScriptStruct),
     ObjectProperty(FPackageIndex),
     InterfaceProperty(UInterfaceProperty),
+    DelegateProperty(FScriptDelegate),
     FloatProperty(f32),
     TextProperty(FText),
     StrProperty(String),
@@ -1745,6 +1764,7 @@ impl FPropertyTagType {
                     _ => panic!("Enum property does not have enum data"),
                 }
             ),
+            "DelegateProperty" => FPropertyTagType::DelegateProperty(FScriptDelegate::new_n(reader, name_map, import_map)?),
             "SoftObjectProperty" => FPropertyTagType::SoftObjectProperty(FSoftObjectPath::new_n(reader, name_map, import_map)?),
             _ => return Err(ParserError::new(format!("Could not read property type: {} at pos {}", property_type, reader.position()))),
         })
@@ -2274,6 +2294,8 @@ impl PackageExport for UCurveTable {
 pub struct Package {
     summary: FPackageFileSummary,
     exports: Vec<Box<dyn Any>>,
+    export_map: Vec<FObjectExport>,
+    import_map: Vec<FObjectImport>,
 }
 
 #[allow(dead_code)]
@@ -2338,6 +2360,8 @@ impl Package {
         Ok(Self {
             summary: summary,
             exports: exports,
+            export_map: export_map,
+            import_map: import_map,
         })
     }
 
@@ -2397,6 +2421,8 @@ impl Package {
         Self {
             summary: FPackageFileSummary::empty(),
             exports: Vec::new(),
+            export_map: Vec::new(),
+            import_map: Vec::new(),
         }
     }
 }
@@ -2405,10 +2431,12 @@ impl fmt::Debug for Package {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for export in &self.exports {
             if let Some(obj) = get_export(export) {
-                write!(f, "{:#?}", obj)?
+                write!(f, "Export: {:#?}\n", obj)?
             }
         }
-        write!(f, "{:#?}", self.summary)
+        write!(f, "Package Summary: {:#?}\n", self.summary)?;
+        write!(f, "Import Map: {:#?}\n", self.import_map)?;
+        write!(f, "Export Map: {:#?}\n", self.export_map)
     }
 }
 
