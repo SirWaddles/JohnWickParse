@@ -14,7 +14,7 @@ mod anims;
 mod meshes;
 
 pub use anims::{USkeleton, UAnimSequence, FTrack};
-pub use meshes::{USkeletalMesh, FMultisizeIndexContainer, FStaticMeshVertexDataTangent, FSkeletalMeshRenderData, 
+pub use meshes::{USkeletalMesh, FMultisizeIndexContainer, FStaticMeshVertexDataTangent, FSkeletalMeshRenderData,
     FSkelMeshRenderSection, FSkeletalMaterial, FSkinWeightVertexBuffer, FMeshBoneInfo, FStaticMeshVertexDataUV, FReferenceSkeleton};
 
 pub type ReaderCursor = Cursor<Vec<u8>>;
@@ -662,7 +662,7 @@ impl Newable for FText {
                 source_string: read_string(reader)?,
             }),
             _ => Err(ParserError::new(format!("Could not read history type: {}", history_type))),
-        }        
+        }
     }
 }
 
@@ -814,7 +814,7 @@ impl NewableWithNameMap for FStructFallback {
 
             properties.push(tag);
         }
-        
+
         Ok(Self {
             properties: properties,
         })
@@ -1446,7 +1446,7 @@ impl NewableWithNameMap for FSimpleCurveKey {
             time: reader.read_f32::<LittleEndian>()?,
             value: reader.read_f32::<LittleEndian>()?,
         })
-    } 
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -1459,7 +1459,7 @@ impl NewableWithNameMap for FDateTime {
         Ok(Self {
             date: reader.read_i64::<LittleEndian>()?,
         })
-    } 
+    }
 }
 
 // I have no idea how this works
@@ -1521,7 +1521,7 @@ impl UScriptStruct {
             struct_type: struct_type,
         })
     }
-    
+
     pub fn get_contents(&self) -> &Vec<FPropertyTag> {
         &self.struct_type.get_properties().unwrap()
     }
@@ -1636,7 +1636,7 @@ struct TempSerializeTuple<'a, K, V> {
     value: &'a V,
 }
 
-impl<'a, K,V> Serialize for TempSerializeTuple<'a, K, V> 
+impl<'a, K,V> Serialize for TempSerializeTuple<'a, K, V>
 where
     K: Serialize,
     V: Serialize,
@@ -1713,7 +1713,7 @@ pub enum FPropertyTagType {
 }
 
 impl FPropertyTagType {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, 
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap,
                     property_type: &str, tag_data: Option<&FPropertyTagData>) -> ParserResult<Self> {
         Ok(match property_type {
             "BoolProperty" => FPropertyTagType::BoolProperty(
@@ -2009,10 +2009,7 @@ pub struct FTexturePlatformData {
     pixel_format: String,
     first_mip: i32,
     mips: Vec<FTexture2DMipMap>,
-}
-
-impl FTexturePlatformData {
-    
+    is_virtual: bool,
 }
 
 impl FTexturePlatformData {
@@ -2028,8 +2025,13 @@ impl FTexturePlatformData {
             mips.push(FTexture2DMipMap::new(reader, ubulk, bulk_offset)?);
         }
 
+        let is_virtual = reader.read_u32::<LittleEndian>()? != 0;
+        if is_virtual {
+            return Err(ParserError::new(format!("Texture is virtual, unsupported for now")));
+        }
+
         Ok(Self {
-            size_x, size_y, num_slices, pixel_format, first_mip, mips,
+            size_x, size_y, num_slices, pixel_format, first_mip, mips, is_virtual
         })
     }
 }
@@ -2216,7 +2218,7 @@ impl UDataTable {
             };
             rows.push((row_name, row_object));
         }
-        
+
         Ok(Self {
             super_object, rows,
         })
@@ -2288,7 +2290,7 @@ impl PackageExport for UCurveTable {
 }
 
 /// A Package is the collection of parsed data from a uasset/uexp file combo
-/// 
+///
 /// It contains a number of 'Exports' which could be of any type implementing the `PackageExport` trait
 /// Note that exports are of type `dyn Any` and will need to be downcasted to their appropriate types before being usable
 pub struct Package {
@@ -2400,7 +2402,7 @@ impl Package {
     }
 
     /// Returns a reference to an export
-    /// 
+    ///
     /// Export will live as long as the underlying Package
     pub fn get_export(&self, index: usize) -> ParserResult<&dyn Any> {
         Ok(match self.exports.get(index) {
