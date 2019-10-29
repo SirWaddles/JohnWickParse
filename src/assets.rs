@@ -16,7 +16,7 @@ mod anims;
 mod meshes;
 
 pub use anims::{USkeleton, UAnimSequence, FTrack};
-pub use meshes::{USkeletalMesh, FMultisizeIndexContainer, FStaticMeshVertexDataTangent, FSkeletalMeshRenderData, 
+pub use meshes::{USkeletalMesh, FMultisizeIndexContainer, FStaticMeshVertexDataTangent, FSkeletalMeshRenderData,
     FSkelMeshRenderSection, FSkeletalMaterial, FSkinWeightVertexBuffer, FMeshBoneInfo, FStaticMeshVertexDataUV, FReferenceSkeleton};
 
 pub type ReaderCursor = Cursor<Vec<u8>>;
@@ -703,7 +703,7 @@ impl Newable for FText {
                 source_string: read_string(reader)?,
             }),
             _ => Err(ParserError::new(format!("Could not read history type: {}", history_type))),
-        }        
+        }
     }
 }
 
@@ -855,7 +855,7 @@ impl NewableWithNameMap for FStructFallback {
 
             properties.push(tag);
         }
-        
+
         Ok(Self {
             properties: properties,
         })
@@ -1487,7 +1487,7 @@ impl NewableWithNameMap for FSimpleCurveKey {
             time: reader.read_f32::<LittleEndian>()?,
             value: reader.read_f32::<LittleEndian>()?,
         })
-    } 
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -1500,7 +1500,23 @@ impl NewableWithNameMap for FDateTime {
         Ok(Self {
             date: reader.read_i64::<LittleEndian>()?,
         })
-    } 
+    }
+}
+
+// I have no idea how this works
+#[derive(Debug, Serialize)]
+pub struct FScriptDelegate {
+    object: i32,
+    name: String,
+}
+
+impl NewableWithNameMap for FScriptDelegate {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+        Ok(Self {
+            object: reader.read_i32::<LittleEndian>()?,
+            name: read_fname(reader, name_map)?,
+        })
+    }
 }
 
 impl UScriptStruct {
@@ -1521,6 +1537,7 @@ impl UScriptStruct {
             "PerPlatformInt" => Box::new(FPerPlatformInt::new_n(reader, name_map, import_map).map_err(err)?),
             "SkeletalMeshSamplingLODBuiltData" => Box::new(FWeightedRandomSampler::new_n(reader, name_map, import_map).map_err(err)?),
             "SoftObjectPath" => Box::new(FSoftObjectPath::new_n(reader, name_map, import_map).map_err(err)?),
+            "SoftClassPath" => Box::new(FSoftObjectPath::new_n(reader, name_map, import_map).map_err(err)?),
             "LevelSequenceObjectReferenceMap" => Box::new(FLevelSequenceObjectReferenceMap::new_n(reader, name_map, import_map).map_err(err)?),
             "FrameNumber" => Box::new(FI32::new_n(reader, name_map, import_map).map_err(err)?),
             "SectionEvaluationDataTree" => Box::new(FSectionEvaluationDataTree::new_n(reader, name_map, import_map).map_err(err)?),
@@ -1545,7 +1562,7 @@ impl UScriptStruct {
             struct_type: struct_type,
         })
     }
-    
+
     pub fn get_contents(&self) -> &Vec<FPropertyTag> {
         &self.struct_type.get_properties().unwrap()
     }
@@ -1622,6 +1639,7 @@ fn read_map_value(reader: &mut ReaderCursor, inner_type: &str, struct_type: &str
         "BoolProperty" => FPropertyTagType::BoolProperty(reader.read_u8()? != 1),
         "ByteProperty" => FPropertyTagType::ByteProperty(reader.read_u32::<LittleEndian>()? as u8),
         "EnumProperty" => FPropertyTagType::EnumProperty(Some(read_fname(reader, name_map)?)),
+        "IntProperty" => FPropertyTagType::IntProperty(reader.read_i32::<LittleEndian>()?),
         "UInt32Property" => FPropertyTagType::UInt32Property(reader.read_u32::<LittleEndian>()?),
         "StructProperty" => FPropertyTagType::StructProperty(UScriptStruct::new(reader, name_map, import_map, struct_type)?),
         "NameProperty" => FPropertyTagType::NameProperty(read_fname(reader, name_map)?),
@@ -1659,7 +1677,7 @@ struct TempSerializeTuple<'a, K, V> {
     value: &'a V,
 }
 
-impl<'a, K,V> Serialize for TempSerializeTuple<'a, K, V> 
+impl<'a, K,V> Serialize for TempSerializeTuple<'a, K, V>
 where
     K: Serialize,
     V: Serialize,
@@ -1718,6 +1736,7 @@ pub enum FPropertyTagType {
     StructProperty(UScriptStruct),
     ObjectProperty(FPackageIndex),
     InterfaceProperty(UInterfaceProperty),
+    DelegateProperty(FScriptDelegate),
     FloatProperty(f32),
     TextProperty(FText),
     StrProperty(String),
@@ -1735,7 +1754,7 @@ pub enum FPropertyTagType {
 }
 
 impl FPropertyTagType {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, 
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap,
                     property_type: &str, tag_data: Option<&FPropertyTagData>) -> ParserResult<Self> {
         Ok(match property_type {
             "BoolProperty" => FPropertyTagType::BoolProperty(
@@ -1786,6 +1805,7 @@ impl FPropertyTagType {
                     _ => panic!("Enum property does not have enum data"),
                 }
             ),
+            "DelegateProperty" => FPropertyTagType::DelegateProperty(FScriptDelegate::new_n(reader, name_map, import_map)?),
             "SoftObjectProperty" => FPropertyTagType::SoftObjectProperty(FSoftObjectPath::new_n(reader, name_map, import_map)?),
             _ => return Err(ParserError::new(format!("Could not read property type: {} at pos {}", property_type, reader.position()))),
         })
@@ -2030,10 +2050,7 @@ pub struct FTexturePlatformData {
     pixel_format: String,
     first_mip: i32,
     mips: Vec<FTexture2DMipMap>,
-}
-
-impl FTexturePlatformData {
-    
+    is_virtual: bool,
 }
 
 impl FTexturePlatformData {
@@ -2049,8 +2066,13 @@ impl FTexturePlatformData {
             mips.push(FTexture2DMipMap::new(reader, ubulk, bulk_offset)?);
         }
 
+        let is_virtual = reader.read_u32::<LittleEndian>()? != 0;
+        if is_virtual {
+            return Err(ParserError::new(format!("Texture is virtual, unsupported for now")));
+        }
+
         Ok(Self {
-            size_x, size_y, num_slices, pixel_format, first_mip, mips,
+            size_x, size_y, num_slices, pixel_format, first_mip, mips, is_virtual
         })
     }
 }
@@ -2237,7 +2259,7 @@ impl UDataTable {
             };
             rows.push((row_name, row_object));
         }
-        
+
         Ok(Self {
             super_object, rows,
         })
@@ -2287,7 +2309,7 @@ impl UCurveTable {
             let row_type = match curve_table_mode {
                 ECurveTableMode::Empty => "Empty",
                 ECurveTableMode::SimpleCurves => "SimpleCurveKey",
-                ECurveTableMode::RichCurves => "RichCurveKey,"
+                ECurveTableMode::RichCurves => "RichCurveKey",
             }.to_owned();
             let row_curve = UObject {
                 properties: UObject::serialize_properties(reader, name_map, import_map)?,
@@ -2309,12 +2331,14 @@ impl PackageExport for UCurveTable {
 }
 
 /// A Package is the collection of parsed data from a uasset/uexp file combo
-/// 
+///
 /// It contains a number of 'Exports' which could be of any type implementing the `PackageExport` trait
 /// Note that exports are of type `dyn Any` and will need to be downcasted to their appropriate types before being usable
 pub struct Package {
     summary: FPackageFileSummary,
     exports: Vec<Box<dyn Any>>,
+    export_map: Vec<FObjectExport>,
+    import_map: Vec<FObjectImport>,
 }
 
 #[allow(dead_code)]
@@ -2386,6 +2410,8 @@ impl Package {
         Ok(Self {
             summary: summary,
             exports: exports,
+            export_map: export_map,
+            import_map: import_map,
         })
     }
 
@@ -2424,7 +2450,7 @@ impl Package {
     }
 
     /// Returns a reference to an export
-    /// 
+    ///
     /// Export will live as long as the underlying Package
     pub fn get_export(&self, index: usize) -> ParserResult<&dyn Any> {
         Ok(match self.exports.get(index) {
@@ -2445,6 +2471,8 @@ impl Package {
         Self {
             summary: FPackageFileSummary::empty(),
             exports: Vec::new(),
+            export_map: Vec::new(),
+            import_map: Vec::new(),
         }
     }
 }
@@ -2453,10 +2481,12 @@ impl fmt::Debug for Package {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for export in &self.exports {
             if let Some(obj) = get_export(export) {
-                write!(f, "{:#?}", obj)?
+                write!(f, "Export: {:#?}\n", obj)?
             }
         }
-        write!(f, "{:#?}", self.summary)
+        write!(f, "Package Summary: {:#?}\n", self.summary)?;
+        write!(f, "Import Map: {:#?}\n", self.import_map)?;
+        write!(f, "Export Map: {:#?}\n", self.export_map)
     }
 }
 

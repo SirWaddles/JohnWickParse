@@ -35,6 +35,7 @@ pub fn decode_texture(texture: Texture2D) -> ParserResult<Vec<u8>> {
         "PF_DXT1" => decode_texture_dxt1(data)?,
         "PF_B8G8R8A8" => decode_texture_bgra(data)?,
         "PF_BC5" => create_rgb_from_bc5(data.data, data.width, data.height),
+        "PF_G8" => data.data,
         _ => return Err(ParserError::new(format!("Unsupported pixel format: {}", pixel_format))),
     };
 
@@ -42,6 +43,7 @@ pub fn decode_texture(texture: Texture2D) -> ParserResult<Vec<u8>> {
         "PF_DXT1" => image::RGB(8),
         "PF_B8G8R8A8" => image::RGBA(8),
         "PF_BC5" => image::RGB(8),
+        "PF_G8" => image::Gray(8),
         _ => image::RGBA(8),
     };
 
