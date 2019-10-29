@@ -2268,7 +2268,7 @@ impl UCurveTable {
             let row_type = match curve_table_mode {
                 ECurveTableMode::Empty => "Empty",
                 ECurveTableMode::SimpleCurves => "SimpleCurveKey",
-                ECurveTableMode::RichCurves => "RichCurveKey,"
+                ECurveTableMode::RichCurves => "RichCurveKey",
             }.to_owned();
             let row_curve = UObject {
                 properties: UObject::serialize_properties(reader, name_map, import_map)?,
