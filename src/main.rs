@@ -256,7 +256,7 @@ fn locale(params: &[String]) -> CommandResult {
     let mut locres_buf = Vec::new();
     locres.read_to_end(&mut locres_buf).unwrap();
 
-    let package = assets::locale::FTextLocalizationResource::from_buffer(locres_buf)?;
+    let package = assets::locale::FTextLocalizationResource::from_buffer(&locres_buf)?;
     let serial_package = serde_json::to_string(&package).unwrap();
     let mut file = fs::File::create(path.to_owned() + ".json").unwrap();
     file.write_all(serial_package.as_bytes()).unwrap();

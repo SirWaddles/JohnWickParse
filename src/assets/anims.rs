@@ -316,7 +316,7 @@ impl UAnimSequence {
         if self.key_encoding_format != 2 {
             return Err(ParserError::new(format!("Can only parse PerTrackCompression")));
         }
-        let mut reader = ReaderCursor::new(self.compressed_stream.clone());
+        let mut reader = ReaderCursor::new(&self.compressed_stream);
         let num_tracks = self.compressed_track_offsets.len() / 2;
         // TODO: Use UObject property instead.
         let num_frames = self.compressed_num_frames;

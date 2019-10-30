@@ -19,7 +19,7 @@ pub use anims::{USkeleton, UAnimSequence, FTrack};
 pub use meshes::{USkeletalMesh, FMultisizeIndexContainer, FStaticMeshVertexDataTangent, FSkeletalMeshRenderData,
     FSkelMeshRenderSection, FSkeletalMaterial, FSkinWeightVertexBuffer, FMeshBoneInfo, FStaticMeshVertexDataUV, FReferenceSkeleton};
 
-pub type ReaderCursor = Cursor<Vec<u8>>;
+pub type ReaderCursor<'c> = Cursor<&'c[u8]>;
 
 /// ParserError contains a list of error messages that wind down to where the parser was not able to parse a property
 #[derive(Debug)]
@@ -2346,7 +2346,7 @@ pub struct Package {
 
 #[allow(dead_code)]
 impl Package {
-    pub fn from_buffer(uasset: Vec<u8>, uexp: Vec<u8>, ubulk: Option<Vec<u8>>) -> ParserResult<Self> {
+    pub fn from_buffer(uasset: &[u8], uexp: &[u8], ubulk: Option<&[u8]>) -> ParserResult<Self> {
         let mut cursor = ReaderCursor::new(uasset);
         let summary = FPackageFileSummary::new(&mut cursor)?;
 
@@ -2445,7 +2445,11 @@ impl Package {
             false => None,
         };
 
-        Self::from_buffer(uasset_buf, uexp_buf, ubulk_buf)
+        // ??
+        match ubulk_buf {
+            Some(data) => Self::from_buffer(&uasset_buf, &uexp_buf, Some(&data)),
+            None => Self::from_buffer(&uasset_buf, &uexp_buf, None),
+        }
     }
 
     pub fn get_exports(self) -> Vec<Box<dyn Any>> {

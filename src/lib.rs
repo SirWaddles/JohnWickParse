@@ -15,7 +15,7 @@ mod texture;
 mod rijndael;
 
 /// Reads an uasset and uexp file into a Package with all of its exports
-pub fn read_asset(asset: Vec<u8>, uexp: Vec<u8>, ubulk: Option<Vec<u8>>) -> ParserResult<Package> {
+pub fn read_asset(asset: &[u8], uexp: &[u8], ubulk: Option<&[u8]>) -> ParserResult<Package> {
     Package::from_buffer(asset, uexp, ubulk)
 }
 
