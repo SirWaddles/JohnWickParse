@@ -524,12 +524,6 @@ impl FPackageIndex {
                 None => None,
             };
         }
-        if index > 0 {
-            return match import_map.get((index - 1) as usize) {
-                Some(data) => Some(data.clone()),
-                None => None,
-            };
-        }
         None
     }
 
@@ -552,7 +546,13 @@ impl NewableWithNameMap for FPackageIndex {
 
 impl Serialize for FPackageIndex {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
-        self.import.serialize(serializer)
+        if self.index >= 0 {
+            let mut state = serializer.serialize_struct("FObjectExport", 1)?;
+            state.serialize_field("export", &self.index)?;
+            state.end()
+        } else {
+            self.import.serialize(serializer)
+        }
     }
 }
 
@@ -577,11 +577,21 @@ impl FObjectImport {
             None => (),
         }
     }
+
+    fn add_import_list(&self, mut list: Vec<String>) -> Vec<String> {
+        list.push(self.object_name.clone());
+        let package = self.outer_package.replace(None);
+        if let Some(import) = &package {
+            list = import.add_import_list(list);
+        }
+        self.outer_package.set(package);
+        list
+    }
 }
 
 impl fmt::Debug for FObjectImport {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Object Index: {}", self.outer_index)
+        write!(f, "Object: {} {} {}", self.class_package, self.class_name, self.object_name)
     }
 }
 
@@ -600,19 +610,12 @@ impl NewableWithNameMap for FObjectImport {
 
 impl Serialize for FObjectImport {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
-        let mut state = serializer.serialize_struct("FObjectImport", 4)?;
-        state.serialize_field("class_package", &self.class_package)?;
-        state.serialize_field("class_name", &self.class_name)?;
-        state.serialize_field("object_name", &self.object_name)?;
-
-        // This is traversing a tree, but the contents of the cell will be nulled if we see ourselves again.
-        // The contents of the tree should be in order, and even if not, this acts as a safeguard against
-        // recursion anyway.
-        let package = self.outer_package.replace(None);
-        state.serialize_field("outer_package", &package)?;
-        self.outer_package.replace(package);
-
-        state.end()
+        let name_list = self.add_import_list(Vec::new());
+        let mut seq = serializer.serialize_seq(Some(name_list.len()))?;
+        for name in &name_list {
+            seq.serialize_element(name)?;
+        }
+        seq.end()
     }
 }
 
@@ -2338,7 +2341,7 @@ pub struct Package {
     summary: FPackageFileSummary,
     exports: Vec<Box<dyn Any>>,
     export_map: Vec<FObjectExport>,
-    import_map: Vec<FObjectImport>,
+    import_map: Vec<Rc<FObjectImport>>,
 }
 
 #[allow(dead_code)]
