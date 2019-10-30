@@ -3,6 +3,8 @@ use std::io::{Cursor, Read, Seek, SeekFrom};
 use std::fs::{File, metadata};
 use std::path::Path;
 use std::any::Any;
+use std::rc::Rc;
+use std::cell::Cell;
 use half::f16;
 use serde::ser::{Serialize, Serializer, SerializeMap, SerializeSeq, SerializeStruct};
 use erased_serde::{Serialize as TraitSerialize};
@@ -17,7 +19,7 @@ pub use anims::{USkeleton, UAnimSequence, FTrack};
 pub use meshes::{USkeletalMesh, FMultisizeIndexContainer, FStaticMeshVertexDataTangent, FSkeletalMeshRenderData,
     FSkelMeshRenderSection, FSkeletalMaterial, FSkinWeightVertexBuffer, FMeshBoneInfo, FStaticMeshVertexDataUV, FReferenceSkeleton};
 
-pub type ReaderCursor = Cursor<Vec<u8>>;
+pub type ReaderCursor<'c> = Cursor<&'c[u8]>;
 
 /// ParserError contains a list of error messages that wind down to where the parser was not able to parse a property
 #[derive(Debug)]
@@ -484,7 +486,7 @@ impl Newable for FNameEntrySerialized {
 }
 
 type NameMap = Vec<FNameEntrySerialized>;
-type ImportMap = Vec<FObjectImport>;
+type ImportMap = Vec<Rc<FObjectImport>>;
 
 trait NewableWithNameMap: std::fmt::Debug + TraitSerialize {
     fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self>
@@ -511,21 +513,21 @@ fn read_fname(reader: &mut ReaderCursor, name_map: &NameMap) -> ParserResult<Str
 #[derive(Debug, Clone)]
 pub struct FPackageIndex {
     index: i32,
-    import: String,
+    import: Option<Rc<FObjectImport>>,
 }
 
 impl FPackageIndex {
-    fn get_package<'a>(index: i32, import_map: &'a ImportMap) -> Option<&'a FObjectImport> {
+    fn get_package(index: i32, import_map: &ImportMap) -> Option<Rc<FObjectImport>> {
         if index < 0 {
-            return import_map.get((index * -1 - 1) as usize);
-        }
-        if index > 0 {
-            return import_map.get((index - 1) as usize);
+            return match import_map.get((index * -1 - 1) as usize) {
+                Some(data) => Some(data.clone()),
+                None => None,
+            };
         }
         None
     }
 
-    pub fn get_import(&self) -> &str {
+    pub fn get_import(&self) -> &Option<Rc<FObjectImport>> {
         &self.import
     }
 }
@@ -533,10 +535,8 @@ impl FPackageIndex {
 impl NewableWithNameMap for FPackageIndex {
     fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
         let index = reader.read_i32::<LittleEndian>()?;
-        let import = match FPackageIndex::get_package(index, import_map) {
-            Some(data) => data.object_name.clone(),
-            None => index.to_string(),
-        };
+        let import = FPackageIndex::get_package(index, import_map);
+        
         Ok(Self {
             index,
             import,
@@ -546,32 +546,76 @@ impl NewableWithNameMap for FPackageIndex {
 
 impl Serialize for FPackageIndex {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
-        serializer.serialize_str(&self.import)
+        if self.index >= 0 {
+            let mut state = serializer.serialize_struct("FObjectExport", 1)?;
+            state.serialize_field("export", &self.index)?;
+            state.end()
+        } else {
+            self.import.serialize(serializer)
+        }
     }
 }
 
-#[derive(Debug)]
-struct FObjectImport {
+pub struct FObjectImport {
     class_package: String,
     class_name: String,
-    outer_index: FPackageIndex,
+    outer_index: i32,
     object_name: String,
+    outer_package: Cell<Option<Rc<FObjectImport>>>,
+}
+
+impl FObjectImport {
+    pub fn get_name(&self) -> &str {
+        &self.object_name
+    }
+
+    fn read_imports(&self, import_map: &ImportMap) {
+        match FPackageIndex::get_package(self.outer_index, import_map) {
+            Some(data) => {
+                self.outer_package.set(Some(data.clone()));
+            },
+            None => (),
+        }
+    }
+
+    fn add_import_list(&self, mut list: Vec<String>) -> Vec<String> {
+        list.push(self.object_name.clone());
+        let package = self.outer_package.replace(None);
+        if let Some(import) = &package {
+            list = import.add_import_list(list);
+        }
+        self.outer_package.set(package);
+        list
+    }
+}
+
+impl fmt::Debug for FObjectImport {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Object: {} {} {}", self.class_package, self.class_name, self.object_name)
+    }
 }
 
 impl NewableWithNameMap for FObjectImport {
-    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+        let class_package = read_fname(reader, name_map)?;
+        let class_name = read_fname(reader, name_map)?;
+        let outer_index = reader.read_i32::<LittleEndian>()?;
+        let object_name = read_fname(reader, name_map)?;
         Ok(Self {
-            class_package: read_fname(reader, name_map)?,
-            class_name: read_fname(reader, name_map)?,
-            outer_index: FPackageIndex::new_n(reader, name_map, import_map)?,
-            object_name: read_fname(reader, name_map)?,
+            class_package, class_name, outer_index, object_name,
+            outer_package: Cell::new(None),
         })
     }
 }
 
 impl Serialize for FObjectImport {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
-        serializer.serialize_str(&self.object_name)
+        let name_list = self.add_import_list(Vec::new());
+        let mut seq = serializer.serialize_seq(Some(name_list.len()))?;
+        for name in &name_list {
+            seq.serialize_element(name)?;
+        }
+        seq.end()
     }
 }
 
@@ -2297,12 +2341,12 @@ pub struct Package {
     summary: FPackageFileSummary,
     exports: Vec<Box<dyn Any>>,
     export_map: Vec<FObjectExport>,
-    import_map: Vec<FObjectImport>,
+    import_map: Vec<Rc<FObjectImport>>,
 }
 
 #[allow(dead_code)]
 impl Package {
-    pub fn from_buffer(uasset: Vec<u8>, uexp: Vec<u8>, ubulk: Option<Vec<u8>>) -> ParserResult<Self> {
+    pub fn from_buffer(uasset: &[u8], uexp: &[u8], ubulk: Option<&[u8]>) -> ParserResult<Self> {
         let mut cursor = ReaderCursor::new(uasset);
         let summary = FPackageFileSummary::new(&mut cursor)?;
 
@@ -2315,7 +2359,11 @@ impl Package {
         let mut import_map = Vec::new();
         cursor.seek(SeekFrom::Start(summary.import_offset as u64))?;
         for _i in 0..summary.import_count {
-            import_map.push(FObjectImport::new_n(&mut cursor, &name_map, &import_map)?);
+            import_map.push(Rc::new(FObjectImport::new_n(&mut cursor, &name_map, &import_map)?));
+        }
+
+        for import in &import_map {
+            import.read_imports(&import_map);
         }
 
         let mut export_map = Vec::new();
@@ -2339,7 +2387,10 @@ impl Package {
         let mut exports: Vec<Box<dyn Any>> = Vec::new();
 
         for v in &export_map {
-            let export_type = &v.class_index.import;
+            let export_type = match &v.class_index.import {
+                Some(data) => &data.object_name,
+                None => continue,
+            };
             let position = v.serial_offset as u64 - asset_length as u64;
             cursor.seek(SeekFrom::Start(position))?;
             let export: Box<dyn Any> = match export_type.as_ref() {
@@ -2350,7 +2401,7 @@ impl Package {
                 "Skeleton" => Box::new(USkeleton::new(&mut cursor, &name_map, &import_map)?),
                 "CurveTable" => Box::new(UCurveTable::new(&mut cursor, &name_map, &import_map)?),
                 //"MaterialInstanceConstant" => Box::new(material_instance::UMaterialInstanceConstant::new(&mut cursor, &name_map, &import_map)?),
-                _ => Box::new(UObject::new(&mut cursor, &name_map, &import_map, export_type)?),
+                _ => Box::new(UObject::new(&mut cursor, &name_map, &import_map, &export_type)?),
             };
             let valid_pos = position + v.serial_size as u64;
             if cursor.position() != valid_pos {
@@ -2394,7 +2445,11 @@ impl Package {
             false => None,
         };
 
-        Self::from_buffer(uasset_buf, uexp_buf, ubulk_buf)
+        // ??
+        match ubulk_buf {
+            Some(data) => Self::from_buffer(&uasset_buf, &uexp_buf, Some(&data)),
+            None => Self::from_buffer(&uasset_buf, &uexp_buf, None),
+        }
     }
 
     pub fn get_exports(self) -> Vec<Box<dyn Any>> {

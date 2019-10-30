@@ -188,6 +188,10 @@ fn get_skeleton_map(anim: &UAnimSequence) -> ParserResult<Vec<String>> {
         FPropertyTagType::ObjectProperty(import) => import.get_import(),
         _ => return Err(ParserError::new(format!("Skeleton unreadable format"))),
     };
+    let path = match path {
+        Some(data) => data.get_name(),
+        None => return Err(ParserError::new(format!("Import not valid"))),
+    };
 
     let skeleton_path = "skeletons/".to_owned() + path;
     let package = Package::from_file(&skeleton_path)?;

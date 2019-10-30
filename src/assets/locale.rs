@@ -54,7 +54,7 @@ pub struct FTextLocalizationResource {
 }
 
 impl FTextLocalizationResource {
-    pub fn from_buffer(locres: Vec<u8>) -> ParserResult<Self> {
+    pub fn from_buffer(locres: &[u8]) -> ParserResult<Self> {
         let mut reader = ReaderCursor::new(locres);
         let magic = FGuid::new(&mut reader)?;
 

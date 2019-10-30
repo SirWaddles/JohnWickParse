@@ -196,11 +196,11 @@ impl PakExtractor {
         let mut header_b = vec![0u8; PAK_SIZE as usize];
         reader.read_exact(&mut header_b)?;
 
-        let mut header_reader = Cursor::new(header_b);
+        let mut header_reader = Cursor::new(header_b.as_slice());
         let header = FPakInfo::new(&mut header_reader)?;
 
         let index_data = get_index(&header, &mut reader, key);
-        let mut index_reader = Cursor::new(index_data);
+        let mut index_reader = Cursor::new(index_data.as_slice());
         let index = FPakIndex::new(&mut index_reader)?;
 
         Ok(Self {
@@ -218,7 +218,7 @@ impl PakExtractor {
         let mut header_b = vec![0u8; PAK_SIZE as usize];
         reader.read_exact(&mut header_b)?;
 
-        let mut header_reader = Cursor::new(header_b);
+        let mut header_reader = Cursor::new(header_b.as_slice());
         let header = FPakInfo::new(&mut header_reader)?;
 
         Ok(header)
