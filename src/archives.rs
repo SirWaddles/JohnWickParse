@@ -9,12 +9,13 @@ const PAK_MAGIC: u32 = 0x5A6F12E1;
 const PAK_SIZE: u32 = 8 + 16 + 20 + 1 + 16 + (32 * 5);
 
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct FPakInfo {
     encryption_key_guid: FGuid,
     encrypted_index: bool,
     version: u32,
     index_offset: u64,
-    index_size: i64,
+    index_size: u64,
     index_hash: [u8; 20],
     compression_methods: Vec<String>,
 }
@@ -23,6 +24,10 @@ pub struct FPakInfo {
 impl FPakInfo {
     pub fn get_key_guid(&self) -> &FGuid {
         &self.encryption_key_guid
+    }
+
+    pub fn get_index_sizes(&self) -> (u64, u64) {
+        (self.index_offset, self.index_size)
     }
 }
 
@@ -37,7 +42,7 @@ impl Newable for FPakInfo {
         }
         let version = reader.read_u32::<LittleEndian>()?;
         let index_offset = reader.read_u64::<LittleEndian>()?;
-        let index_size = reader.read_i64::<LittleEndian>()?;
+        let index_size = reader.read_u64::<LittleEndian>()?;
 
         let mut index_hash = [0u8; 20];
         reader.read_exact(&mut index_hash)?;
@@ -143,13 +148,13 @@ impl FPakEntry {
 }
 
 #[allow(dead_code)]
-struct FPakIndex {
+pub struct FPakIndex {
     mount_point: String,
     file_count: u32,
     index_entries: Vec<FPakEntry>,
 }
 
-impl FPakIndex {
+impl Newable for FPakIndex {
     fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
         let mount_point = read_string(reader)?;
         if mount_point.len() > 1024 {
@@ -167,6 +172,12 @@ impl FPakIndex {
             file_count,
             index_entries,
         })
+    }
+}
+
+impl FPakIndex {
+    pub fn get_entries(&self) -> &[FPakEntry] {
+        self.index_entries.as_slice()
     }
 }
 
