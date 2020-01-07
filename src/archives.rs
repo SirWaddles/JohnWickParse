@@ -108,14 +108,14 @@ impl Newable for FPakCompressedBlock {
 #[derive(Debug, Clone)]
 pub struct FPakEntry {
     filename: String,
-    position: i64,
-    size: i64,
+    pub position: i64,
+    pub size: i64,
     uncompressed_size: u64,
     compression_method: u32,
     compression_blocks: Vec<FPakCompressedBlock>,
-    encrypted: bool,
+    pub encrypted: bool,
     compression_block_size: u32,
-    struct_size: u64,
+    pub struct_size: u64,
 }
 
 #[allow(dead_code)]
