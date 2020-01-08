@@ -179,6 +179,10 @@ impl FPakIndex {
     pub fn get_entries(&self) -> &[FPakEntry] {
         self.index_entries.as_slice()
     }
+
+    pub fn get_mount_point(&self) -> &str {
+        &self.mount_point
+    }
 }
 
 /// PakExtractor can read the contents of a `.pak` file
