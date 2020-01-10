@@ -113,6 +113,7 @@ pub struct FPakEntry {
     uncompressed_size: u64,
     compression_method: u32,
     compression_blocks: Vec<FPakCompressedBlock>,
+    pub hash: [u8; 20],
     pub encrypted: bool,
     compression_block_size: u32,
     pub struct_size: u64,
@@ -134,7 +135,7 @@ impl FPakEntry {
         }
         
         Ok(Self {
-            filename, position, size, uncompressed_size, compression_method, compression_blocks,
+            filename, position, size, uncompressed_size, compression_method, compression_blocks, hash,
             encrypted: reader.read_u8()? != 0,
             compression_block_size: reader.read_u32::<LittleEndian>()?,
             struct_size: reader.position() - seek_point,
