@@ -549,6 +549,11 @@ impl Serialize for FPackageIndex {
         if self.index >= 0 {
             let mut state = serializer.serialize_struct("FObjectExport", 1)?;
             state.serialize_field("export", &self.index)?;
+            if self.index > 0 {
+                unsafe {
+                    state.serialize_field("_jwp_export_dst_type", EXPORT_TYPES[(self.index-1) as usize])?;
+                }
+            }
             state.end()
         } else {
             self.import.serialize(serializer)
@@ -2090,11 +2095,12 @@ serialize_trait_object!(PackageExport);
 #[derive(Debug)]
 pub struct UObject {
     export_type: String,
+    export_idx: u32,
     properties: Vec<FPropertyTag>,
 }
 
 impl UObject {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, export_type: &str) -> ParserResult<Self> {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, export_type: &str, export_idx: u32) -> ParserResult<Self> {
         let properties = Self::serialize_properties(reader, name_map, import_map).map_err(|v| ParserError::add(v, format!("Export type: {}", export_type)))?;
         let serialize_guid = reader.read_u32::<LittleEndian>()? != 0;
         if serialize_guid {
@@ -2103,6 +2109,7 @@ impl UObject {
 
         Ok(Self {
             properties: properties,
+            export_idx: export_idx.to_owned(),
             export_type: export_type.to_owned(),
         })
     }
@@ -2140,6 +2147,13 @@ impl Serialize for UObject {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
         let mut map = serializer.serialize_map(Some(self.properties.len() + 1))?;
         map.serialize_entry("export_type", &self.export_type)?;
+        if self.export_idx > 0 {
+            map.serialize_entry("_jwp_export_idx", &self.export_idx)?;
+            unsafe {
+                map.serialize_entry("_jwp_is_asset", &EXPORT_OBJECTS[(self.export_idx-1) as usize].is_asset)?;
+                map.serialize_entry("_jwp_object_name", &EXPORT_OBJECTS[(self.export_idx-1) as usize].object_name)?;
+            }
+        }
         for property in &self.properties {
             map.serialize_entry(&property.name, &property.tag)?;
         }
@@ -2163,8 +2177,8 @@ pub struct Texture2D {
 
 #[allow(dead_code)]
 impl Texture2D {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, asset_file_size: i32, export_size: i64, ubulk: &mut Option<ReaderCursor>) -> ParserResult<Self> {
-        let object = UObject::new(reader, name_map, import_map, "Texture2D")?;
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, asset_file_size: i32, export_size: i64, ubulk: &mut Option<ReaderCursor>, export_idx: u32) -> ParserResult<Self> {
+        let object = UObject::new(reader, name_map, import_map, "Texture2D", export_idx)?;
 
         FStripDataFlags::new(reader)?; // still no idea
         FStripDataFlags::new(reader)?; // why there are two
@@ -2248,8 +2262,8 @@ impl PackageExport for UDataTable {
 }
 
 impl UDataTable {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
-        let super_object = UObject::new(reader, name_map, import_map, "RowStruct")?;
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, export_idx: u32) -> ParserResult<Self> {
+        let super_object = UObject::new(reader, name_map, import_map, "RowStruct", export_idx)?;
         let num_rows = reader.read_i32::<LittleEndian>()?;
 
         let mut rows = Vec::new();
@@ -2259,6 +2273,7 @@ impl UDataTable {
             let row_object = UObject {
                 properties: UObject::serialize_properties(reader, name_map, import_map)?,
                 export_type: "RowStruct".to_owned(),
+                export_idx: export_idx,
             };
             rows.push((row_name, row_object));
         }
@@ -2295,8 +2310,8 @@ struct UCurveTable {
 }
 
 impl UCurveTable {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
-        let super_object = UObject::new(reader, name_map, import_map, "CurveTable")?;
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, export_idx: u32) -> ParserResult<Self> {
+        let super_object = UObject::new(reader, name_map, import_map, "CurveTable", export_idx)?;
         let num_rows = reader.read_i32::<LittleEndian>()?;
         let curve_table_mode = reader.read_u8()?;
         let curve_table_mode = match curve_table_mode {
@@ -2317,6 +2332,7 @@ impl UCurveTable {
             let row_curve = UObject {
                 properties: UObject::serialize_properties(reader, name_map, import_map)?,
                 export_type: row_type.to_owned(),
+                export_idx: 0,
             };
             row_map.push((row_name, row_curve));
         }
@@ -2343,6 +2359,9 @@ pub struct Package {
     export_map: Vec<FObjectExport>,
     import_map: Vec<Rc<FObjectImport>>,
 }
+
+static mut EXPORT_TYPES:Vec<&String> = Vec::new();
+static mut EXPORT_OBJECTS:Vec<&FObjectExport> = Vec::new();
 
 #[allow(dead_code)]
 impl Package {
@@ -2386,6 +2405,7 @@ impl Package {
 
         let mut exports: Vec<Box<dyn Any>> = Vec::new();
 
+        let mut export_idx = 1;
         for v in &export_map {
             let export_type = match &v.class_index.import {
                 Some(data) => &data.object_name,
@@ -2394,20 +2414,25 @@ impl Package {
             let position = v.serial_offset as u64 - asset_length as u64;
             cursor.seek(SeekFrom::Start(position))?;
             let export: Box<dyn Any> = match export_type.as_ref() {
-                "Texture2D" => Box::new(Texture2D::new(&mut cursor, &name_map, &import_map, asset_length, export_size, &mut ubulk_cursor)?),
-                "DataTable" => Box::new(UDataTable::new(&mut cursor, &name_map, &import_map)?),
-                "SkeletalMesh" => Box::new(USkeletalMesh::new(&mut cursor, &name_map, &import_map)?),
-                "AnimSequence" => Box::new(UAnimSequence::new(&mut cursor, &name_map, &import_map)?),
-                "Skeleton" => Box::new(USkeleton::new(&mut cursor, &name_map, &import_map)?),
-                "CurveTable" => Box::new(UCurveTable::new(&mut cursor, &name_map, &import_map)?),
-                //"MaterialInstanceConstant" => Box::new(material_instance::UMaterialInstanceConstant::new(&mut cursor, &name_map, &import_map)?),
-                _ => Box::new(UObject::new(&mut cursor, &name_map, &import_map, &export_type)?),
+                "Texture2D" => Box::new(Texture2D::new(&mut cursor, &name_map, &import_map, asset_length, export_size, &mut ubulk_cursor, export_idx)?),
+                "DataTable" => Box::new(UDataTable::new(&mut cursor, &name_map, &import_map, export_idx)?),
+                "SkeletalMesh" => Box::new(USkeletalMesh::new(&mut cursor, &name_map, &import_map, export_idx)?),
+                "AnimSequence" => Box::new(UAnimSequence::new(&mut cursor, &name_map, &import_map, export_idx)?),
+                "Skeleton" => Box::new(USkeleton::new(&mut cursor, &name_map, &import_map, export_idx)?),
+                "CurveTable" => Box::new(UCurveTable::new(&mut cursor, &name_map, &import_map, export_idx)?),
+                //"MaterialInstanceConstant" => Box::new(material_instance::UMaterialInstanceConstant::new(&mut cursor, &name_map, &import_map, export_idx)?),
+                _ => Box::new(UObject::new(&mut cursor, &name_map, &import_map, &export_type, export_idx)?),
             };
             let valid_pos = position + v.serial_size as u64;
             if cursor.position() != valid_pos {
                 println!("Did not read {} correctly. Current Position: {}, Bytes Remaining: {}", export_type, cursor.position(), valid_pos as i64 - cursor.position() as i64);
             }
+            export_idx = export_idx + 1;
             exports.push(export);
+            unsafe {
+                EXPORT_TYPES.push(export_type);
+                EXPORT_OBJECTS.push(&v);
+            }
         }
 
         Ok(Self {
@@ -2420,13 +2445,23 @@ impl Package {
 
     pub fn from_file(file_path: &str) -> ParserResult<Self> {
         let asset_file = file_path.to_owned() + ".uasset";
+        let map_file = file_path.to_owned() + ".umap";
         let uexp_file = file_path.to_owned() + ".uexp";
         let ubulk_file = file_path.to_owned() + ".ubulk";
 
-        // read asset file
-        let mut asset = File::open(asset_file).map_err(|_v| ParserError::new(format!("Could not find file: {}", file_path)))?;
+        // read asset or map file
+        let asset_path = Path::new(&asset_file);
         let mut uasset_buf = Vec::new();
-        asset.read_to_end(&mut uasset_buf)?;
+        match metadata(asset_path).is_ok() {
+            true => {
+                let mut asset = File::open(asset_file)?;
+                asset.read_to_end(&mut uasset_buf)?;
+            },
+            false => {
+                let mut asset = File::open(map_file).map_err(|_v| ParserError::new(format!("Could not find file: {}", file_path)))?;
+                asset.read_to_end(&mut uasset_buf)?;
+            },
+        };
 
         // read uexp file
         let mut uexp = File::open(uexp_file)?;

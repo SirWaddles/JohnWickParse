@@ -712,8 +712,8 @@ pub struct USkeletalMesh {
 }
 
 impl USkeletalMesh {
-    pub(super) fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
-        let super_object = UObject::new(reader, name_map, import_map, "SkeletalMesh")?;
+    pub(super) fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, export_idx: u32) -> ParserResult<Self> {
+        let super_object = UObject::new(reader, name_map, import_map, "SkeletalMesh", export_idx)?;
         let has_vertex_colors = match super_object.get_property("bHasVertexColors") {
             Some(property_data) => {
                 match property_data {

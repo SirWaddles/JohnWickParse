@@ -436,8 +436,8 @@ pub struct UMaterialInstanceConstant {
 
 #[allow(dead_code)]
 impl UMaterialInstanceConstant {
-    pub(super) fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
-        let super_object = UObject::new(reader, name_map, import_map, "MaterialInstanceConstant")?;
+    pub(super) fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, export_idx: u32) -> ParserResult<Self> {
+        let super_object = UObject::new(reader, name_map, import_map, "MaterialInstanceConstant", export_idx)?;
         let num_resources = reader.read_i32::<LittleEndian>()?;
 
         let resource_name_map: Vec<FNameEntrySerialized> = read_tarray(reader)?;

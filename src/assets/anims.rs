@@ -193,8 +193,8 @@ fn read_times(reader: &mut ReaderCursor, num_keys: u32, num_frames: u32) -> Pars
 }
 
 impl UAnimSequence {
-    pub(super) fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
-        let super_object = UObject::new(reader, name_map, import_map, "AnimSequence")?;
+    pub(super) fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, export_idx: u32) -> ParserResult<Self> {
+        let super_object = UObject::new(reader, name_map, import_map, "AnimSequence", export_idx)?;
         let skeleton_guid = FGuid::new(reader)?;
         let _flags = FStripDataFlags::new(reader)?;
         let use_compressed_data = reader.read_u32::<LittleEndian>()? != 0;
@@ -552,8 +552,8 @@ impl PackageExport for USkeleton {
 }
 
 impl USkeleton {
-    pub(super) fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
-        let super_object = UObject::new(reader, name_map, import_map, "Skeleton")?;
+    pub(super) fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, export_idx: u32) -> ParserResult<Self> {
+        let super_object = UObject::new(reader, name_map, import_map, "Skeleton", export_idx)?;
         let reference_skeleton = FReferenceSkeleton::new_n(reader, name_map, import_map)?;
 
         let mut anim_retarget_sources = Vec::new();
