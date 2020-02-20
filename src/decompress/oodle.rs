@@ -1,4 +1,4 @@
-extern crate libloading as lib;
+use libloading as lib;
 
 type DecompressFunc = unsafe fn(*const u8, u64, *mut u8, u64, u32, u32, u32, u64, u64, u64, u64, u64, u64, u32) -> i32;
 

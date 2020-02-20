@@ -6,8 +6,9 @@ use std::any::Any;
 use std::rc::Rc;
 use std::cell::Cell;
 use half::f16;
-use serde::ser::{Serialize, Serializer, SerializeMap, SerializeSeq, SerializeStruct};
-use erased_serde::{Serialize as TraitSerialize};
+use serde::Serialize;
+use serde::ser::{Serializer, SerializeMap, SerializeSeq, SerializeStruct};
+use erased_serde::{serialize_trait_object, Serialize as TraitSerialize};
 use byteorder::{LittleEndian, ReadBytesExt};
 
 pub mod locale;

@@ -1,19 +1,9 @@
-extern crate byteorder;
-extern crate hex;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_json;
-#[macro_use]
-extern crate erased_serde;
-extern crate image;
-
 use std::path::Path;
 use std::fs;
 use std::io::{Read, Write};
 use std::env;
 
 mod decompress;
-mod rijndael;
 mod assets;
 mod archives;
 mod texture;

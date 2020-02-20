@@ -7,10 +7,12 @@ edition = "2018"
 [dependencies]
 byteorder = "1.2"
 hex = "0.3"
-serde = { version = "1.0", features = ["rc"] }
+serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
 serde_derive = "1.0"
 erased-serde = "0.3"
+aes-soft = "0.3"
+block-modes = "0.3"
 bitreader = "0.3.1"
 glm = "0.2"
 image = "0.22"

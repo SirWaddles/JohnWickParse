@@ -1,8 +1,9 @@
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::fs::File;
 use std::io::{Read, BufReader, Seek, SeekFrom, Cursor};
+use block_modes::{BlockMode, Ecb, block_padding::ZeroPadding};
+use aes_soft::Aes256;
 use crate::assets::{FGuid, Newable, ReaderCursor, read_string, read_tarray, ParserResult, ParserError};
-use crate::rijndael;
 use crate::decompress::oodle;
 
 const PAK_MAGIC: u32 = 0x5A6F12E1;
@@ -84,7 +85,10 @@ fn get_index(header: &FPakInfo, reader: &mut BufReader<File>, key: &str) -> Vec<
         return ciphertext;
     }
     let key = hex::decode(key).expect("Hex error");
-    rijndael::rijndael_decrypt_buf(&ciphertext, &key)
+
+    let decrypt = Ecb::<Aes256, ZeroPadding>::new_var(&key, Default::default()).unwrap();
+    decrypt.decrypt(&mut ciphertext).unwrap();
+    ciphertext
 }
 
 #[allow(dead_code)]
@@ -262,9 +266,11 @@ impl PakExtractor {
             let mut enc_buffer = vec![0u8; enc_size as usize];
             self.reader.read_exact(&mut enc_buffer).unwrap();
             let key = hex::decode(&self.key).expect("Hex error");
-            let plain_buffer = rijndael::rijndael_decrypt_buf(&enc_buffer, &key);
-            let mut plain_cursor = Cursor::new(plain_buffer);
-            plain_cursor.read_exact(&mut buffer).unwrap();
+
+            let decrypt = Ecb::<Aes256, ZeroPadding>::new_var(&key, Default::default()).unwrap();
+            decrypt.decrypt(&mut enc_buffer).unwrap();
+
+            buffer.copy_from_slice(&enc_buffer[..file.size as usize]);
         } else {
             self.reader.read_exact(&mut buffer).unwrap();
         }
