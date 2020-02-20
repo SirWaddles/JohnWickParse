@@ -296,6 +296,25 @@ impl FPakIndex {
     pub fn get_mount_point(&self) -> &str {
         &self.mount_point
     }
+
+    pub fn get_dir_index(&self) -> (i64, i64) {
+        self.dir_index
+    }
+
+    pub fn update_from_index(&mut self, reader: &mut ReaderCursor) -> ParserResult<()> {
+        let directory_index: Vec<FPakDirectoryEntry> = read_tarray(reader)?;
+        let mut encoded_cursor = Cursor::new(self.encoded_pak.as_slice());
+        let mut pak_entries = Vec::new();
+        for dir_entry in &directory_index {
+            for pak_entry in &dir_entry.value {
+                pak_entries.push(FPakEntry::from_encoded(&mut encoded_cursor, &dir_entry.key, &pak_entry)?);
+            }
+        }
+
+        self.index_entries = pak_entries;
+
+        Ok(())
+    }
 }
 
 /// PakExtractor can read the contents of a `.pak` file
@@ -340,18 +359,8 @@ impl PakExtractor {
         let decrypt = Ecb::<Aes256, ZeroPadding>::new_var(&key, Default::default()).unwrap();
         decrypt.decrypt(&mut dir_index_b).unwrap();
         let mut directory_reader = Cursor::new(dir_index_b.as_slice());
-        let directory_index: Vec<FPakDirectoryEntry> = read_tarray(&mut directory_reader)?;
 
-
-        let mut encoded_cursor = Cursor::new(index.encoded_pak.as_slice());
-        let mut pak_entries = Vec::new();
-        for dir_entry in &directory_index {
-            for pak_entry in &dir_entry.value {
-                pak_entries.push(FPakEntry::from_encoded(&mut encoded_cursor, &dir_entry.key, &pak_entry)?);
-            }
-        }
-
-        index.index_entries = pak_entries;
+        index.update_from_index(&mut directory_reader)?;
 
         Ok(Self {
             header,
