@@ -404,9 +404,8 @@ impl PakExtractor {
             };
             let mut enc_buffer = vec![0u8; enc_size as usize];
             self.reader.read_exact(&mut enc_buffer).unwrap();
-            let key = hex::decode(&self.key).expect("Hex error");
 
-            let decrypt = Ecb::<Aes256, ZeroPadding>::new_var(&key, Default::default()).unwrap();
+            let decrypt = Ecb::<Aes256, ZeroPadding>::new_var(&self.key, Default::default()).unwrap();
             decrypt.decrypt(&mut enc_buffer).unwrap();
 
             buffer.copy_from_slice(&enc_buffer[..file.size as usize]);
