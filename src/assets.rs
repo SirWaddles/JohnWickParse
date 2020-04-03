@@ -5,6 +5,7 @@ use std::path::Path;
 use std::any::Any;
 use std::rc::Rc;
 use std::cell::Cell;
+use std::cmp::Ordering;
 use half::f16;
 use serde::Serialize;
 use serde::ser::{Serializer, SerializeMap, SerializeSeq, SerializeStruct};
@@ -2388,9 +2389,16 @@ impl Package {
         let mut exports: Vec<Box<dyn Any>> = Vec::new();
 
         for v in &export_map {
-            let export_type = match &v.class_index.import {
-                Some(data) => &data.object_name,
-                None => continue,
+            let export_type = match v.class_index.index.cmp(&0) {
+                Ordering::Greater => match export_map.get((v.class_index.index - 1) as usize) {
+                    Some(data) => &data.object_name,
+                    None => "UObject",
+                },
+                Ordering::Less => match &v.class_index.import {
+                    Some(data) => &data.object_name,
+                    None => "UObject",
+                },
+                Ordering::Equal => "UObject",
             };
             let position = v.serial_offset as u64 - asset_length as u64;
             cursor.seek(SeekFrom::Start(position))?;
