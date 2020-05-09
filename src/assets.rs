@@ -1756,6 +1756,7 @@ pub enum FPropertyTagType {
     EnumProperty(Option<String>),
     SoftObjectProperty(FSoftObjectPath),
     SoftObjectPropertyMap(FGuid),
+    FieldPathProperty(String),
 }
 
 impl FPropertyTagType {
@@ -1803,15 +1804,19 @@ impl FPropertyTagType {
                 _ => panic!("Byte needs byte data"),
             },
             "EnumProperty" => FPropertyTagType::EnumProperty(
-                match tag_data.unwrap() {
-                    FPropertyTagData::EnumProperty(val) => {
+                match tag_data {
+                    Some(FPropertyTagData::EnumProperty(val)) => {
                         if val == "None" { None } else { Some(read_fname(reader, name_map)?) }
+                    },
+                    None => {
+                        None
                     },
                     _ => panic!("Enum property does not have enum data"),
                 }
             ),
             "DelegateProperty" => FPropertyTagType::DelegateProperty(FScriptDelegate::new_n(reader, name_map, import_map)?),
             "SoftObjectProperty" => FPropertyTagType::SoftObjectProperty(FSoftObjectPath::new_n(reader, name_map, import_map)?),
+            "FieldPathProperty" => FPropertyTagType::FieldPathProperty(read_fname(reader, name_map)?),
             _ => return Err(ParserError::new(format!("Could not read property type: {} at pos {}", property_type, reader.position()))),
         })
     }
