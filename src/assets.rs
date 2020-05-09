@@ -1610,6 +1610,10 @@ impl UScriptArray {
                 contents.push(FPropertyTagType::ByteProperty(reader.read_u8()?));
                 continue;
             }
+            if inner_type == "EnumProperty" {
+                contents.push(FPropertyTagType::EnumProperty(Some(read_fname(reader, name_map)?)));
+                continue;
+            }
             contents.push(FPropertyTagType::new(reader, name_map, import_map, &inner_type, inner_tag_data)?);
         }
 
@@ -1722,6 +1726,20 @@ impl NewableWithNameMap for UInterfaceProperty {
     }
 }
 
+#[derive(Debug, Serialize)]
+pub struct FFieldPath {
+    names: Vec<String>,
+}
+
+impl NewableWithNameMap for FFieldPath {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
+        let names: Vec<String> = read_tarray_n(reader, name_map, import_map)?;
+        Ok(Self {
+            names,
+        })
+    }
+}
+
 #[derive(Debug)]
 enum FPropertyTagData {
     StructProperty (String, FGuid),
@@ -1756,7 +1774,7 @@ pub enum FPropertyTagType {
     EnumProperty(Option<String>),
     SoftObjectProperty(FSoftObjectPath),
     SoftObjectPropertyMap(FGuid),
-    FieldPathProperty(String),
+    FieldPathProperty(FFieldPath),
 }
 
 impl FPropertyTagType {
@@ -1816,7 +1834,7 @@ impl FPropertyTagType {
             ),
             "DelegateProperty" => FPropertyTagType::DelegateProperty(FScriptDelegate::new_n(reader, name_map, import_map)?),
             "SoftObjectProperty" => FPropertyTagType::SoftObjectProperty(FSoftObjectPath::new_n(reader, name_map, import_map)?),
-            "FieldPathProperty" => FPropertyTagType::FieldPathProperty(read_fname(reader, name_map)?),
+            "FieldPathProperty" => FPropertyTagType::FieldPathProperty(FFieldPath::new_n(reader, name_map, import_map)?),
             _ => return Err(ParserError::new(format!("Could not read property type: {} at pos {}", property_type, reader.position()))),
         })
     }
@@ -1903,11 +1921,13 @@ fn read_property_tag(reader: &mut ReaderCursor, name_map: &NameMap, import_map: 
         false => None,
     };
     let final_pos = pos + (size as u64);
+
+    if read_data && final_pos != reader.position() {
+        // println!("Could not read entire property: {} ({}) - {} {}", name, property_type, (final_pos as i64) - (reader.position() as i64), reader.position());
+    }
+
     if read_data {
         reader.seek(SeekFrom::Start(final_pos as u64)).expect("Could not seek to size");
-    }
-    if read_data && final_pos != reader.position() {
-        println!("Could not read entire property: {} ({})", name, property_type);
     }
 
     Ok(Some(FPropertyTag {
