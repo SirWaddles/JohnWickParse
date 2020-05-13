@@ -1,18 +1,9 @@
-extern crate byteorder;
-extern crate hex;
-#[macro_use]
-extern crate serde_derive;
-#[macro_use]
-extern crate erased_serde;
-extern crate image;
-
 use crate::assets::{ParserResult, ParserError, Package, Texture2D};
 
 pub mod assets;
 pub mod archives;
 mod decompress;
 mod texture;
-mod rijndael;
 
 /// Reads an uasset and uexp file into a Package with all of its exports
 pub fn read_asset(asset: &[u8], uexp: &[u8], ubulk: Option<&[u8]>) -> ParserResult<Package> {

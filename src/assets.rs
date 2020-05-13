@@ -5,9 +5,11 @@ use std::path::Path;
 use std::any::Any;
 use std::rc::Rc;
 use std::cell::Cell;
+use std::cmp::Ordering;
 use half::f16;
-use serde::ser::{Serialize, Serializer, SerializeMap, SerializeSeq, SerializeStruct};
-use erased_serde::{Serialize as TraitSerialize};
+use serde::Serialize;
+use serde::ser::{Serializer, SerializeMap, SerializeSeq, SerializeStruct};
+use erased_serde::{serialize_trait_object, Serialize as TraitSerialize};
 use byteorder::{LittleEndian, ReadBytesExt};
 
 pub mod locale;
@@ -1613,6 +1615,10 @@ impl UScriptArray {
                 contents.push(FPropertyTagType::ByteProperty(reader.read_u8()?));
                 continue;
             }
+            if inner_type == "EnumProperty" {
+                contents.push(FPropertyTagType::EnumProperty(Some(read_fname(reader, name_map)?)));
+                continue;
+            }
             contents.push(FPropertyTagType::new(reader, name_map, import_map, &inner_type, inner_tag_data)?);
         }
 
@@ -1725,6 +1731,20 @@ impl NewableWithNameMap for UInterfaceProperty {
     }
 }
 
+#[derive(Debug, Serialize)]
+pub struct FFieldPath {
+    names: Vec<String>,
+}
+
+impl NewableWithNameMap for FFieldPath {
+    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
+        let names: Vec<String> = read_tarray_n(reader, name_map, import_map)?;
+        Ok(Self {
+            names,
+        })
+    }
+}
+
 #[derive(Debug)]
 enum FPropertyTagData {
     StructProperty (String, FGuid),
@@ -1759,6 +1779,7 @@ pub enum FPropertyTagType {
     EnumProperty(Option<String>),
     SoftObjectProperty(FSoftObjectPath),
     SoftObjectPropertyMap(FGuid),
+    FieldPathProperty(FFieldPath),
 }
 
 impl FPropertyTagType {
@@ -1806,15 +1827,19 @@ impl FPropertyTagType {
                 _ => panic!("Byte needs byte data"),
             },
             "EnumProperty" => FPropertyTagType::EnumProperty(
-                match tag_data.unwrap() {
-                    FPropertyTagData::EnumProperty(val) => {
+                match tag_data {
+                    Some(FPropertyTagData::EnumProperty(val)) => {
                         if val == "None" { None } else { Some(read_fname(reader, name_map)?) }
+                    },
+                    None => {
+                        None
                     },
                     _ => panic!("Enum property does not have enum data"),
                 }
             ),
             "DelegateProperty" => FPropertyTagType::DelegateProperty(FScriptDelegate::new_n(reader, name_map, import_map)?),
             "SoftObjectProperty" => FPropertyTagType::SoftObjectProperty(FSoftObjectPath::new_n(reader, name_map, import_map)?),
+            "FieldPathProperty" => FPropertyTagType::FieldPathProperty(FFieldPath::new_n(reader, name_map, import_map)?),
             _ => return Err(ParserError::new(format!("Could not read property type: {} at pos {}", property_type, reader.position()))),
         })
     }
@@ -1901,11 +1926,13 @@ fn read_property_tag(reader: &mut ReaderCursor, name_map: &NameMap, import_map: 
         false => None,
     };
     let final_pos = pos + (size as u64);
+
+    if read_data && final_pos != reader.position() {
+        // println!("Could not read entire property: {} ({}) - {} {}", name, property_type, (final_pos as i64) - (reader.position() as i64), reader.position());
+    }
+
     if read_data {
         reader.seek(SeekFrom::Start(final_pos as u64)).expect("Could not seek to size");
-    }
-    if read_data && final_pos != reader.position() {
-        println!("Could not read entire property: {} ({})", name, property_type);
     }
 
     Ok(Some(FPropertyTag {
@@ -2407,9 +2434,16 @@ impl Package {
 
         let mut export_idx = 1;
         for v in &export_map {
-            let export_type = match &v.class_index.import {
-                Some(data) => &data.object_name,
-                None => continue,
+            let export_type = match v.class_index.index.cmp(&0) {
+                Ordering::Greater => match export_map.get((v.class_index.index - 1) as usize) {
+                    Some(data) => &data.object_name,
+                    None => "UObject",
+                },
+                Ordering::Less => match &v.class_index.import {
+                    Some(data) => &data.object_name,
+                    None => "UObject",
+                },
+                Ordering::Equal => "UObject",
             };
             let position = v.serial_offset as u64 - asset_length as u64;
             cursor.seek(SeekFrom::Start(position))?;

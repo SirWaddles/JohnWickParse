@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
-use serde::ser::{Serialize, Serializer, SerializeStruct, SerializeSeq, SerializeMap};
+use serde::Serialize;
+use serde::ser::{Serializer, SerializeStruct, SerializeSeq, SerializeMap};
 
 pub struct GLTFContainer {
     pub buffer: Vec<u8>,
