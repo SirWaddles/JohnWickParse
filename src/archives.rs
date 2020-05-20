@@ -3,6 +3,7 @@ use std::fs::File;
 use std::io::{Read, BufReader, Seek, SeekFrom, Cursor};
 use block_modes::{BlockMode, Ecb, block_padding::ZeroPadding};
 use aes_soft::Aes256;
+use flate2::read::ZlibDecoder;
 use crate::assets::{FGuid, Newable, ReaderCursor, read_string, read_tarray, ParserResult, ParserError};
 use crate::decompress::oodle;
 
@@ -179,6 +180,40 @@ impl FPakEntry {
 
         let encrypted = (flags & (1 << 22)) != 0;
 
+        let compression_block_count = (flags >> 6) & 0xffff;
+        let mut compression_block_size = 0;
+        if compression_block_count > 0 {
+            compression_block_size = match uncompressed_size < 65536 {
+                true => uncompressed_size as u32,
+                false => ((flags & 0x3f) << 11),
+            };
+        }
+
+        let mut struct_size: u64 = 8 + 8 + 8 + 20 + 4 + 4 + 1;
+
+        if compression_method != 0 {
+            struct_size += 4 + (compression_block_count as u64) * 16;
+        }
+
+        let mut compression_blocks = Vec::new();
+        let mut compressed_block_offset = struct_size as i64;
+
+        if compression_block_count == 1 {
+            compression_blocks.push(FPakCompressedBlock {
+                compressed_start: struct_size as i64,
+                compressed_end: (struct_size + size) as i64,
+            });
+        } else {
+            for _i in 0..compression_block_count {
+                let size_data = reader.read_u32::<LittleEndian>()? as i64;
+                compression_blocks.push(FPakCompressedBlock {
+                    compressed_start: compressed_block_offset,
+                    compressed_end: compressed_block_offset + size_data,
+                });
+                compressed_block_offset += size_data;
+            }
+        }
+
         Ok(Self {
             filename: dir_name.to_owned() + &index_data.key,
             position,
@@ -187,11 +222,10 @@ impl FPakEntry {
             compression_method,
             encrypted,
             // Not gonna support this straight away
-            compression_blocks: Vec::new(),
+            compression_blocks,
             hash: [0u8; 20],
-            compression_block_size: 0,
-            // wtf is the 1 at the end for?
-            struct_size: 8 + 8 + 8 + 20 + 4 + 4 + 1,
+            compression_block_size,
+            struct_size,
         })
     }
 }
@@ -214,7 +248,7 @@ impl Newable for FPakIndex {
         }
         let file_count = reader.read_u32::<LittleEndian>()?;
 
-        let hash_seed = reader.read_u64::<LittleEndian>()?;
+        let _hash_seed = reader.read_u64::<LittleEndian>()?;
         let has_path_index = reader.read_i32::<LittleEndian>()? != 0;
         let path_index = match has_path_index {
             true => {
@@ -329,8 +363,16 @@ pub struct PakExtractor {
 fn decompress_block(input: &[u8], output_size: u64, compression_method: &str) -> Vec<u8> {
     match compression_method {
         "Oodle" => oodle::decompress_stream(output_size, input).unwrap(),
+        "Zlib" => decompress_zlib(output_size, input),
         _ => Vec::new(),
     }
+}
+
+fn decompress_zlib(output_size: u64, input: &[u8]) -> Vec<u8> {
+    let mut data = vec![0u8; output_size as usize];
+    let mut z = ZlibDecoder::new(input);
+    z.read_exact(&mut data).unwrap();
+    data
 }
 
 #[allow(dead_code)]

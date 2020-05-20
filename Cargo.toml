@@ -1,6 +1,6 @@
 [package]
 name = "john-wick-parse"
-version = "4.0.3"
+version = "4.1.0"
 authors = ["Waddlesworth <github@genj.io>"]
 edition = "2018"
 
@@ -17,6 +17,7 @@ bitreader = "0.3.1"
 glm = "0.2"
 image = "0.22"
 libloading = "0.5"
+flate2 = "1.0"
 
 [dependencies.half]
 version ="1.3"
