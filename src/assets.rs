@@ -16,10 +16,12 @@ pub mod locale;
 mod material_instance;
 mod anims;
 mod meshes;
+mod sound;
 
 pub use anims::{USkeleton, UAnimSequence, FTrack};
 pub use meshes::{USkeletalMesh, FMultisizeIndexContainer, FStaticMeshVertexDataTangent, FSkeletalMeshRenderData,
     FSkelMeshRenderSection, FSkeletalMaterial, FSkinWeightVertexBuffer, FMeshBoneInfo, FStaticMeshVertexDataUV, FReferenceSkeleton};
+pub use sound::USoundWave;
 
 pub type ReaderCursor<'c> = Cursor<&'c[u8]>;
 
@@ -1970,7 +1972,7 @@ impl Newable for FStripDataFlags {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 struct FByteBulkDataHeader {
     bulk_data_flags: i32,
     element_count: i32,
@@ -1997,6 +1999,12 @@ struct FByteBulkData {
 impl std::fmt::Debug for FByteBulkData {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Header: {:?} {}", self.header, self.data.len())
+    }
+}
+
+impl Serialize for FByteBulkData {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        self.header.serialize(serializer)
     }
 }
 
@@ -2160,6 +2168,13 @@ impl UObject {
             }
             acc
         })
+    }
+
+    pub fn get_boolean(&self, name: &str) -> Option<bool> {
+        match self.get_property(name) {
+            Some(FPropertyTagType::BoolProperty(bool_property)) => Some(*bool_property),
+            _ => None,
+        }
     }
 }
 
@@ -2434,6 +2449,7 @@ impl Package {
                 "AnimSequence" => Box::new(UAnimSequence::new(&mut cursor, &name_map, &import_map)?),
                 "Skeleton" => Box::new(USkeleton::new(&mut cursor, &name_map, &import_map)?),
                 "CurveTable" => Box::new(UCurveTable::new(&mut cursor, &name_map, &import_map)?),
+                "SoundWave" => Box::new(USoundWave::new(&mut cursor, &name_map, &import_map, asset_length, export_size, &mut ubulk_cursor)?),
                 //"MaterialInstanceConstant" => Box::new(material_instance::UMaterialInstanceConstant::new(&mut cursor, &name_map, &import_map)?),
                 _ => Box::new(UObject::new(&mut cursor, &name_map, &import_map, &export_type)?),
             };
@@ -2553,6 +2569,9 @@ fn get_export(export: &Box<dyn Any>) -> Option<&dyn PackageExport> {
     }
     if let Some(curve_table) = export.downcast_ref::<UCurveTable>() {
         return Some(curve_table);
+    }
+    if let Some(sound_wave) = export.downcast_ref::<USoundWave>() {
+        return Some(sound_wave);
     }
     if let Some(material) = export.downcast_ref::<material_instance::UMaterialInstanceConstant>() {
         return Some(material);

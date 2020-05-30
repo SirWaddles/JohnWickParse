@@ -9,6 +9,7 @@ mod archives;
 mod texture;
 mod meshes;
 mod anims;
+mod sound;
 
 #[derive(Debug)]
 struct CommandError {
@@ -86,6 +87,28 @@ fn texture(params: &[String]) -> CommandResult {
     let save_path = path.clone() + ".png";
     let mut file = fs::File::create(save_path).unwrap();
     file.write_all(&texture_bytes).unwrap();
+
+    Ok(())
+}
+
+fn sound(params: &[String]) -> CommandResult {
+    let path = match params.get(0) {
+        Some(data) => data,
+        None => return cerr("No path specified"),
+    };
+
+    let package = assets::Package::from_file(path)?;
+    let package_export = package.get_export_move(0)?;
+    let sound = match package_export.downcast::<assets::USoundWave>() {
+        Ok(data) => data,
+        Err(_) => return cerr("Package not exporting sound"),
+    };
+
+    let sound_data = sound::decode_sound(*sound)?;
+
+    let save_path = path.clone() + ".ogg";
+    let mut file = fs::File::create(save_path).unwrap();
+    file.write_all(&sound_data).unwrap();
 
     Ok(())
 }
@@ -276,6 +299,7 @@ fn main() {
         "add_anim" => add_anim(params),
         "locale" => locale(params),
         "debug" => debug(params),
+        "sound" => sound(params),
         _ => {
             println!("Invalid command");
             Ok(())

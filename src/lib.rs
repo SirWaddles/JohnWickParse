@@ -1,7 +1,8 @@
-use crate::assets::{ParserResult, ParserError, Package, Texture2D};
+use crate::assets::{ParserResult, ParserError, Package, Texture2D, USoundWave};
 
 pub mod assets;
 pub mod archives;
+mod sound;
 mod decompress;
 mod texture;
 
@@ -18,4 +19,14 @@ pub fn read_texture(package: Package) -> ParserResult<Vec<u8>> {
         Err(_) => return Err(ParserError::new(format!("Export is not texture"))),
     };
     texture::decode_texture(*texture)
+}
+
+/// Extracts sounds from a Package struct
+pub fn read_sound(package: Package) -> ParserResult<Vec<u8>> {
+    let package_export = package.get_export_move(0)?;
+    let sound = match package_export.downcast::<USoundWave>() {
+        Ok(data) => data,
+        Err(_) => return Err(ParserError::new(format!("Export is not a sound"))),
+    };
+    sound::decode_sound(*sound)
 }
