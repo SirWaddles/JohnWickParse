@@ -1861,6 +1861,7 @@ impl FPropertyTagType {
             ),
             "DelegateProperty" => FPropertyTagType::DelegateProperty(FScriptDelegate::new_n(reader, name_map, import_map)?),
             "MulticastSparseDelegateProperty" => FPropertyTagType::MulticastDelegateProperty(read_tarray_n(reader, name_map, import_map)?),
+            "MulticastInlineDelegateProperty" => FPropertyTagType::MulticastDelegateProperty(read_tarray_n(reader, name_map, import_map)?),
             "SoftObjectProperty" => FPropertyTagType::SoftObjectProperty(FSoftObjectPath::new_n(reader, name_map, import_map)?),
             "FieldPathProperty" => FPropertyTagType::FieldPathProperty(FFieldPath::new_n(reader, name_map, import_map)?),
             _ => return Err(ParserError::new(format!("Could not read property type: {} at pos {}", property_type, reader.position()))),
@@ -1941,7 +1942,7 @@ fn read_property_tag(reader: &mut ReaderCursor, name_map: &NameMap, import_map: 
         false => None,
     };
 
-    let property_desc = format!("Property Tag: {} ({})", name, property_type);
+    let property_desc = format!("Property Tag: {} ({}) {}", name, property_type, size);
 
     let pos = reader.position();
     let tag = match read_data {
