@@ -1350,6 +1350,29 @@ impl NewableWithNameMap for FVector4 {
 }
 
 #[derive(Debug, Serialize)]
+struct FBox {
+    min: FVector,
+    max: FVector,
+    valid: bool,
+}
+
+impl Newable for FBox {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        Ok(Self {
+            min: FVector::new(reader)?,
+            max: FVector::new(reader)?,
+            valid: reader.read_u32::<LittleEndian>()? != 0,
+        })
+    }
+}
+
+impl NewableWithNameMap for FBox {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+        Self::new(reader)
+    }
+}
+
+#[derive(Debug, Serialize)]
 struct FRotator {
     pitch: f32,
     yaw: f32,
@@ -1531,7 +1554,8 @@ impl UScriptStruct {
         let err = |v| ParserError::add(v, format!("Struct Type: {}", struct_name));
         let struct_type: Box<dyn NewableWithNameMap> = match struct_name {
             "Vector2D" => Box::new(FVector2D::new_n(reader, name_map, import_map).map_err(err)?),
-			"Box2D" => Box::new(FVector2D::new_n(reader, name_map, import_map).map_err(err)?),
+            "Box2D" => Box::new(FVector2D::new_n(reader, name_map, import_map).map_err(err)?),
+            "Box" => Box::new(FBox::new_n(reader, name_map, import_map).map_err(err)?),
             "LinearColor" => Box::new(FLinearColor::new_n(reader, name_map, import_map).map_err(err)?),
             "Color" => Box::new(FColor::new_n(reader, name_map, import_map).map_err(err)?),
             "GameplayTagContainer" => Box::new(FGameplayTagContainer::new_n(reader, name_map, import_map).map_err(err)?),
@@ -1762,6 +1786,7 @@ pub enum FPropertyTagType {
     ObjectProperty(FPackageIndex),
     InterfaceProperty(UInterfaceProperty),
     DelegateProperty(FScriptDelegate),
+    MulticastDelegateProperty(Vec<FScriptDelegate>),
     FloatProperty(f32),
     TextProperty(FText),
     StrProperty(String),
@@ -1835,6 +1860,7 @@ impl FPropertyTagType {
                 }
             ),
             "DelegateProperty" => FPropertyTagType::DelegateProperty(FScriptDelegate::new_n(reader, name_map, import_map)?),
+            "MulticastSparseDelegateProperty" => FPropertyTagType::MulticastDelegateProperty(read_tarray_n(reader, name_map, import_map)?),
             "SoftObjectProperty" => FPropertyTagType::SoftObjectProperty(FSoftObjectPath::new_n(reader, name_map, import_map)?),
             "FieldPathProperty" => FPropertyTagType::FieldPathProperty(FFieldPath::new_n(reader, name_map, import_map)?),
             _ => return Err(ParserError::new(format!("Could not read property type: {} at pos {}", property_type, reader.position()))),
