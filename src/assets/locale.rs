@@ -88,7 +88,7 @@ impl FTextLocalizationResource {
                 let text_key = FTextKey::new(&mut reader)?;
                 let _source_hash = reader.read_u32::<LittleEndian>()?;
                 let string_index = reader.read_i32::<LittleEndian>()?;
-                if string_index > 0 && string_index < localized_strings.len() as i32 {
+                if string_index >= 0 && string_index < localized_strings.len() as i32 {
                     strings.push(FEntry {
                         key: text_key.text,
                         data: localized_strings[string_index as usize].data.clone(),
