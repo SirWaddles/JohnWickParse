@@ -507,11 +507,12 @@ serialize_trait_object!(NewableWithNameMap);
 fn read_fname(reader: &mut ReaderCursor, name_map: &NameMap) -> ParserResult<String> {
     let index_pos = reader.position();
     let name_index = reader.read_i32::<LittleEndian>()?;
-    let name_number = reader.read_i32::<LittleEndian>()?.to_string();
+    let name_number = reader.read_i32::<LittleEndian>()?;
+    let name_number_str = "_".to_owned() + &(name_number - 1).to_string();
     match name_map.get(name_index as usize) {
-        Some(data) => Ok(data.data.to_owned() + match name_number.as_ref() {
-            "0" => "",
-            _ => &name_number,
+        Some(data) => Ok(data.data.to_owned() + match name_number {
+            0 => "",
+            _ => &name_number_str,
         }),
         None => Err(ParserError::new(format!("FName could not be read at {} {}", index_pos, name_index))),
     }

@@ -268,7 +268,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "john-wick-parse"
-version = "5.0.0"
+version = "5.0.1"
 dependencies = [
  "aes-soft 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitreader 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
