@@ -1864,6 +1864,7 @@ impl FPropertyTagType {
                 }
             ),
             "DelegateProperty" => FPropertyTagType::DelegateProperty(FScriptDelegate::new_n(reader, name_map, import_map)?),
+            "MulticastDelegateProperty" => FPropertyTagType::MulticastDelegateProperty(read_tarray_n(reader, name_map, import_map)?),
             "MulticastSparseDelegateProperty" => FPropertyTagType::MulticastDelegateProperty(read_tarray_n(reader, name_map, import_map)?),
             "MulticastInlineDelegateProperty" => FPropertyTagType::MulticastDelegateProperty(read_tarray_n(reader, name_map, import_map)?),
             "SoftObjectProperty" => FPropertyTagType::SoftObjectProperty(FSoftObjectPath::new_n(reader, name_map, import_map)?),
