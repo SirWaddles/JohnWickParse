@@ -1377,6 +1377,29 @@ impl NewableWithNameMap for FBox {
 }
 
 #[derive(Debug, Serialize)]
+struct FBox2D {
+    min: FVector2D,
+    max: FVector2D,
+    valid: bool,
+}
+
+impl Newable for FBox2D {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        Ok(Self {
+            min: FVector2D::new(reader)?,
+            max: FVector2D::new(reader)?,
+            valid: reader.read_u32::<LittleEndian>()? != 0,
+        })
+    }
+}
+
+impl NewableWithNameMap for FBox2D {
+    fn new_n(reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
+        Self::new(reader)
+    }
+}
+
+#[derive(Debug, Serialize)]
 struct FRotator {
     pitch: f32,
     yaw: f32,
@@ -1557,9 +1580,6 @@ impl UScriptStruct {
     fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, struct_name: &str) -> ParserResult<Self> {
         let err = |v| ParserError::add(v, format!("Struct Type: {}", struct_name));
         let struct_type: Box<dyn NewableWithNameMap> = match struct_name {
-            "Vector2D" => Box::new(FVector2D::new_n(reader, name_map, import_map).map_err(err)?),
-            "Box2D" => Box::new(FVector2D::new_n(reader, name_map, import_map).map_err(err)?),
-            "Box" => Box::new(FBox::new_n(reader, name_map, import_map).map_err(err)?),
             "LinearColor" => Box::new(FLinearColor::new_n(reader, name_map, import_map).map_err(err)?),
             "Color" => Box::new(FColor::new_n(reader, name_map, import_map).map_err(err)?),
             "GameplayTagContainer" => Box::new(FGameplayTagContainer::new_n(reader, name_map, import_map).map_err(err)?),
@@ -1567,7 +1587,10 @@ impl UScriptStruct {
             "Guid" => Box::new(FGuid::new(reader).map_err(err)?),
             "Quat" => Box::new(FQuat::new_n(reader, name_map, import_map).map_err(err)?),
             "Vector" => Box::new(FVector::new_n(reader, name_map, import_map).map_err(err)?),
+            "Vector2D" => Box::new(FVector2D::new_n(reader, name_map, import_map).map_err(err)?),
             "Rotator" => Box::new(FRotator::new_n(reader, name_map, import_map).map_err(err)?),
+            "Box" => Box::new(FBox::new_n(reader, name_map, import_map).map_err(err)?),
+            "Box2D" => Box::new(FBox2D::new_n(reader, name_map, import_map).map_err(err)?),
             "PerPlatformFloat" => Box::new(FPerPlatformFloat::new_n(reader, name_map, import_map).map_err(err)?),
             "PerPlatformInt" => Box::new(FPerPlatformInt::new_n(reader, name_map, import_map).map_err(err)?),
             "SkeletalMeshSamplingLODBuiltData" => Box::new(FWeightedRandomSampler::new_n(reader, name_map, import_map).map_err(err)?),
