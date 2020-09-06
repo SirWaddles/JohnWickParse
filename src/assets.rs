@@ -1716,8 +1716,9 @@ fn read_map_value(reader: &mut ReaderCursor, inner_type: &str, struct_type: &str
 impl UScriptMap {
     fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, key_type: &str, value_type: &str) -> ParserResult<Self> {
         let num_keys_to_remove = reader.read_i32::<LittleEndian>()?;
-        if num_keys_to_remove != 0 {
-            return Err(ParserError::new(format!("Could not read MapProperty with types: {} {}", key_type, value_type)));
+        for _i in 0..num_keys_to_remove {
+            // I have no clue what to do with these.
+            let _key = read_map_value(reader, key_type, "StructProperty", name_map, import_map)?;
         }
         let num = reader.read_i32::<LittleEndian>()?;
         let mut map_data: Vec<(FPropertyTagType, FPropertyTagType)> = Vec::new();
