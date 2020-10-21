@@ -3,6 +3,7 @@ use std::fs;
 use std::io::{Read, Write};
 use std::env;
 
+mod dispatch;
 mod decompress;
 mod assets;
 mod archives;
@@ -182,6 +183,21 @@ fn add_anim(params: &[String]) -> CommandResult {
     Ok(())
 }
 
+fn dispatch(params: &[String]) -> CommandResult {
+    let path = match params.get(0) {
+        Some(data) => data,
+        None => return cerr("No path specified"),
+    };
+    let key = match std::fs::read_to_string("key.txt") {
+        Ok(data) => data,
+        Err(_) => return cerr("Could not read key"),
+    };
+
+    let dispatch = dispatch::Extractor::new(&path, &key)?;
+
+    Ok(())
+}
+
 fn filelist(params: &[String]) -> CommandResult {
     let path = match params.get(0) {
         Some(data) => data,
@@ -300,6 +316,7 @@ fn main() {
         "locale" => locale(params),
         "debug" => debug(params),
         "sound" => sound(params),
+        "dispatch" => dispatch(params),
         _ => {
             println!("Invalid command");
             Ok(())
