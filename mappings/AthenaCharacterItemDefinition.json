@@ -1,0 +1,48 @@
+{
+	"name": "AthenaCharacterItemDefinition",
+	"properties": [
+		{
+			"index": 2,
+			"name": "HeroDefinition",
+			"mapping_type": {
+				"type": "ObjectProperty"
+			}
+		},
+		{
+			"index": 53,
+			"name": "Rarity",
+			"mapping_type": {
+				"type": "EnumProperty"
+			}
+		},
+		{
+			"index": 67,
+			"name": "DisplayName",
+			"mapping_type": {
+				"type": "TextProperty"
+			}
+		},
+		{
+			"index": 68,
+			"name": "ShortDescription",
+			"mapping_type": {
+				"type": "TextProperty"
+			}
+		},
+		{
+			"index": 69,
+			"name": "Description",
+			"mapping_type": {
+				"type": "TextProperty"
+			}
+		},
+		{
+			"index": 72,
+			"name":  "GameplayTags",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "GameplayTagContainer"
+			}
+		}
+	]
+}

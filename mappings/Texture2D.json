@@ -1,0 +1,28 @@
+{
+	"name": "Texture2D",
+	"properties": [
+		{
+			"index": 5,
+			"name": "ImportedSize",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "IntPoint"
+			}
+		},
+		{
+			"index": 6,
+			"name": "LightingGuid",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "Guid"
+			}
+		},
+		{
+			"index": 11,
+			"name": "LODGroup",
+			"mapping_type": {
+				"type": "ByteProperty"
+			}
+		}
+	]
+}

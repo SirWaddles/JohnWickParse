@@ -1,18 +1,21 @@
-use crate::assets::{ParserResult, ParserError, Package, Texture2D, USoundWave};
+#![allow(warnings)]
+
+// use crate::assets::{ParserResult, ParserError, Package, Texture2D, USoundWave};
+use crate::assets::{ParserResult, ParserError, Package};
 
 pub mod assets;
 pub mod archives;
-mod sound;
+mod mapping;
+mod dispatch;
+//mod sound;
 mod decompress;
-mod texture;
+//mod texture;
 
-/// Reads an uasset and uexp file into a Package with all of its exports
-pub fn read_asset(asset: &[u8], uexp: &[u8], ubulk: Option<&[u8]>) -> ParserResult<Package> {
-    Package::from_buffer(asset, uexp, ubulk)
-}
+//pub fn read_asset(asset: &[u8], ubulk: Option<&[u8]>) -> ParserResult<Package> {
+//    Package::from_buffer(asset, ubulk)
+//}
 
-/// Extracts a raw RGBA texture from a Package struct 
-pub fn read_texture(package: Package) -> ParserResult<Vec<u8>> {
+/*pub fn read_texture(package: Package) -> ParserResult<Vec<u8>> {
     let package_export = package.get_export_move(0)?;
     let texture = match package_export.downcast::<Texture2D>() {
         Ok(data) => data,
@@ -29,4 +32,4 @@ pub fn read_sound(package: Package) -> ParserResult<Vec<u8>> {
         Err(_) => return Err(ParserError::new(format!("Export is not a sound"))),
     };
     sound::decode_sound(*sound)
-}
+}*/

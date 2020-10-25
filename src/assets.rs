@@ -9,19 +9,22 @@ use std::cmp::Ordering;
 use half::f16;
 use serde::Serialize;
 use serde::ser::{Serializer, SerializeMap, SerializeSeq, SerializeStruct};
+use serde_json::error::Error as JSONError;
 use erased_serde::{serialize_trait_object, Serialize as TraitSerialize};
 use byteorder::{LittleEndian, ReadBytesExt};
+use crate::mapping::{PropertyMapping, TagMapping};
+use crate::dispatch::{LoaderGlobalData, FNameMap};
 
 pub mod locale;
-mod material_instance;
-mod anims;
-mod meshes;
-mod sound;
+// mod material_instance;
+// mod anims;
+// mod meshes;
+// mod sound;
 
-pub use anims::{USkeleton, UAnimSequence, FTrack};
-pub use meshes::{USkeletalMesh, FMultisizeIndexContainer, FStaticMeshVertexDataTangent, FSkeletalMeshRenderData,
-    FSkelMeshRenderSection, FSkeletalMaterial, FSkinWeightVertexBuffer, FMeshBoneInfo, FStaticMeshVertexDataUV, FReferenceSkeleton};
-pub use sound::USoundWave;
+// pub use anims::{USkeleton, UAnimSequence, FTrack};
+// pub use meshes::{USkeletalMesh, FMultisizeIndexContainer, FStaticMeshVertexDataTangent, FSkeletalMeshRenderData,
+//     FSkelMeshRenderSection, FSkeletalMaterial, FSkinWeightVertexBuffer, FMeshBoneInfo, FStaticMeshVertexDataUV, FReferenceSkeleton};
+// pub use sound::USoundWave;
 
 pub type ReaderCursor<'c> = Cursor<&'c[u8]>;
 
@@ -72,6 +75,12 @@ impl From<std::string::FromUtf16Error> for ParserError {
     }
 }
 
+impl From<JSONError> for ParserError {
+    fn from(error: JSONError) -> ParserError {
+        ParserError::new(format!("JSON Error: {}", error))
+    }
+}
+
 impl std::error::Error for ParserError { }
 
 pub type ParserResult<T> = Result<T, ParserError>;
@@ -80,7 +89,7 @@ pub trait Newable {
     fn new(reader: &mut ReaderCursor) -> ParserResult<Self> where Self: Sized;
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct FGuid {
     a: u32,
     b: u32,
@@ -130,6 +139,31 @@ impl Newable for FCustomVersion {
             version: reader.read_i32::<LittleEndian>()?,
         })
     }
+}
+
+pub fn read_short_string(reader: &mut ReaderCursor) -> ParserResult<String> {
+    let data1 = reader.read_u8()? as u32;
+    let data2 = reader.read_u8()? as u32;
+
+    let length: u32 = ((data1 & 0x007F) << 8) + data2;
+    let utf16 = (data1 & 0x0080) != 0;
+
+    let fstr;
+
+    if utf16 {
+        let mut u16bytes = vec![0u16; length as usize];
+        for i in 0..length {
+            let val = reader.read_u16::<LittleEndian>()?;
+            u16bytes[i as usize] = val;
+        }
+        fstr = String::from_utf16(&u16bytes)?;
+    } else {
+        let mut bytes = vec![0u8; length as usize];
+        reader.read_exact(&mut bytes)?;
+        fstr = std::str::from_utf8(&bytes)?.to_owned();
+    }
+
+    Ok(fstr)
 }
 
 pub fn read_string(reader: &mut ReaderCursor) -> ParserResult<String> {
@@ -248,6 +282,12 @@ impl Newable for String {
 impl Newable for u32 {
     fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
         Ok(reader.read_u32::<LittleEndian>()?)
+    }
+}
+
+impl Newable for u64 {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        Ok(reader.read_u64::<LittleEndian>()?)
     }
 }
 
@@ -473,6 +513,121 @@ impl Newable for FPackageFileSummary {
 }
 
 #[derive(Debug)]
+enum FMappedNameType {
+    Package,
+    Container,
+    Global,
+}
+
+#[derive(Debug)]
+pub struct FMappedName {
+    index: u32,
+    number: u32,
+    name_type: FMappedNameType,
+}
+
+impl FMappedName {
+    pub fn get_name<'a>(&self, map: &'a FNameMap) -> ParserResult<&'a str> {
+        map.get_name(self.index as usize)
+    }
+}
+
+impl Newable for FMappedName {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        let index = reader.read_u32::<LittleEndian>()?;
+        let number = reader.read_u32::<LittleEndian>()?;
+
+        let index_mask = (1 << 30) - 1;
+        let type_mask = !index_mask;
+        let name_type = match (index & type_mask) >> 30 {
+            0 => FMappedNameType::Package,
+            1 => FMappedNameType::Container,
+            2 => FMappedNameType::Global,
+            _ => panic!("No name type"),
+        };
+
+        Ok(Self {
+            index: index & index_mask,
+            number,
+            name_type,
+        })
+    }
+}
+
+#[derive(Debug)]
+struct FPackageSummary {
+    name: FMappedName,
+    source_name: FMappedName,
+    package_flags: u32,
+    header_size: u32,
+    name_map_offset: i32,
+    name_map_size: i32,
+    name_map_hash_ofsset: i32,
+    name_map_hash_size: i32,
+    import_map_offset: i32,
+    export_map_offset: i32,
+    export_bundle_offset: i32,
+    graph_data_offset: i32,
+    graph_data_size: i32,
+    pad: i32,
+}
+
+impl FPackageSummary {
+    fn empty() -> Self {
+        Self {
+            name: FMappedName {index: 0, number: 0, name_type: FMappedNameType::Package},
+            source_name: FMappedName {index: 0, number: 0, name_type: FMappedNameType::Package},
+            package_flags: 0,
+            header_size: 0,
+            name_map_offset: 0,
+            name_map_size: 0,
+            name_map_hash_ofsset: 0,
+            name_map_hash_size: 0,
+            import_map_offset: 0,
+            export_map_offset: 0,
+            export_bundle_offset: 0,
+            graph_data_offset: 0,
+            graph_data_size: 0,
+            pad: 0,
+        }
+    }
+}
+
+impl Newable for FPackageSummary {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        Ok(Self {
+            name: FMappedName::new(reader)?,
+            source_name: FMappedName::new(reader)?,
+            package_flags: reader.read_u32::<LittleEndian>()?,
+            header_size: reader.read_u32::<LittleEndian>()?,
+            name_map_offset: reader.read_i32::<LittleEndian>()?,
+            name_map_size: reader.read_i32::<LittleEndian>()?,
+            name_map_hash_ofsset: reader.read_i32::<LittleEndian>()?,
+            name_map_hash_size: reader.read_i32::<LittleEndian>()?,
+            import_map_offset: reader.read_i32::<LittleEndian>()?,
+            export_map_offset: reader.read_i32::<LittleEndian>()?,
+            export_bundle_offset: reader.read_i32::<LittleEndian>()?,
+            graph_data_offset: reader.read_i32::<LittleEndian>()?,
+            graph_data_size: reader.read_i32::<LittleEndian>()?,
+            pad: reader.read_i32::<LittleEndian>()?,
+        })
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct FPackageObjectIndex {
+    index: u64,
+}
+
+impl Newable for FPackageObjectIndex {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        Ok(Self {
+            index: reader.read_u64::<LittleEndian>()?,
+        })
+    }
+}
+
+#[derive(Debug)]
 struct FNameEntrySerialized {
     data: String,
     non_case_preserving_hash: u16,
@@ -489,7 +644,7 @@ impl Newable for FNameEntrySerialized {
     }
 }
 
-type NameMap = Vec<FNameEntrySerialized>;
+type NameMap = FNameMap;
 type ImportMap = Vec<Rc<FObjectImport>>;
 
 trait NewableWithNameMap: std::fmt::Debug + TraitSerialize {
@@ -506,16 +661,8 @@ serialize_trait_object!(NewableWithNameMap);
 
 fn read_fname(reader: &mut ReaderCursor, name_map: &NameMap) -> ParserResult<String> {
     let index_pos = reader.position();
-    let name_index = reader.read_i32::<LittleEndian>()?;
-    let name_number = reader.read_i32::<LittleEndian>()?;
-    let name_number_str = "_".to_owned() + &(name_number - 1).to_string();
-    match name_map.get(name_index as usize) {
-        Some(data) => Ok(data.data.to_owned() + match name_number {
-            0 => "",
-            _ => &name_number_str,
-        }),
-        None => Err(ParserError::new(format!("FName could not be read at {} {}", index_pos, name_index))),
-    }
+    let mapped_name = FMappedName::new(reader)?;
+    Ok(mapped_name.get_name(name_map)?.to_owned())
 }
 
 #[derive(Debug, Clone)]
@@ -681,6 +828,42 @@ impl NewableWithNameMap for FObjectExport {
 impl Serialize for FObjectExport {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
         serializer.serialize_str(&self.object_name)
+    }
+}
+
+#[derive(Debug)]
+struct FExportMapEntry {
+    serial_offset: u64,
+    serial_size: u64,
+    object_name: FMappedName,
+    outer_index: FPackageObjectIndex,
+    class_index: FPackageObjectIndex,
+    super_index: FPackageObjectIndex,
+    template_index: FPackageObjectIndex,
+    global_import_index: FPackageObjectIndex,
+    object_flags: u32,
+    filter_flags: u8,
+}
+
+impl Newable for FExportMapEntry {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        let res = Self {
+            serial_offset: reader.read_u64::<LittleEndian>()?,
+            serial_size: reader.read_u64::<LittleEndian>()?,
+            object_name: FMappedName::new(reader)?,
+            outer_index: FPackageObjectIndex::new(reader)?,
+            class_index: FPackageObjectIndex::new(reader)?,
+            super_index: FPackageObjectIndex::new(reader)?,
+            template_index: FPackageObjectIndex::new(reader)?,
+            global_import_index: FPackageObjectIndex::new(reader)?,
+            object_flags: reader.read_u32::<LittleEndian>()?,
+            filter_flags: reader.read_u8()?,
+        };
+
+        let mut data = [0u8; 3];
+        reader.read_exact(&mut data)?;
+
+        Ok(res)
     }
 }
 
@@ -1901,10 +2084,8 @@ impl FPropertyTagType {
 #[derive(Debug)]
 pub struct FPropertyTag {
     name: String,
-    property_type: String,
     tag_data: FPropertyTagData,
     size: i32,
-    array_index: i32,
     property_guid: Option<FGuid>,
     tag: Option<FPropertyTagType>,
 }
@@ -1944,7 +2125,7 @@ fn read_property_tag(reader: &mut ReaderCursor, name_map: &NameMap, import_map: 
 
     let property_type = read_fname(reader, name_map)?.trim().to_owned();
     let size = reader.read_i32::<LittleEndian>()?;
-    let array_index = reader.read_i32::<LittleEndian>()?;
+    let _array_index = reader.read_i32::<LittleEndian>()?;
 
     let mut tag_data = match property_type.as_ref() {
         "StructProperty" => FPropertyTagData::StructProperty(read_fname(reader, name_map)?, FGuid::new(reader)?),
@@ -1990,13 +2171,31 @@ fn read_property_tag(reader: &mut ReaderCursor, name_map: &NameMap, import_map: 
 
     Ok(Some(FPropertyTag {
         name,
-        property_type,
         tag_data,
         size,
-        array_index,
         property_guid,
         tag,
     }))
+}
+
+fn read_unversioned_property(reader: &mut ReaderCursor, name_map: &NameMap, mapping: &PropertyMapping) -> ParserResult<FPropertyTag> {
+    let import_map = Vec::new();
+    let start_pos = reader.position();
+
+    let tag = match mapping.get_type() {
+        TagMapping::StructProperty { struct_type } => FPropertyTagType::StructProperty(UScriptStruct::new(reader, name_map, &import_map, struct_type)?),
+        TagMapping::ByteProperty => FPropertyTagType::ByteProperty(reader.read_u8()?),
+        _ => return Err(ParserError::new(format!("Unsupported Property Type"))),
+    };
+
+    let size = (reader.position() - start_pos) as i32;
+    Ok(FPropertyTag {
+        name: mapping.get_name().to_owned(),
+        tag_data: FPropertyTagData::NoData,
+        size,
+        property_guid: None,
+        tag: Some(tag),
+    })
 }
 
 #[derive(Debug)]
@@ -2177,6 +2376,91 @@ pub trait PackageExport: std::fmt::Debug + TraitSerialize {
 
 serialize_trait_object!(PackageExport);
 
+#[derive(Debug)]
+struct FFragment {
+    skip_num: u32,
+    has_zeroes: bool,
+    value: u32,
+    is_last: bool,
+}
+
+impl Newable for FFragment {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        let data = reader.read_u16::<LittleEndian>()? as u32;
+        let skip_num = data & 0x007f;
+        let has_zeroes = (data & 0x0080) != 0;
+        let value = data >> 9;
+        let is_last = (data & 0x0100) != 0;
+        Ok(Self {
+            skip_num, has_zeroes, value, is_last,
+        })
+    }
+}
+
+fn divide_round_up(dividend: u32, divisor: u32) -> u32 {
+    (dividend + divisor - 1) / divisor
+}
+
+#[derive(Debug)]
+struct FUnversionedHeader {
+    fragments: Vec<FFragment>,
+    zero_data: Vec<u32>,
+}
+
+impl Newable for FUnversionedHeader {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        let mut fragments = Vec::new();
+        let mut zero_mask_num = 0;
+
+        loop {
+            let property_header = FFragment::new(reader)?;
+            let is_last = property_header.is_last;
+            if property_header.has_zeroes {
+                zero_mask_num += property_header.value;
+            }
+            fragments.push(property_header);
+
+            if is_last { break; }
+        }
+
+        let mut zero_data = Vec::new();
+
+        if zero_mask_num > 0 {
+            if zero_mask_num <= 8 {
+                zero_data.push(reader.read_u8()? as u32);
+            } else if zero_mask_num <= 16 {
+                zero_data.push(reader.read_u16::<LittleEndian>()? as u32);
+            } else {
+                let num_zeroes = divide_round_up(zero_mask_num, 32);
+                for _i in 0..num_zeroes {
+                    zero_data.push(reader.read_u32::<LittleEndian>()?);
+                }
+            }
+        }
+
+        Ok(Self {
+            fragments,
+            zero_data,
+        })
+    }
+}
+
+impl FUnversionedHeader {
+    fn get_indices(&self) -> Vec<u32> {
+        let mut i = 0;
+        let mut vals = Vec::new();
+        for header in &self.fragments {
+            i += header.skip_num;
+            for t in 0..header.value {
+                vals.push(t + i);
+            }
+            i += header.value;
+        }
+
+        vals
+    }
+}
+
 /// A UObject is a struct for all of the parsed properties of an object
 #[derive(Debug)]
 pub struct UObject {
@@ -2185,15 +2469,24 @@ pub struct UObject {
 }
 
 impl UObject {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, export_type: &str) -> ParserResult<Self> {
-        let properties = Self::serialize_properties(reader, name_map, import_map).map_err(|v| ParserError::add(v, format!("Export type: {}", export_type)))?;
-        let serialize_guid = reader.read_u32::<LittleEndian>()? != 0;
-        if serialize_guid {
-            let _object_guid = FGuid::new(reader);
-        }
+    fn new(reader: &mut ReaderCursor, global_map: &LoaderGlobalData, name_map: &NameMap, import_map: &ImportMap, export_type: &str) -> ParserResult<Self> {
+        let header = FUnversionedHeader::new(reader)?;
 
+        println!("header: {:#?}", header);
+
+        let indices = header.get_indices();
+
+        println!("indices: {:#?}", indices);
+        println!("position: {}", reader.position());
+
+        let mappings = global_map.mappings.get_mappings(export_type, indices)?;
+        let mut properties = Vec::new();
+        for mapping in &mappings {
+            properties.push(read_unversioned_property(reader, name_map, mapping)?);
+        }
+        
         Ok(Self {
-            properties: properties,
+            properties,
             export_type: export_type.to_owned(),
         })
     }
@@ -2252,7 +2545,7 @@ impl PackageExport for UObject {
 }
 
 /// Texture2D contains the details, parameters and mipmaps for a texture
-#[derive(Debug)]
+/*#[derive(Debug)]
 pub struct Texture2D {
     base_object: UObject,
     cooked: u32,
@@ -2273,9 +2566,9 @@ impl Texture2D {
             let mut pixel_format = read_fname(reader, name_map)?;
             while pixel_format != "None" {
                 let skip_offset = reader.read_i64::<LittleEndian>()?;
-                let texture = FTexturePlatformData::new(reader, ubulk, export_size + asset_file_size as i64)?;
-                if reader.position() + asset_file_size as u64 != skip_offset as u64 {
-                    panic!("Texture read incorrectly {} {}", reader.position() + asset_file_size as u64, skip_offset);
+                let texture = FTexturePlatformData::new(reader, ubulk, export_size)?;
+                if reader.position() != skip_offset as u64 {
+                    panic!("Texture read incorrectly {} {}", reader.position(), skip_offset);
                 }
                 textures.push(texture);
                 pixel_format = read_fname(reader, name_map)?;
@@ -2429,62 +2722,62 @@ impl PackageExport for UCurveTable {
     fn get_export_type(&self) -> &str {
         "CurveTable"
     }
-}
+}*/
 
 /// A Package is the collection of parsed data from a uasset/uexp file combo
 ///
 /// It contains a number of 'Exports' which could be of any type implementing the `PackageExport` trait
 /// Note that exports are of type `dyn Any` and will need to be downcasted to their appropriate types before being usable
 pub struct Package {
-    summary: FPackageFileSummary,
+    summary: FPackageSummary,
     exports: Vec<Box<dyn Any>>,
-    export_map: Vec<FObjectExport>,
-    import_map: Vec<Rc<FObjectImport>>,
 }
 
 #[allow(dead_code)]
 impl Package {
-    pub fn from_buffer(uasset: &[u8], uexp: &[u8], ubulk: Option<&[u8]>) -> ParserResult<Self> {
+    pub fn from_buffer(uasset: &[u8], ubulk: Option<&[u8]>, global_map: &LoaderGlobalData) -> ParserResult<Self> {
         let mut cursor = ReaderCursor::new(uasset);
-        let summary = FPackageFileSummary::new(&mut cursor)?;
+        let summary = FPackageSummary::new(&mut cursor)?;
 
         let mut name_map = Vec::new();
-        cursor.seek(SeekFrom::Start(summary.name_offset as u64))?;
-        for _i in 0..summary.name_count {
-            name_map.push(FNameEntrySerialized::new(&mut cursor)?);
+        cursor.seek(SeekFrom::Start(summary.name_map_offset as u64))?;
+        
+        while cursor.position() <= (summary.name_map_offset + summary.name_map_size) as u64 {
+            name_map.push(read_short_string(&mut cursor)?);
         }
 
+        println!("{:#?}", name_map);
+
+        let name_map = FNameMap::from_strings(name_map);
+
+        cursor.seek(SeekFrom::Start(summary.import_map_offset as u64))?;
+        let import_length = (summary.export_map_offset - summary.import_map_offset) / 8;
         let mut import_map = Vec::new();
-        cursor.seek(SeekFrom::Start(summary.import_offset as u64))?;
-        for _i in 0..summary.import_count {
-            import_map.push(Rc::new(FObjectImport::new_n(&mut cursor, &name_map, &import_map)?));
+        for _i in 0..import_length {
+            import_map.push(FPackageObjectIndex::new(&mut cursor)?);
         }
+        
+        let export_map = FExportMapEntry::new(&mut cursor)?;
 
-        for import in &import_map {
-            import.read_imports(&import_map);
-        }
+        let export_name = match global_map.get_package_name(&export_map.class_index) {
+            Some(n) => n,
+            None => return Err(ParserError::new(format!("No package class found"))),
+        };
 
-        let mut export_map = Vec::new();
-        cursor.seek(SeekFrom::Start(summary.export_offset as u64))?;
-        for _i in 0..summary.export_count {
-            export_map.push(FObjectExport::new_n(&mut cursor, &name_map, &import_map)?);
-        }
-
-        let export_size = export_map.iter().fold(0, |acc, v| v.serial_size + acc);
-
-        // read uexp file
-        let mut cursor = ReaderCursor::new(uexp);
+        cursor.seek(SeekFrom::Start((summary.graph_data_offset + summary.graph_data_size) as u64))?;
 
         let mut ubulk_cursor = match ubulk {
             Some(data) => Some(ReaderCursor::new(data)),
             None => None,
         };
 
-        let asset_length = summary.total_header_size;
+        let old_import_map: ImportMap = Vec::new();
 
         let mut exports: Vec<Box<dyn Any>> = Vec::new();
+        let export = Box::new(UObject::new(&mut cursor, &global_map, &name_map, &old_import_map, &export_name)?);
+        exports.push(export);
 
-        for v in &export_map {
+        /*for v in &export_map {
             let export_type = match v.class_index.index.cmp(&0) {
                 Ordering::Greater => match export_map.get((v.class_index.index - 1) as usize) {
                     Some(data) => &data.object_name,
@@ -2496,7 +2789,7 @@ impl Package {
                 },
                 Ordering::Equal => "UObject",
             };
-            let position = v.serial_offset as u64 - asset_length as u64;
+            let position = v.serial_offset as u64;
             cursor.seek(SeekFrom::Start(position))?;
             let export: Box<dyn Any> = match export_type.as_ref() {
                 "Texture2D" => Box::new(Texture2D::new(&mut cursor, &name_map, &import_map, asset_length, export_size, &mut ubulk_cursor)?),
@@ -2514,30 +2807,22 @@ impl Package {
                 println!("Did not read {} correctly. Current Position: {}, Bytes Remaining: {}", export_type, cursor.position(), valid_pos as i64 - cursor.position() as i64);
             }
             exports.push(export);
-        }
+        }*/
 
         Ok(Self {
             summary: summary,
             exports: exports,
-            export_map: export_map,
-            import_map: import_map,
         })
     }
 
-    pub fn from_file(file_path: &str) -> ParserResult<Self> {
+    pub fn from_file(file_path: &str, global_map: &LoaderGlobalData) -> ParserResult<Self> {
         let asset_file = file_path.to_owned() + ".uasset";
-        let uexp_file = file_path.to_owned() + ".uexp";
         let ubulk_file = file_path.to_owned() + ".ubulk";
 
         // read asset file
         let mut asset = File::open(asset_file).map_err(|_v| ParserError::new(format!("Could not find file: {}", file_path)))?;
         let mut uasset_buf = Vec::new();
         asset.read_to_end(&mut uasset_buf)?;
-
-        // read uexp file
-        let mut uexp = File::open(uexp_file)?;
-        let mut uexp_buf = Vec::new();
-        uexp.read_to_end(&mut uexp_buf)?;
 
         // read ubulk file (if exists)
         let ubulk_path = Path::new(&ubulk_file);
@@ -2553,8 +2838,8 @@ impl Package {
 
         // ??
         match ubulk_buf {
-            Some(data) => Self::from_buffer(&uasset_buf, &uexp_buf, Some(&data)),
-            None => Self::from_buffer(&uasset_buf, &uexp_buf, None),
+            Some(data) => Self::from_buffer(&uasset_buf, Some(&data), global_map),
+            None => Self::from_buffer(&uasset_buf, None, global_map),
         }
     }
 
@@ -2582,10 +2867,8 @@ impl Package {
 
     pub fn empty() -> Self {
         Self {
-            summary: FPackageFileSummary::empty(),
+            summary: FPackageSummary::empty(),
             exports: Vec::new(),
-            export_map: Vec::new(),
-            import_map: Vec::new(),
         }
     }
 }
@@ -2597,9 +2880,7 @@ impl fmt::Debug for Package {
                 write!(f, "Export: {:#?}\n", obj)?
             }
         }
-        write!(f, "Package Summary: {:#?}\n", self.summary)?;
-        write!(f, "Import Map: {:#?}\n", self.import_map)?;
-        write!(f, "Export Map: {:#?}\n", self.export_map)
+        write!(f, "Package Summary: {:#?}\n", self.summary)
     }
 }
 
@@ -2608,7 +2889,7 @@ fn get_export(export: &Box<dyn Any>) -> Option<&dyn PackageExport> {
     if let Some(obj) = export.downcast_ref::<UObject>() {
         return Some(obj);
     }
-    if let Some(texture) = export.downcast_ref::<Texture2D>() {
+    /*if let Some(texture) = export.downcast_ref::<Texture2D>() {
         return Some(texture);
     }
     if let Some(table) = export.downcast_ref::<UDataTable>() {
@@ -2631,13 +2912,13 @@ fn get_export(export: &Box<dyn Any>) -> Option<&dyn PackageExport> {
     }
     if let Some(material) = export.downcast_ref::<material_instance::UMaterialInstanceConstant>() {
         return Some(material);
-    }
+    }*/
     None
 }
 
 impl Serialize for Package {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
-        let mut seq = serializer.serialize_seq(Some(self.summary.export_count as usize))?;
+        let mut seq = serializer.serialize_seq(Some(self.exports.len()))?;
         for e in &self.exports {
             if let Some(obj) = get_export(e) {
                 seq.serialize_element(obj)?;
