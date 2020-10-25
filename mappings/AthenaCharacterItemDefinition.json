@@ -12,7 +12,15 @@
 			"index": 53,
 			"name": "Rarity",
 			"mapping_type": {
-				"type": "EnumProperty"
+				"type": "EnumProperty",
+				"vals": [
+					"Uncommon",
+					"Common",
+					"Rare",
+					"Epic",
+					"Legendary",
+					"Mythic"
+				]
 			}
 		},
 		{

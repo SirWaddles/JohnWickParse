@@ -2183,10 +2183,19 @@ fn read_unversioned_property(reader: &mut ReaderCursor, name_map: &NameMap, mapp
     let start_pos = reader.position();
 
     let tag = match mapping.get_type() {
+        TagMapping::TextProperty => FPropertyTagType::TextProperty(FText::new(reader)?),
         TagMapping::StructProperty { struct_type } => FPropertyTagType::StructProperty(UScriptStruct::new(reader, name_map, &import_map, struct_type)?),
+        TagMapping::ObjectProperty => FPropertyTagType::ObjectProperty(FPackageIndex::new_n(reader, name_map, &import_map)?),
+        TagMapping::EnumProperty { vals } => {
+            let val = reader.read_u8()?;
+
+            FPropertyTagType::EnumProperty(Some(vals[val as usize].clone()))
+        },
         TagMapping::ByteProperty => FPropertyTagType::ByteProperty(reader.read_u8()?),
         _ => return Err(ParserError::new(format!("Unsupported Property Type"))),
     };
+
+    println!("{:#?}", tag);
 
     let size = (reader.position() - start_pos) as i32;
     Ok(FPropertyTag {
@@ -2401,6 +2410,11 @@ fn divide_round_up(dividend: u32, divisor: u32) -> u32 {
     (dividend + divisor - 1) / divisor
 }
 
+struct PropertyIndex {
+    index: u32,
+    zero: bool,
+}
+
 #[derive(Debug)]
 struct FUnversionedHeader {
     fragments: Vec<FFragment>,
@@ -2446,13 +2460,16 @@ impl Newable for FUnversionedHeader {
 }
 
 impl FUnversionedHeader {
-    fn get_indices(&self) -> Vec<u32> {
+    fn get_indices(&self) -> Vec<PropertyIndex> {
         let mut i = 0;
         let mut vals = Vec::new();
         for header in &self.fragments {
             i += header.skip_num;
             for t in 0..header.value {
-                vals.push(t + i);
+                vals.push(PropertyIndex {
+                    index: t + i,
+                    zero: header.has_zeroes,
+                });
             }
             i += header.value;
         }
@@ -2474,15 +2491,24 @@ impl UObject {
 
         println!("header: {:#?}", header);
 
-        let indices = header.get_indices();
+        let prop_indices = header.get_indices();
+        let indices = prop_indices.iter().map(|v| v.index).collect();
 
         println!("indices: {:#?}", indices);
         println!("position: {}", reader.position());
 
         let mappings = global_map.mappings.get_mappings(export_type, indices)?;
         let mut properties = Vec::new();
-        for mapping in &mappings {
-            properties.push(read_unversioned_property(reader, name_map, mapping)?);
+        for i in 0..prop_indices.len() {
+            let index = &prop_indices[i];
+            let mapping = &mappings[i];
+            if index.zero {
+                let null_data = vec![0u8; 8];
+                let mut cursor = Cursor::new(null_data.as_slice());
+                properties.push(read_unversioned_property(&mut cursor, name_map, mapping)?);
+            } else {
+                properties.push(read_unversioned_property(reader, name_map, mapping)?);
+            }
         }
         
         Ok(Self {

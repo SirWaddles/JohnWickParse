@@ -10,7 +10,7 @@ use crate::assets::{ParserResult, ParserError};
 pub enum TagMapping {
     BoolProperty,
     ByteProperty,
-    EnumProperty,
+    EnumProperty { vals: Vec<String> },
     TextProperty,
     StrProperty,
     ArrayProperty,
