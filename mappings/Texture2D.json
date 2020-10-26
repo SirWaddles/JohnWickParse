@@ -2,6 +2,20 @@
 	"name": "Texture2D",
 	"properties": [
 		{
+			"index": 3,
+			"name": "AddressX",
+			"mapping_type": {
+				"type": "ByteProperty"
+			}
+		},
+		{
+			"index": 4,
+			"name": "AddressY",
+			"mapping_type": {
+				"type": "ByteProperty"
+			}
+		},
+		{
 			"index": 5,
 			"name": "ImportedSize",
 			"mapping_type": {

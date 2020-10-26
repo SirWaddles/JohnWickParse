@@ -11,12 +11,14 @@ pub enum TagMapping {
     BoolProperty,
     ByteProperty,
     EnumProperty { vals: Vec<String> },
+    IntProperty,
     FloatProperty,
     TextProperty,
     StrProperty,
     NameProperty,
     ArrayProperty { sub_type: Box<TagMapping> },
     ObjectProperty,
+    SoftObjectProperty,
     StructProperty { struct_type: String },
 }
 

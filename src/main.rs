@@ -10,7 +10,7 @@ mod decompress;
 mod mapping;
 mod assets;
 mod archives;
-// mod texture;
+mod texture;
 // mod sound;
 
 use dispatch::{ChunkData, LoaderGlobalData};
@@ -77,14 +77,16 @@ fn debug(params: &[String]) -> CommandResult {
     Ok(())
 }
 
-/*fn texture(params: &[String]) -> CommandResult {
+fn texture(params: &[String]) -> CommandResult {
     let path = match params.get(0) {
         Some(data) => data,
         None => return cerr("No path specified"),
     };
 
-    let name_map = LoaderGlobalData::empty();
-    let package = assets::Package::from_file(path, &name_map)?;
+    let mut dispatch = dispatch::Extractor::new("paks/global", None)?;
+    let global_data = dispatch.read_global()?;
+
+    let package = assets::Package::from_file(path, &global_data)?;
     let package_export = package.get_export_move(0)?;
     let texture = match package_export.downcast::<assets::Texture2D>() {
         Ok(data) => data,
@@ -100,7 +102,7 @@ fn debug(params: &[String]) -> CommandResult {
     Ok(())
 }
 
-fn sound(params: &[String]) -> CommandResult {
+/*fn sound(params: &[String]) -> CommandResult {
     let path = match params.get(0) {
         Some(data) => data,
         None => return cerr("No path specified"),
@@ -292,7 +294,7 @@ fn main() {
         "serialize" => serialize(params),
         "filelist" => filelist(params),
         "extract" => extract(params),
-        //"texture" => texture(params),
+        "texture" => texture(params),
         "locale" => locale(params),
         "debug" => debug(params),
         //"sound" => sound(params),

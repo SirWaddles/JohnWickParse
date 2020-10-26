@@ -1,0 +1,19 @@
+{
+	"name": "CurveTableRowHandle",
+	"properties": [
+		{
+			"index": 0,
+			"name": "CurveTable",
+			"mapping_type": {
+				"type": "ObjectProperty"
+			}
+		},
+		{
+			"index": 1,
+			"name": "RowName",
+			"mapping_type": {
+				"type": "NameProperty"
+			}
+		}
+	]
+}

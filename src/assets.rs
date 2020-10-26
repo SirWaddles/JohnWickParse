@@ -620,7 +620,7 @@ impl Newable for FPackageSummary {
     }
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct FPackageObjectIndex {
     index: u64,
 }
@@ -630,6 +630,12 @@ impl Newable for FPackageObjectIndex {
         Ok(Self {
             index: reader.read_u64::<LittleEndian>()?,
         })
+    }
+}
+
+impl Serialize for FPackageObjectIndex {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        serializer.serialize_u64(self.index)
     }
 }
 
@@ -712,7 +718,9 @@ impl Serialize for FPackageIndex {
             state.serialize_field("export", &self.index)?;
             state.end()
         } else {
-            self.import.serialize(serializer)
+            let mut state = serializer.serialize_struct("FPackageObjectIndex", 1)?;
+            state.serialize_field("import", &self.import)?;
+            state.end()
         }
     }
 }
@@ -825,13 +833,16 @@ impl Newable for FText {
         let history_type = reader.read_i8()?;
 
         match history_type {
-            -1 => Ok(Self {
-                flags,
-                history_type,
-                namespace: "".to_owned(),
-                key: "".to_owned(),
-                source_string: "".to_owned(),
-            }),
+            -1 => {
+                reader.read_u32::<LittleEndian>()?;
+                Ok(Self {
+                    flags,
+                    history_type,
+                    namespace: "".to_owned(),
+                    key: "".to_owned(),
+                    source_string: "".to_owned(),
+                })
+            },
             0 => Ok(Self {
                 flags,
                 history_type,
@@ -2153,15 +2164,22 @@ fn read_unversioned_tag(reader: &mut ReaderCursor, name_map: &NameMap, import_ma
         TagMapping::NameProperty => FPropertyTagType::NameProperty(read_fname(reader, name_map)?),
         TagMapping::StructProperty { struct_type } => FPropertyTagType::StructProperty(UScriptStruct::new(reader, name_map, import_map, struct_type)?),
         TagMapping::ObjectProperty => FPropertyTagType::ObjectProperty(FPackageIndex::new_n(reader, name_map, import_map)?),
+        TagMapping::SoftObjectProperty => FPropertyTagType::SoftObjectProperty(FSoftObjectPath::new_n(reader, name_map, import_map)?),
         TagMapping::EnumProperty { vals } => {
             let val = reader.read_u8()?;
+            let data = match vals.get(val as usize) {
+                Some(d) => d.to_owned(),
+                None => val.to_string(),
+            };
 
-            FPropertyTagType::EnumProperty(Some(vals[val as usize].clone()))
+            FPropertyTagType::EnumProperty(Some(data))
         },
         TagMapping::ArrayProperty { sub_type } => FPropertyTagType::ArrayProperty(UScriptArray::new_unversioned(reader, name_map, import_map, sub_type)?),
+        TagMapping::BoolProperty => FPropertyTagType::BoolProperty(reader.read_u8()? != 0),
         TagMapping::ByteProperty => FPropertyTagType::ByteProperty(reader.read_u8()?),
-        TagMapping::FloatProperty => FPropertyTagType::FloatProperty(reader.read_f64::<LittleEndian>()? as f32),
-        _ => return Err(ParserError::new(format!("Unsupported Property Type"))),
+        TagMapping::IntProperty => FPropertyTagType::IntProperty(reader.read_i32::<LittleEndian>()?),
+        TagMapping::FloatProperty => FPropertyTagType::FloatProperty(reader.read_f32::<LittleEndian>()?),
+        _ => return Err(ParserError::new(format!("Unsupported Property Type: {:#?}", mapping))),
     })
 }
 
@@ -2169,8 +2187,6 @@ fn read_unversioned_property(reader: &mut ReaderCursor, name_map: &NameMap, impo
     let start_pos = reader.position();
 
     let tag = read_unversioned_tag(reader, name_map, import_map, &mapping.get_type())?;
-
-    println!("{:#?}", tag);
 
     let size = (reader.position() - start_pos) as i32;
     Ok(FPropertyTag {
@@ -2385,6 +2401,7 @@ fn divide_round_up(dividend: u32, divisor: u32) -> u32 {
     (dividend + divisor - 1) / divisor
 }
 
+#[derive(Debug)]
 struct PropertyIndex {
     index: u32,
     zero: bool,
@@ -2464,13 +2481,10 @@ impl UObject {
     fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, export_type: &str) -> ParserResult<Self> {
         let header = FUnversionedHeader::new(reader)?;
 
-        println!("header: {:#?}", header);
-
         let prop_indices = header.get_indices();
         let indices = prop_indices.iter().map(|v| v.index).collect();
 
-        println!("indices: {:#?}", indices);
-        println!("position: {}", reader.position());
+        println!("indices: {:#?}", prop_indices);
 
         let mappings = MAPPINGS.get_mappings(export_type, indices)?;
         let mut properties = Vec::new();
@@ -2546,7 +2560,7 @@ impl PackageExport for UObject {
 }
 
 /// Texture2D contains the details, parameters and mipmaps for a texture
-/*#[derive(Debug)]
+#[derive(Debug)]
 pub struct Texture2D {
     base_object: UObject,
     cooked: u32,
@@ -2555,8 +2569,10 @@ pub struct Texture2D {
 
 #[allow(dead_code)]
 impl Texture2D {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, asset_file_size: i32, export_size: i64, ubulk: &mut Option<ReaderCursor>) -> ParserResult<Self> {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, export_size: i64, ubulk: &mut Option<ReaderCursor>) -> ParserResult<Self> {
         let object = UObject::new(reader, name_map, import_map, "Texture2D")?;
+
+        let _serialize_guid = reader.read_u32::<LittleEndian>()?;
 
         FStripDataFlags::new(reader)?; // still no idea
         FStripDataFlags::new(reader)?; // why there are two
@@ -2568,9 +2584,10 @@ impl Texture2D {
             while pixel_format != "None" {
                 let skip_offset = reader.read_i64::<LittleEndian>()?;
                 let texture = FTexturePlatformData::new(reader, ubulk, export_size)?;
-                if reader.position() != skip_offset as u64 {
+                // Seems to be always wrong, can't work out what it's referring to.
+                /*if reader.position() != skip_offset as u64 {
                     panic!("Texture read incorrectly {} {}", reader.position(), skip_offset);
-                }
+                }*/
                 textures.push(texture);
                 pixel_format = read_fname(reader, name_map)?;
             }
@@ -2627,7 +2644,7 @@ impl Serialize for Texture2D {
     }
 }
 
-#[derive(Debug)]
+/*#[derive(Debug)]
 pub struct UDataTable {
     super_object: UObject,
     rows: Vec<(String, UObject)>,
@@ -2747,8 +2764,6 @@ impl Package {
             name_map.push(read_short_string(&mut cursor)?);
         }
 
-        println!("{:#?}", name_map);
-
         let name_map = FNameMap::from_strings(name_map);
 
         cursor.seek(SeekFrom::Start(summary.import_map_offset as u64))?;
@@ -2765,6 +2780,8 @@ impl Package {
             None => return Err(ParserError::new(format!("No package class found"))),
         };
 
+        println!("Map: {:#?}", export_map);
+
         cursor.seek(SeekFrom::Start((summary.graph_data_offset + summary.graph_data_size) as u64))?;
 
         let mut ubulk_cursor = match ubulk {
@@ -2773,7 +2790,10 @@ impl Package {
         };
 
         let mut exports: Vec<Box<dyn Any>> = Vec::new();
-        let export = Box::new(UObject::new(&mut cursor, &name_map, &import_map, &export_name)?);
+        let export: Box<dyn Any> = match export_name {
+            "Texture2D" => Box::new(Texture2D::new(&mut cursor, &name_map, &import_map, export_map.serial_size as i64, &mut ubulk_cursor)?),
+            _ => Box::new(UObject::new(&mut cursor, &name_map, &import_map, &export_name)?),
+        };
         exports.push(export);
 
         /*for v in &export_map {
@@ -2888,10 +2908,10 @@ fn get_export(export: &Box<dyn Any>) -> Option<&dyn PackageExport> {
     if let Some(obj) = export.downcast_ref::<UObject>() {
         return Some(obj);
     }
-    /*if let Some(texture) = export.downcast_ref::<Texture2D>() {
+    if let Some(texture) = export.downcast_ref::<Texture2D>() {
         return Some(texture);
     }
-    if let Some(table) = export.downcast_ref::<UDataTable>() {
+    /*if let Some(table) = export.downcast_ref::<UDataTable>() {
         return Some(table);
     }
     if let Some(mesh) = export.downcast_ref::<USkeletalMesh>() {

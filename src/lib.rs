@@ -1,21 +1,28 @@
 #![allow(warnings)]
 
-// use crate::assets::{ParserResult, ParserError, Package, Texture2D, USoundWave};
-use crate::assets::{ParserResult, ParserError, Package};
+use lazy_static::lazy_static;
+use crate::assets::{ParserResult, ParserError, Package, Texture2D};
 
 pub mod assets;
 pub mod archives;
+pub mod dispatch;
 mod mapping;
-mod dispatch;
 //mod sound;
 mod decompress;
-//mod texture;
+mod texture;
 
-//pub fn read_asset(asset: &[u8], ubulk: Option<&[u8]>) -> ParserResult<Package> {
-//    Package::from_buffer(asset, ubulk)
-//}
+lazy_static! {
+    static ref GLOBAL_DATA: dispatch::LoaderGlobalData = {
+        let mut dispatch = dispatch::Extractor::new("paks/global", None).unwrap();
+        dispatch.read_global().unwrap()
+    };
+}
 
-/*pub fn read_texture(package: Package) -> ParserResult<Vec<u8>> {
+pub fn read_asset(asset: &[u8], ubulk: Option<&[u8]>) -> ParserResult<Package> {
+    Package::from_buffer(asset, ubulk, &GLOBAL_DATA)
+}
+
+pub fn read_texture(package: Package) -> ParserResult<Vec<u8>> {
     let package_export = package.get_export_move(0)?;
     let texture = match package_export.downcast::<Texture2D>() {
         Ok(data) => data,
@@ -24,7 +31,7 @@ mod decompress;
     texture::decode_texture(*texture)
 }
 
-/// Extracts sounds from a Package struct
+/*/// Extracts sounds from a Package struct
 pub fn read_sound(package: Package) -> ParserResult<Vec<u8>> {
     let package_export = package.get_export_move(0)?;
     let sound = match package_export.downcast::<USoundWave>() {

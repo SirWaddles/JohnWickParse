@@ -1,0 +1,91 @@
+
+{
+	"name": "AthenaItemWrapDefinition",
+	"properties": [
+		{
+			"index": 1,
+			"name": "ItemWrapMaterial",
+			"mapping_type":
+			{
+				"type": "StructProperty",
+				"struct_type": "SoftObjectPath"
+			}
+		},
+		{
+			"index": 47,
+			"name": "Rarity",
+			"mapping_type":
+			{
+				"type": "EnumProperty",
+				"vals": [
+					"Uncommon",
+					"Common",
+					"Rare",
+					"Epic",
+					"Legendary",
+					"Mythic"
+				]
+			}
+		},
+		{
+			"index": 61,
+			"name": "DisplayName",
+			"mapping_type":
+			{
+				"type": "TextProperty"
+			}
+		},
+		{
+			"index": 63,
+			"name": "Description",
+			"mapping_type":
+			{
+				"type": "TextProperty"
+			}
+		},
+		{
+			"index": 66,
+			"name": "GameplayTags",
+			"mapping_type":
+			{
+				"type": "StructProperty",
+				"struct_type": "GameplayTagContainer"
+			}
+		},
+		{
+			"index": 77,
+			"name": "SmallPreviewImage",
+			"mapping_type":
+			{
+				"type": "StructProperty",
+				"struct_type": "SoftObjectPath"
+			}
+		},
+		{
+			"index": 78,
+			"name": "LargePreviewImage",
+			"mapping_type":
+			{
+				"type": "StructProperty",
+				"struct_type": "SoftObjectPath"
+			}
+		},
+		{
+			"index": 80,
+			"name" : "Series",
+			"mapping_type":
+			{
+				"type": "ObjectProperty"			
+			}
+		},
+		{
+			"index": 0,
+			"name": "ItemWrapModifierBlueprint",
+			"mapping_type":
+			{
+				"type": "StructProperty",
+				"struct_type": "SoftObjectPath"
+			}
+		}
+	]
+}
