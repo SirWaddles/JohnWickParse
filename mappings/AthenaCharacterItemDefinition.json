@@ -9,6 +9,27 @@
 			}
 		},
 		{
+			"index": 25,
+			"name": "ItemVariants",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "ObjectProperty"
+				}
+			}
+		},
+		{
+			"index": 27,
+			"name": "ItemVariantPreviews",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "StructProperty",
+					"struct_type": "FortCosmeticVariantPreview"
+				}
+			}
+		},
+		{
 			"index": 53,
 			"name": "Rarity",
 			"mapping_type": {
@@ -46,10 +67,18 @@
 		},
 		{
 			"index": 72,
-			"name":  "GameplayTags",
+			"name": "GameplayTags",
 			"mapping_type": {
 				"type": "StructProperty",
 				"struct_type": "GameplayTagContainer"
+			}
+		},
+		{
+			"index": 85,
+			"name": "DisplayAssetPath",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "SoftObjectPath"
 			}
 		}
 	]

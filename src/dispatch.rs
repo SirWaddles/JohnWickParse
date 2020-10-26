@@ -5,7 +5,6 @@ use std::io::{Write, Read, BufReader, Seek, SeekFrom, Cursor};
 use block_modes::{BlockMode, Ecb, block_padding::ZeroPadding};
 use aes_soft::Aes256;
 use flate2::read::ZlibDecoder;
-use crate::mapping::MappingStore;
 use crate::assets::{FMappedName, FGuid, FPackageObjectIndex, Newable, ReaderCursor, read_string, read_short_string, read_tarray, ParserResult, ParserError};
 use crate::decompress::oodle;
 
@@ -345,11 +344,6 @@ fn get_chunk(file: &mut File, chunk: &FIoStoreTocCompressedBlockEntry, header: &
         return Ok(buf);
     }
 
-    println!("Size: {}", chunk.size);
-
-    let mut file = File::create("block.data").unwrap();
-    file.write_all(&buf).unwrap();
-
     Ok(oodle::decompress_stream(chunk.size as u64, &buf).unwrap())
 }
 
@@ -628,7 +622,6 @@ impl Newable for FNameMap {
 pub struct LoaderGlobalData {
     names: FNameMap,
     imports: InitialLoadMetaData,
-    pub mappings: MappingStore,
 }
 
 impl LoaderGlobalData {
@@ -636,7 +629,6 @@ impl LoaderGlobalData {
         Self {
             names: FNameMap::empty(),
             imports: InitialLoadMetaData::empty(),
-            mappings: MappingStore::empty(),
         }
     }
 
@@ -766,12 +758,9 @@ impl Extractor {
             _ => return Err(ParserError::new(format!("Not a global chunk"))),
         };
 
-        let mappings = MappingStore::build_mappings()?;
-
         Ok(LoaderGlobalData {
             names: name_map,
             imports: initial_data,
-            mappings: mappings,
         })
     }
 
