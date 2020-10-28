@@ -1,0 +1,1 @@
+{"name":"FortCosmeticVariantPreviewElement","properties":[{"index":0,"name":"VariantOptions","mapping_type":{"type":"ArrayProperty","sub_type":{"type":"StructProperty","struct_type":"McpVariantChannelInfo"}}},{"index":1,"name":"Item","mapping_type":{"type":"ObjectProperty"}}]}

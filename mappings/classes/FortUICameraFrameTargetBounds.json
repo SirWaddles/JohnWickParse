@@ -1,0 +1,27 @@
+{
+	"name": "FortUICameraFrameTargetBounds",
+	"properties": [
+		{
+			"index": 0,
+			"name": "Origin",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "Vector"
+			}
+		},
+		{
+			"index": 1,
+			"name": "CylinderHalfHeight",
+			"mapping_type": {
+				"type": "FloatProperty"
+			}
+		},
+		{
+			"index": 2,
+			"name": "CylinderRadius",
+			"mapping_type": {
+				"type": "FloatProperty"
+			}
+		}
+	]
+}

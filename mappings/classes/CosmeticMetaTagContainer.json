@@ -1,0 +1,1 @@
+{"name":"CosmeticMetaTagContainer","properties":[{"index":0,"name":"MetaTagsToApply","mapping_type":{"type":"StructProperty","struct_type":"GameplayTagContainer"}},{"index":1,"name":"MetaTagsToRemove","mapping_type":{"type":"StructProperty","struct_type":"GameplayTagContainer"}}]}

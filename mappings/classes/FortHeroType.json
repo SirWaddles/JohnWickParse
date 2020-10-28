@@ -1,153 +1,186 @@
 {
-	"name": "FortHeroType",
-	"properties": [
-		{
-			"index": 2,
-			"name": "Specializations",
-			"mapping_type": {
-				"type": "ArrayProperty",
-				"sub_type": {
-					"type": "SoftObjectProperty"
-				}
-			}
-		},
-		{
-			"index": 3,
-			"name": "DefaultMontageLookupTable",
-			"mapping_type": {
-				"type": "SoftObjectProperty"
-			}
-		},
-		{
-			"index": 6,
-			"name": "RequiredGPTags",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "GameplayTagContainer"
-			}
-		},
-		{
-			"index": 9,
-			"name": "OverridePawnClass",
-			"mapping_type": {
-				"type": "SoftObjectProperty"
-			}
-		},
-		{
-			"index": 13,
-			"name": "FrontendAnimClass",
-			"mapping_type": {
-				"type": "SoftObjectProperty"
-			}
-		},
-		{
-			"index": 18,
-			"name": "AttributeInitKey",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "FortAttributeInitializationKey"
-			}
-		},
-		{
-			"index": 19,
-			"name": "LegacyStatHandle",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "DataTableRowHandle"
-			}
-		},
-		{
-			"index": 30,
-			"name": "LevelToXpHandle",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "CurveTableRowHandle"
-			}
-		},
-		{
-			"index": 31,
-			"name": "LevelToSacrificeXpHandle",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "CurveTableRowHandle"
-			}
-		},
-		{
-			"index": 33,
-			"name": "TransmogSacrificeRow",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "DataTableRowHandle"
-			}
-		},
-		{
-			"index": 34,
-			"name": "ConversionRecipes",
-			"mapping_type": {
-				"type": "ArrayProperty",
-				"sub_type": {
-					"type": "StructProperty",
-					"struct_type": "DataTableRowHandle"
-				}
-			}
-		},
-		{
-			"index": 37,
-			"name": "MaxLevel",
-			"mapping_type": {
-				"type": "IntProperty"
-			}
-		},
-		{
-			"index": 44,
-			"name": "Tier",
-			"mapping_type": {
-				"type": "EnumProperty"
-			}
-		},
-		{
-			"index": 45,
-			"name": "MaxTier",
-			"mapping_type": {
-				"type": "EnumProperty"
-			}
-		},
-		{
-			"index": 48,
-			"name": "bNeverPersisted",
-			"mapping_type": {
-				"type": "BoolProperty"
-			}
-		},
-		{
-			"index": 59,
-			"name": "GameplayTags",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "GameplayTagContainer"
-			}
-		},
-		{
-			"index": 68,
-			"name": "RatingLookup",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "CurveTableRowHandle"
-			}
-		},
-		{
-			"index": 70,
-			"name": "SmallPreviewImage",
-			"mapping_type": {
-				"type": "SoftObjectProperty"
-			}
-		},
-		{
-			"index": 71,
-			"name": "LargePreviewImage",
-			"mapping_type": {
-				"type": "SoftObjectProperty"
-			}
-		}
-	]
+    "name": "FortHeroType",
+    "properties": [{
+            "index": 2,
+            "name": "Specializations",
+            "mapping_type": {
+                "type": "ArrayProperty",
+                "sub_type": {
+                    "type": "SoftObjectProperty"
+                }
+            }
+        }, {
+            "index": 3,
+            "name": "DefaultMontageLookupTable",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }, {
+            "index": 6,
+            "name": "RequiredGPTags",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "GameplayTagContainer"
+            }
+        }, {
+            "index": 9,
+            "name": "OverridePawnClass",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }, {
+            "index": 13,
+            "name": "FrontEndAnimClass",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }, {
+            "index": 14,
+            "name": "ItemPreviewAnimClass",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }, {
+            "index": 15,
+            "name": "FrontEndBackPreviewRotationOffset",
+            "mapping_type": {
+                "type": "FloatProperty"
+            }
+        }, {
+            "index": 16,
+            "name": "Subtype",
+            "mapping_type": {
+                "type": "TextProperty"
+            }
+        }, {
+            "index": 17,
+            "name": "FrontendAnimMontageIdleOverride",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }, {
+            "index": 18,
+            "name": "AttributeInitKey",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "FortAttributeInitializationKey"
+            }
+        }, {
+            "index": 19,
+            "name": "LegacyStatHandle",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "DataTableRowHandle"
+            }
+        }, {
+            "index": 22,
+            "name": "Gender",
+            "mapping_type": {
+                "type": "ByteProperty"
+            }
+        }, {
+            "index": 30,
+            "name": "LevelToXpHandle",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "CurveTableRowHandle"
+            }
+        }, {
+            "index": 31,
+            "name": "LevelToSacrificeXpHandle",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "CurveTableRowHandle"
+            }
+        }, {
+            "index": 33,
+            "name": "TransmogSacrificeRow",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "DataTableRowHandle"
+            }
+        }, {
+            "index": 34,
+            "name": "ConversionRecipes",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "DataTableRowHandle"
+            }
+        }, {
+            "index": 36,
+            "name": "MinLevel",
+            "mapping_type": {
+                "type": "IntProperty"
+            }
+        }, {
+            "index": 37,
+            "name": "MaxLevel",
+            "mapping_type": {
+                "type": "IntProperty"
+            }
+        }, {
+            "index": 40,
+            "name": "Rarity",
+            "mapping_type": {
+                "type": "EnumProperty",
+                "enum_type": "EFortRarity"
+            }
+        }, {
+            "index": 44,
+            "name": "Tier",
+            "mapping_type": {
+                "type": "ByteProperty"
+            }
+        }, {
+            "index": 45,
+            "name": "MaxTier",
+            "mapping_type": {
+                "type": "ByteProperty"
+            }
+        }, {
+            "index": 48,
+            "name": "bNeverPersisted",
+            "mapping_type": {
+                "type": "BoolProperty"
+            }
+        }, {
+            "index": 54,
+            "name": "DisplayName",
+            "mapping_type": {
+                "type": "TextProperty"
+            }
+        }, {
+            "index": 56,
+            "name": "Description",
+            "mapping_type": {
+                "type": "TextProperty"
+            }
+        }, {
+            "index": 59,
+            "name": "GameplayTags",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "GameplayTagContainer"
+            }
+        }, {
+            "index": 68,
+            "name": "RatingLookup",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "CurveTableRowHandle"
+            }
+        }, {
+            "index": 70,
+            "name": "SmallPreviewImage",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }, {
+            "index": 71,
+            "name": "LargePreviewImage",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }
+    ]
 }

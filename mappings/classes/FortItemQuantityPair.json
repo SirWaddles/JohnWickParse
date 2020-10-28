@@ -1,0 +1,1 @@
+{"name":"FortItemQuantityPair","properties":[{"index":0,"name":"ItemPrimaryAssetId","mapping_type":{"type":"StructProperty","struct_type":"PrimaryAssetId"}},{"index":1,"name":"Quantity","mapping_type":{"type":"IntProperty"}}]}

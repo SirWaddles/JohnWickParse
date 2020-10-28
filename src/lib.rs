@@ -22,6 +22,10 @@ pub fn read_asset(asset: &[u8], ubulk: Option<&[u8]>) -> ParserResult<Package> {
     Package::from_buffer(asset, ubulk, &GLOBAL_DATA)
 }
 
+pub fn read_asset_from_file(file: &str) -> ParserResult<Package> {
+    Package::from_file(file, &GLOBAL_DATA)
+}
+
 pub fn read_texture(package: Package) -> ParserResult<Vec<u8>> {
     let package_export = package.get_export_move(0)?;
     let texture = match package_export.downcast::<Texture2D>() {

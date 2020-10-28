@@ -1,0 +1,1 @@
+{"name":"SocketTransformVariant","properties":[{"index":0,"name":"SourceSocketName","mapping_type":{"type":"NameProperty"}},{"index":1,"name":"OverridSocketName","mapping_type":{"type":"NameProperty"}},{"index":2,"name":"SourceObjectToModify","mapping_type":{"type":"SoftObjectProperty"}}]}

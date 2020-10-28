@@ -1,0 +1,1 @@
+{"name":"ParticleVariant","properties":[{"index":0,"name":"ParticleSystemToAlter","mapping_type":{"type":"SoftObjectProperty"}},{"index":1,"name":"ComponentToOverride","mapping_type":{"type":"NameProperty"}},{"index":2,"name":"OverrideParticleSystem","mapping_type":{"type":"SoftObjectProperty"}}]}

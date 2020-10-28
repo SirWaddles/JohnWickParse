@@ -1,0 +1,95 @@
+{
+	"name": "AthenaPickaxeItemDefinition",
+	"properties": [
+		{
+			"index": 0,
+			"name": "WeaponDefinition",
+			"mapping_type": {
+				"type": "ObjectProperty"
+			}
+		},
+		{
+			"index": 5,
+			"name": "PickaxeImpactFXPreviewOffset",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "Vector"
+			}
+		},
+		{
+			"index": 10,
+			"name": "CameraFramingBounds",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "FortUICameraFrameTargetBounds"
+			}
+		},
+		{
+			"index": 57,
+			"name": "Rarity",
+			"mapping_type": {
+				"type": "EnumProperty",
+				"enum_type": "EFortRarity"
+			}
+		},
+		{
+			"index": 71,
+			"name": "DisplayName",
+			"mapping_type": {
+				"type": "TextProperty"
+			}
+		},
+		{
+			"index": 72,
+			"name": "ShortDescription",
+			"mapping_type": {
+				"type": "TextProperty"
+			}
+		},
+		{
+			"index": 73,
+			"name": "Description",
+			"mapping_type": {
+				"type": "TextProperty"
+			}
+		},
+		{
+			"index": 76,
+			"name": "GameplayTags",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "GameplayTagContainer"
+			}
+		},
+		{
+			"index": 87,
+			"name": "SmallPreviewImage",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 88,
+			"name": "LargePreviewImage",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 91,
+			"name": "FrontendPreviewPivotOffset",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "Vector"
+			}
+		},
+		{
+			"index": 92,
+			"name": "FrontendPreviewInitialRotation",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "Rotator"
+			}
+		}
+	]
+}

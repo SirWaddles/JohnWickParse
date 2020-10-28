@@ -1,0 +1,1 @@
+{"name":"VectorParamVariant","properties":[{"index":0,"name":"Value","mapping_type":{"type":"StructProperty","struct_type":"Vector"}},{"index":1,"name":"ParamName","mapping_type":{"type":"NameProperty"}}]}

@@ -1,0 +1,1 @@
+{"name":"SoundWaveSpectralTimeData","properties":[{"index":0,"name":"Data","mapping_type":{"type":"ArrayProperty","sub_type":{"type":"StructProperty","struct_type":"SoundWaveSpectralDataEntry"}}},{"index":1,"name":"TimeSec","mapping_type":{"type":"FloatProperty"}}]}

@@ -1,0 +1,1 @@
+{"name":"FortPortableSoftParticles","properties":[{"index":0,"name":"FXType","mapping_type":{"type":"EnumProperty","enum_type":"EFXType"}},{"index":1,"name":"NiagaraVersion","mapping_type":{"type":"SoftObjectProperty"}},{"index":2,"name":"CascadeVersion","mapping_type":{"type":"SoftObjectProperty"}}]}

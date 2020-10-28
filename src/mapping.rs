@@ -17,6 +17,7 @@ pub enum TagMapping {
     StrProperty,
     NameProperty,
     ArrayProperty { sub_type: Box<TagMapping> },
+    MapProperty { key_type: Box<TagMapping>, value_type: Box<TagMapping> },
     ObjectProperty,
     SoftObjectProperty,
     StructProperty { struct_type: String },
@@ -124,7 +125,7 @@ impl MappingStore {
         for index in &indices {
             let mapping = match class_mapping.properties.iter().find(|v| &v.index == index) {
                 Some(map) => map,
-                None => return Err(ParserError::typed(format!("Index not found: {} of {:#?}", index, indices), ParserType::PropertyIndexMissing)),
+                None => return Err(ParserError::typed(format!("Index not found: {}-{} of {:#?}", class_name, index, indices), ParserType::PropertyIndexMissing)),
             };
             mappings.push(mapping.clone());
         }

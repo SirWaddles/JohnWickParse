@@ -1,0 +1,1 @@
+{"name":"FoleySoundVariant","properties":[{"index":0,"name":"LibrariesToAdd","mapping_type":{"type":"ArrayProperty","sub_type":{"type":"ObjectProperty"}}},{"index":1,"name":"LibrariesToRemove","mapping_type":{"type":"ArrayProperty","sub_type":{"type":"ObjectProperty"}}}]}

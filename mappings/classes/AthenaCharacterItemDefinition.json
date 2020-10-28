@@ -1,93 +1,90 @@
 {
-	"name": "AthenaCharacterItemDefinition",
-	"properties": [
-		{
-			"index": 2,
-			"name": "HeroDefinition",
-			"mapping_type": {
-				"type": "ObjectProperty"
-			}
-		},
-		{
+    "name": "AthenaCharacterItemDefinition",
+    "properties": [{
+            "index": 2,
+            "name": "HeroDefinition",
+            "mapping_type": {
+                "type": "ObjectProperty"
+            }
+		}, {
 			"index": 20,
-			"name": "MetaTags",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "GameplayTagContainer"
-			}
-		},
-		{
-			"index": 25,
-			"name": "ItemVariants",
-			"mapping_type": {
-				"type": "ArrayProperty",
-				"sub_type": {
-					"type": "ObjectProperty"
-				}
-			}
-		},
-		{
-			"index": 27,
-			"name": "ItemVariantPreviews",
-			"mapping_type": {
-				"type": "ArrayProperty",
-				"sub_type": {
-					"type": "StructProperty",
-					"struct_type": "FortCosmeticVariantPreview"
-				}
-			}
-		},
-		{
-			"index": 53,
-			"name": "Rarity",
-			"mapping_type": {
-				"type": "EnumProperty",
-				"enum_type": "EFortRarity"
-			}
-		},
-		{
-			"index": 67,
-			"name": "DisplayName",
-			"mapping_type": {
-				"type": "TextProperty"
-			}
-		},
-		{
-			"index": 68,
-			"name": "ShortDescription",
-			"mapping_type": {
-				"type": "TextProperty"
-			}
-		},
-		{
-			"index": 69,
-			"name": "Description",
-			"mapping_type": {
-				"type": "TextProperty"
-			}
-		},
-		{
-			"index": 72,
 			"name": "GameplayTags",
 			"mapping_type": {
 				"type": "StructProperty",
 				"struct_type": "GameplayTagContainer"
 			}
-		},
-		{
-			"index": 85,
-			"name": "DisplayAssetPath",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "SoftObjectPath"
-			}
-		},
-		{
-			"index": 86,
-			"name": "Series",
-			"mapping_type": {
-				"type": "ObjectProperty"
-			}
-		}
-	]
+        }, {
+            "index": 24,
+            "name": "BuiltInEmotes",
+            "mapping_type": {
+                "type": "ArrayProperty",
+                "sub_type": {
+                    "type": "ObjectProperty"
+                }
+            }
+        }, {
+            "index": 25,
+            "name": "ItemVariants",
+            "mapping_type": {
+                "type": "ArrayProperty",
+                "sub_type": {
+                    "type": "ObjectProperty"
+                }
+            }
+        }, {
+            "index": 27,
+            "name": "ItemVariantPreviews",
+            "mapping_type": {
+                "type": "ArrayProperty",
+                "sub_type": {
+                    "type": "StructProperty",
+                    "struct_type": "FortCosmeticVariantPreview"
+                }
+            }
+        }, {
+            "index": 53,
+            "name": "Rarity",
+            "mapping_type": {
+                "type": "EnumProperty",
+                "enum_type": "EFortRarity"
+            }
+        }, {
+            "index": 67,
+            "name": "DisplayName",
+            "mapping_type": {
+                "type": "TextProperty"
+            }
+        }, {
+            "index": 68,
+            "name": "ShortDescription",
+            "mapping_type": {
+                "type": "TextProperty"
+            }
+        }, {
+            "index": 69,
+            "name": "Description",
+            "mapping_type": {
+                "type": "TextProperty"
+            }
+        }, {
+            "index": 72,
+            "name": "GameplayTags",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "GameplayTagContainer"
+            }
+        }, {
+            "index": 85,
+            "name": "DisplayAssetPath",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }, {
+            "index": 86,
+            "name": "Series",
+            "mapping_type": {
+                "type": "ObjectProperty"
+            }
+        }
+    ]
 }

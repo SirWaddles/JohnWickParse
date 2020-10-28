@@ -1,0 +1,1 @@
+{"name":"CosmeticSetDataRow","properties":[{"index":0,"name":"Tag","mapping_type":{"type":"StructProperty","struct_type":"GameplayTag"}},{"index":1,"name":"DisplayName","mapping_type":{"type":"TextProperty"}},{"index":2,"name":"Description","mapping_type":{"type":"TextProperty"}}]}

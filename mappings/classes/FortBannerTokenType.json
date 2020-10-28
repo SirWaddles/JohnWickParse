@@ -1,0 +1,93 @@
+{
+	"name": "FortBannerTokenType",
+	"properties": [
+		{
+			"index": 1,
+			"name": "BannerIconTemplateName",
+			"mapping_type": {
+				"type": "StrProperty"
+			}
+		},
+		{
+			"index": 26,
+			"name": "DisplayName",
+			"mapping_type": {
+				"type": "TextProperty"
+			}
+		},
+		{
+			"index": 27,
+			"name": "ShortDescription",
+			"mapping_type": {
+				"type": "TextProperty"
+			}
+		},
+		{
+			"index": 28,
+			"name": "Description",
+			"mapping_type": {
+				"type": "TextProperty"
+			}
+		},
+		{
+			"index": 31,
+			"name": "GameplayTags",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "GameplayTagContainer"
+			}
+		},
+		{
+			"index": 42,
+			"name": "SmallPreviewImage",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 43,
+			"name": "LargePreviewImage",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 44,
+			"name": "DisplayAssetPath",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "SoftObjectPath"
+			}
+		},
+		{
+			"index": 45,
+			"name": "Series",
+			"mapping_type": {
+				"type": "ObjectProperty"
+			}
+		},
+		{
+			"index": 46,
+			"name": "FrontendPreviewPivotOffset",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "Vector"
+			}
+		},
+		{
+			"index": 47,
+			"name": "FrontendPreviewInitialRotation",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "Rotator"
+			}
+		},
+		{
+			"index": 48,
+			"name": "FrontendPreviewMeshOverride",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		}
+	]
+}

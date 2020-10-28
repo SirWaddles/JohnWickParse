@@ -1,0 +1,170 @@
+{
+    "name": "PartVariantDef",
+    "properties": [{
+            "index": 0,
+            "name": "VariantParts",
+            "mapping_type": {
+                "type": "ArrayProperty",
+                "sub_type": {
+                    "type": "SoftObjectProperty"
+                }
+            }
+        }, {
+            "index": 1,
+            "name": "VariantMaterials",
+            "mapping_type": {
+                "type": "ArrayProperty",
+                "sub_type": {
+                    "type": "StructProperty",
+                    "struct_type": "MaterialVariants"
+                }
+            }
+        }, {
+            "index": 2,
+            "name": "VariantMaterialParams",
+            "mapping_type": {
+                "type": "ArrayProperty",
+                "sub_type": {
+                    "type": "StructProperty",
+                    "struct_type": "MaterialParamterDef"
+                }
+            }
+        }, {
+            "index": 3,
+            "name": "InitalParticelSystemData",
+            "mapping_type": {
+                "type": "ArrayProperty",
+                "sub_type": {
+                    "type": "StructProperty",
+                    "struct_type": "VariantParticleSystemInitializerData"
+                }
+            }
+        }, {
+            "index": 4,
+            "name": "VariantParticles",
+            "mapping_type": {
+                "type": "ArrayProperty",
+                "sub_type": {
+                    "type": "StructProperty",
+                    "struct_type": "ParticleVariant"
+                }
+            }
+        }, {
+            "index": 5,
+            "name": "VariantParticleParams",
+            "mapping_type": {
+                "type": "ArrayProperty",
+                "sub_type": {
+                    "type": "StructProperty",
+                    "struct_type": "ParticleParamterVariant"
+                }
+            }
+        }, {
+            "index": 6,
+            "name": "VariantSwapInParticles",
+            "mapping_type": {
+                "type": "ArrayProperty",
+                "sub_type": {
+                    "type": "StructProperty",
+                    "struct_type": "ManagedParticleSwapVariant"
+                }
+            }
+        }, {
+            "index": 7,
+            "name": "VariantAlteredParticleParams",
+            "mapping_type": {
+                "type": "ArrayProperty",
+                "sub_type": {
+                    "type": "StructProperty",
+                    "struct_type": "ManagedParticleParamVariant"
+                }
+            }
+        }, {
+            "index": 8,
+            "name": "VariantFoley",
+            "mapping_type": {
+                "type": "ArrayProperty",
+                "sub_type": {
+                    "type": "StructProperty",
+                    "struct_type": "FoleySoundVariant"
+                }
+            }
+        }, {
+            "index": 9,
+            "name": "SocketTransforms",
+            "mapping_type": {
+                "type": "ArrayProperty",
+                "sub_type": {
+                    "type": "StructProperty",
+                    "struct_type": "SocketTransformVariant"
+                }
+            }
+        }, {
+            "index": 10,
+            "name": "VariantActions",
+            "mapping_type": {
+                "type": "ArrayProperty",
+                "sub_type": {
+                    "type": "StructProperty",
+                    "struct_type": "ScriptedActionVariant"
+                }
+            }
+        }, {
+            "index": 11,
+            "name": "MetaTags",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "CosmeticMetaTagContainer"
+            }
+        }, {
+            "index": 12,
+            "name": "bStartUnlocked",
+            "mapping_type": {
+                "type": "BoolProperty"
+            }
+        }, {
+            "index": 13,
+            "name": "bIsDefault",
+            "mapping_type": {
+                "type": "BoolProperty"
+            }
+        }, {
+            "index": 14,
+            "name": "bHideIfNotOwned",
+            "mapping_type": {
+                "type": "BoolProperty"
+            }
+        }, {
+            "index": 15,
+            "name": "CustomizationVariantTag",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "GameplayTag"
+            }
+        }, {
+            "index": 16,
+            "name": "VariantName",
+            "mapping_type": {
+                "type": "TextProperty"
+            }
+        }, {
+            "index": 17,
+            "name": "PreviewImage",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }, {
+            "index": 18,
+            "name": "UnlockRequirements",
+            "mapping_type": {
+                "type": "TextProperty"
+            }
+        }, {
+            "index": 19,
+            "name": "UnlockingItemDef",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }
+    ]
+}

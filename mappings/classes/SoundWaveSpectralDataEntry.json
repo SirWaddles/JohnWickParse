@@ -1,0 +1,1 @@
+{"name":"SoundWaveSpectralDataEntry","properties":[{"index":0,"name":"Magnitude","mapping_type":{"type":"FloatProperty"}},{"index":1,"name":"NormalizedMagnitude","mapping_type":{"type":"FloatProperty"}}]}

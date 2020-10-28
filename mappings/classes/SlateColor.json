@@ -1,0 +1,1 @@
+{"name":"SlateColor","properties":[{"index":0,"name":"SpecifiedColor","mapping_type":{"type":"StructProperty","struct_type":"LinearColor"}},{"index":1,"name":"ColorUseRule","mapping_type":{"type":"EnumProperty","enum_type":"ESlateColorStylingMode"}}]}

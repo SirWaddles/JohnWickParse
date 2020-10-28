@@ -1,0 +1,1 @@
+{"name":"SubtitleCue","properties":[{"index":0,"name":"Text","mapping_type":{"type":"TextProperty"}},{"index":1,"name":"Time","mapping_type":{"type":"FloatProperty"}}]}

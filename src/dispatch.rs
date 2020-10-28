@@ -163,6 +163,10 @@ impl FIoStoreTocHeader {
     pub fn get_block_size(&self) -> u32 {
         self.compression_block_size
     }
+
+    pub fn get_key_guid(&self) -> &FGuid {
+        &self.encryption_key_guid
+    }
 }
 
 impl Newable for FIoStoreTocHeader {
@@ -786,6 +790,18 @@ pub struct Extractor {
 }
 
 impl Extractor {
+    pub fn new_header(asset_path: &str) -> ParserResult<FIoStoreTocHeader> {
+        let utoc_path = asset_path.to_owned() + ".utoc";
+        let mut file = File::open(utoc_path)?;
+        let mut buffer = vec![0u8; 256];
+        file.read_exact(&mut buffer)?;
+
+        let mut reader = Cursor::new(buffer.as_slice());
+        let header = FIoStoreTocHeader::new(&mut reader)?;
+
+        Ok(header)
+    }
+
     pub fn new(path: &str, key: Option<&str>) -> ParserResult<Self> {
         let utoc_path = path.to_owned() + ".utoc";
         let mut file = File::open(utoc_path)?;
@@ -839,6 +855,10 @@ impl Extractor {
 
     pub fn get_file_list(&self) -> &Vec<String> {
         self.utoc.get_file_list()
+    }
+
+    pub fn get_mount_point(&self) -> &str {
+        self.utoc.get_mount_point()
     }
 
     pub fn get_file(&mut self, file: &str) -> ParserResult<Vec<u8>> {

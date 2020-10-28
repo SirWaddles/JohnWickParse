@@ -1,0 +1,1 @@
+{"name":"ManagedParticleSwapVariant","properties":[{"index":0,"name":"ParamGroupTag","mapping_type":{"type":"StructProperty","struct_type":"GameplayTag"}},{"index":1,"name":"ParticleToOverride","mapping_type":{"type":"StructProperty","struct_type":"FortPortableSoftParticles"}}]}
