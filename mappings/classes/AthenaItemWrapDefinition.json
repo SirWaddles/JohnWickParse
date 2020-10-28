@@ -17,14 +17,7 @@
 			"mapping_type":
 			{
 				"type": "EnumProperty",
-				"vals": [
-					"Uncommon",
-					"Common",
-					"Rare",
-					"Epic",
-					"Legendary",
-					"Mythic"
-				]
+				"enum_type": "EFortRarity"
 			}
 		},
 		{

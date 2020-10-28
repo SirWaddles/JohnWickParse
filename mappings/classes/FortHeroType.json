@@ -102,20 +102,14 @@
 			"index": 44,
 			"name": "Tier",
 			"mapping_type": {
-				"type": "EnumProperty",
-				"vals": [
-				
-				]
+				"type": "EnumProperty"
 			}
 		},
 		{
 			"index": 45,
 			"name": "MaxTier",
 			"mapping_type": {
-				"type": "EnumProperty",
-				"vals": [
-				
-				]
+				"type": "EnumProperty"
 			}
 		},
 		{

@@ -1,0 +1,91 @@
+{
+    "name": "AthenaLoadingScreenItemDefinition",
+    "properties": [{
+            "name": "BackgroundImage",
+            "index": 0,
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "SoftObjectPath"
+            }
+        }, {
+            "name": "BackgroundColor",
+            "index": 4,
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "LinearColor"
+            }
+        }, {
+            "name": "DisplayName",
+            "index": 64,
+            "mapping_type": {
+                "type": "TextProperty"
+            }
+        }, {
+            "name": "ShortDescription",
+            "index": 65,
+            "mapping_type": {
+                "type": "TextProperty"
+            }
+        }, {
+            "name": "Description",
+            "index": 66,
+            "mapping_type": {
+                "type": "TextProperty"
+            }
+        }, {
+            "name": "GameplayTags",
+            "index": 69,
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "GameplayTagContainer"
+            }
+        }, {
+            "name": "FrontendPreviewScale",
+            "index": 75,
+            "mapping_type": {
+                "type": "FloatProperty"
+            }
+        }, {
+            "name": "SmallPreviewImage",
+            "index": 80,
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "SoftObjectPath"
+            }
+        }, {
+            "name": "LargePreviewImage",
+            "index": 81,
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "SoftObjectPath"
+            }
+        }, {
+            "name": "FrontendPreviewPivotOffset",
+            "index": 84,
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "Vector"
+            }
+        }, {
+            "name": "FrontendPreviewInitalRotation",
+            "index": 85,
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "Rotator"
+            }
+        }, {
+            "name": "Rarity",
+            "index": 50,
+            "mapping_type": {
+                "type": "EnumProperty",
+                "enum_type": "EFortRarity"
+            }
+        }, {
+            "name": "Series",
+            "index": 83,
+            "mapping_type": {
+                "type": "ObjectProperty"
+            }
+        }
+    ]
+}

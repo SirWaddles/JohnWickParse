@@ -2,6 +2,7 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use std::convert::TryInto;
 use std::fs::File;
 use std::io::{Write, Read, BufReader, Seek, SeekFrom, Cursor};
+use std::sync::Arc;
 use block_modes::{BlockMode, Ecb, block_padding::ZeroPadding};
 use aes_soft::Aes256;
 use flate2::read::ZlibDecoder;
@@ -134,7 +135,7 @@ impl Newable for FIoDirectoryIndexResource {
 }
 
 #[derive(Debug, Clone)]
-struct FIoStoreTocHeader {
+pub struct FIoStoreTocHeader {
     version: u32,
     header_size: u32,
     entry_count: u32,
@@ -157,6 +158,10 @@ impl FIoStoreTocHeader {
 
     fn is_signed(&self) -> bool {
         self.container_flags & (1 << 2) != 0
+    }
+
+    pub fn get_block_size(&self) -> u32 {
+        self.compression_block_size
     }
 }
 
@@ -238,9 +243,9 @@ impl Newable for FIoChunkId {
 }
 
 #[derive(Debug)]
-struct FIoOffsetAndLength {
-    offset: u64,
-    length: u64,
+pub struct FIoOffsetAndLength {
+    pub offset: u64,
+    pub length: u64,
 }
 
 impl Newable for FIoOffsetAndLength {
@@ -267,12 +272,12 @@ impl Newable for FIoOffsetAndLength {
     }
 }
 
-#[derive(Debug)]
-struct FIoStoreTocCompressedBlockEntry {
-    offset: u64,
-    size: u32,
-    compressed_size: u32,
-    compression_method: u8,
+#[derive(Clone, Debug)]
+pub struct FIoStoreTocCompressedBlockEntry {
+    pub offset: u64,
+    pub size: u32,
+    pub compressed_size: u32,
+    pub compression_method: u8,
 }
 
 impl Newable for FIoStoreTocCompressedBlockEntry {
@@ -317,9 +322,9 @@ impl Newable for FSHAHash {
     }
 }
 
-fn align_value(x: u32, a: u32) -> u32 {
-    let r = x % 16;
-    if r != 0 { x + (16 - r) } else { x }
+pub fn align_value(x: u32, a: u32) -> u32 {
+    let r = x % a;
+    if r != 0 { x + (a - r) } else { x }
 }
 
 fn get_chunk(file: &mut File, chunk: &FIoStoreTocCompressedBlockEntry, header: &FIoStoreTocHeader, key: &Option<Vec<u8>>) -> ParserResult<Vec<u8>> {
@@ -347,42 +352,49 @@ fn get_chunk(file: &mut File, chunk: &FIoStoreTocCompressedBlockEntry, header: &
     Ok(oodle::decompress_stream(chunk.size as u64, &buf).unwrap())
 }
 
-struct UcasReader {
+pub struct ReaderData {
     compressed_blocks: Vec<FIoStoreTocCompressedBlockEntry>,
     compression_methods: Vec<String>,
     header: FIoStoreTocHeader,
+    key: Option<Vec<u8>>,
+}
+
+impl ReaderData {
+    pub fn get_header(&self) -> &FIoStoreTocHeader {
+        &self.header
+    }
+
+    pub fn get_block(&self, idx: usize) -> Option<&FIoStoreTocCompressedBlockEntry> {
+        self.compressed_blocks.get(idx)
+    }
+}
+
+struct UcasReader {
+    data: Arc<ReaderData>,
     current_chunk: usize,
     current_chunk_data: Vec<u8>,
     current_offset: usize,
     current_total_offset: u64,
     total_size: u64,
     handle: File,
-    key: Option<Vec<u8>>,
 }
 
 impl UcasReader {
-    fn new(path: &str, 
-            compressed_blocks: Vec<FIoStoreTocCompressedBlockEntry>, 
-            compression_methods: Vec<String>, 
-            header: FIoStoreTocHeader,
-            key: Option<Vec<u8>>) -> ParserResult<Self> {
+    fn new(path: &str, data: Arc<ReaderData>) -> ParserResult<Self> {
         let ucas_path = path.to_owned() + ".ucas";
         let mut file = File::open(ucas_path)?;
 
-        let total_size = compressed_blocks.iter().fold(0, |acc, v| acc + v.size as u64);
+        let total_size = data.compressed_blocks.iter().fold(0, |acc, v| acc + v.size as u64);
 
-        let first_chunk = get_chunk(&mut file, &compressed_blocks[0], &header, &key)?;
+        let first_chunk = get_chunk(&mut file, &data.compressed_blocks[0], &data.header, &data.key)?;
         Ok(Self {
-            compressed_blocks,
-            compression_methods,
+            data,
             current_chunk: 0,
             current_offset: 0,
             handle: file,
             current_chunk_data: first_chunk,
             current_total_offset: 0,
             total_size: total_size,
-            header,
-            key,
         })
     }
 }
@@ -391,13 +403,13 @@ impl Read for UcasReader {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         if self.current_offset >= self.current_chunk_data.len() {
             self.current_chunk += 1;
-            if self.current_chunk >= self.compressed_blocks.len() {
+            if self.current_chunk >= self.data.compressed_blocks.len() {
                 return Ok(0);
             }
 
             self.current_offset = 0;
-            let new_chunk = &self.compressed_blocks[self.current_chunk];
-            self.current_chunk_data = match get_chunk(&mut self.handle, &new_chunk, &self.header, &self.key) {
+            let new_chunk = &self.data.compressed_blocks[self.current_chunk];
+            self.current_chunk_data = match get_chunk(&mut self.handle, &new_chunk, &self.data.header, &self.data.key) {
                 Ok(d) => d,
                 Err(e) => return Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied, e)),
             };
@@ -423,12 +435,12 @@ impl Seek for UcasReader {
             SeekFrom::End(p) => (self.total_size as i64 + p) as u64,
         };
 
-        let block_size = self.header.compression_block_size as u64;
+        let block_size = self.data.header.compression_block_size as u64;
 
         self.current_total_offset = target;
         self.current_chunk = (target / block_size) as usize;
         self.current_offset = (target % block_size) as usize;
-        self.current_chunk_data = get_chunk(&mut self.handle, &self.compressed_blocks[self.current_chunk], &self.header, &self.key).unwrap();
+        self.current_chunk_data = get_chunk(&mut self.handle, &self.data.compressed_blocks[self.current_chunk], &self.data.header, &self.data.key).unwrap();
 
         Ok(self.current_total_offset)
     }
@@ -497,10 +509,9 @@ impl Newable for FContainerHeader {
         let package_ids = read_tarray(reader)?;
 
         let store_buf: Vec<u8> = read_tarray(reader)?;
-        println!("Length: {}", store_buf.len());
         let mut store_reader = Cursor::new(store_buf.as_slice());
         let mut packages = Vec::new();
-        for i in 0..package_count {
+        for _i in 0..package_count {
             let package = FPackageStoreEntry::new(&mut store_reader)?;
             packages.push(package);
         }
@@ -650,23 +661,17 @@ pub enum ChunkData {
     LoaderGlobalNames(FNameMap),
 }
 
-pub struct Extractor {
-    header: FIoStoreTocHeader,
+pub struct UtocManager {
     chunk_ids: Vec<FIoChunkId>,
     offsets: Vec<FIoOffsetAndLength>,
     directory_index: FIoDirectoryIndexResource,
-    reader: UcasReader,
     file_list: Vec<String>,
+    data: Arc<ReaderData>,
 }
 
-impl Extractor {
-    pub fn new(path: &str, key: Option<&str>) -> ParserResult<Self> {
-        let utoc_path = path.to_owned() + ".utoc";
-        let mut file = File::open(utoc_path)?;
-        let mut buffer = Vec::new();
-        file.read_to_end(&mut buffer)?;
-
-        let mut reader = Cursor::new(buffer.as_slice());
+impl UtocManager {
+    pub fn new(utoc: &[u8], key: Option<&str>) -> ParserResult<Self> {
+        let mut reader = Cursor::new(utoc);
         let header = FIoStoreTocHeader::new(&mut reader)?;
 
         reader.seek(SeekFrom::Start(header.header_size as u64)).unwrap();
@@ -735,14 +740,64 @@ impl Extractor {
             false => (FIoDirectoryIndexResource::empty(), Vec::new())
         };
 
-        let mut ucas_reader = UcasReader::new(path, compressed_blocks, compression_methods, header.clone(), hex_key)?;
+        let data = Arc::new(ReaderData {
+            compressed_blocks,
+            compression_methods,
+            header,
+            key: hex_key,
+        });
 
         Ok(Self {
-            header,
             chunk_ids,
             offsets,
             directory_index,
             file_list,
+            data,
+        })
+    }
+
+    pub fn get_file_list(&self) -> &Vec<String> {
+        &self.file_list
+    }
+
+    pub fn get_reader_data(&self) -> Arc<ReaderData> {
+        Arc::clone(&self.data)
+    }
+
+    pub fn get_mount_point(&self) -> &str {
+        &self.directory_index.mount_point
+    }
+
+    pub fn get_file(&self, file: &str) -> Option<&FIoOffsetAndLength> {
+        for i in 0..self.file_list.len() {
+            if file == self.file_list[i] {
+                let chunk = &self.offsets[i];
+                return Some(chunk);
+            }
+        }
+
+        None
+    }
+}
+
+pub struct Extractor {
+    utoc: UtocManager,
+    reader: UcasReader,
+}
+
+impl Extractor {
+    pub fn new(path: &str, key: Option<&str>) -> ParserResult<Self> {
+        let utoc_path = path.to_owned() + ".utoc";
+        let mut file = File::open(utoc_path)?;
+        let mut buffer = Vec::new();
+        file.read_to_end(&mut buffer)?;
+
+        let utoc = UtocManager::new(&buffer, key)?;        
+
+        let ucas_reader = UcasReader::new(path, utoc.get_reader_data())?;
+
+        Ok(Self {
+            utoc,
             reader: ucas_reader,
         })
     }
@@ -765,8 +820,8 @@ impl Extractor {
     }
 
     pub fn read_chunk(&mut self, idx: usize) -> ParserResult<ChunkData> {
-        let chunk_offset = &self.offsets[idx];
-        let chunk_id = &self.chunk_ids[idx];
+        let chunk_offset = &self.utoc.offsets[idx];
+        let chunk_id = &self.utoc.chunk_ids[idx];
 
         let mut chunk_data = vec![0u8; chunk_offset.length as usize];
         self.reader.seek(SeekFrom::Start(chunk_offset.offset))?;
@@ -783,13 +838,13 @@ impl Extractor {
     }
 
     pub fn get_file_list(&self) -> &Vec<String> {
-        &self.file_list
+        self.utoc.get_file_list()
     }
 
     pub fn get_file(&mut self, file: &str) -> ParserResult<Vec<u8>> {
-        for i in 0..self.file_list.len() {
-            if file == self.file_list[i] {
-                let chunk = &self.offsets[i];
+        for i in 0..self.utoc.file_list.len() {
+            if file == self.utoc.file_list[i] {
+                let chunk = &self.utoc.offsets[i];
                 let mut data = vec![0u8; chunk.length as usize];
 
                 println!("Chunk: {:#?}", chunk);

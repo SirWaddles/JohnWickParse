@@ -9,6 +9,14 @@
 			}
 		},
 		{
+			"index": 20,
+			"name": "MetaTags",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "GameplayTagContainer"
+			}
+		},
+		{
 			"index": 25,
 			"name": "ItemVariants",
 			"mapping_type": {
@@ -34,14 +42,7 @@
 			"name": "Rarity",
 			"mapping_type": {
 				"type": "EnumProperty",
-				"vals": [
-					"Uncommon",
-					"Common",
-					"Rare",
-					"Epic",
-					"Legendary",
-					"Mythic"
-				]
+				"enum_type": "EFortRarity"
 			}
 		},
 		{
@@ -79,6 +80,13 @@
 			"mapping_type": {
 				"type": "StructProperty",
 				"struct_type": "SoftObjectPath"
+			}
+		},
+		{
+			"index": 86,
+			"name": "Series",
+			"mapping_type": {
+				"type": "ObjectProperty"
 			}
 		}
 	]

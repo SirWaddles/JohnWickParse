@@ -1,4 +1,4 @@
-#![allow(warnings)]
+#![allow(dead_code)]
 
 use lazy_static::lazy_static;
 use crate::assets::{ParserResult, ParserError, Package, Texture2D};
@@ -6,9 +6,9 @@ use crate::assets::{ParserResult, ParserError, Package, Texture2D};
 pub mod assets;
 pub mod archives;
 pub mod dispatch;
+pub mod decompress;
 mod mapping;
 //mod sound;
-mod decompress;
 mod texture;
 
 lazy_static! {

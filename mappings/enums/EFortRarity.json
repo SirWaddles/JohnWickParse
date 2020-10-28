@@ -1,0 +1,12 @@
+{
+	"name": "EFortRarity",
+	"values": [
+		"Common",
+		"Uncommon",
+		"Rare",
+		"Epic",
+		"Legendary",
+		"Mythic",
+		"Transcendant"
+	]
+}
