@@ -1,0 +1,26 @@
+{
+	"name": "AthenaCosmeticMaterialOverride",
+	"properties": [
+		{
+			"index": 0,
+			"name": "ComponentName",
+			"mapping_type": {
+				"type": "NameProperty"
+			}
+		},
+		{
+			"index": 1,
+			"name": "MaterialOverrideIndex",
+			"mapping_type": {
+				"type": "IntProperty"
+			}
+		},
+		{
+			"index": 2,
+			"name": "OverrideMaterial",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		}
+	]
+}

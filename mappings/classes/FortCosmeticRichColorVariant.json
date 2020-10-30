@@ -1,0 +1,28 @@
+{
+	"name": "FortCosmeticRichColorVariant",
+	"properties": [
+		{
+			"index": 0,
+			"name": "InlineVariant",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "RichColorVariantDef"
+			}
+		},
+		{
+			"index": 1,
+			"name": "VariantChannelTag",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "GameplayTag"
+			}
+		},
+		{
+			"index": 2,
+			"name": "VariantChannelName",
+			"mapping_type": {
+				"type": "TextProperty"
+			}
+		}
+	]
+}

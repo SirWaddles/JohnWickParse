@@ -1,0 +1,521 @@
+{
+	"name": "FortWeaponMeleeDualWieldItemDefinition",
+	"properties": [
+		{
+			"index": 0,
+			"name": "WeaponMeshOffhandOverride",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 2,
+			"name": "IdleEffectOffhandNiagara",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 3,
+			"name": "SwingEffectOffhand",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 4,
+			"name": "SwingEffectOffhandNiagara",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 5,
+			"name": "AnimTrailsOffhand",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 6,
+			"name": "AnimTrailsNiagaraOffhand",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 9,
+			"name": "OffhandImpactPhysicalSurfaceEffects",
+			"mapping_type": {
+				"type": "MapProperty",
+				"key_type": {
+					"type": "NameProperty"
+				},
+				"value_type": {
+					"type": "SoftObjectProperty"
+				}
+			}
+		},
+		{
+			"index": 10,
+			"name": "OffhandImpactNiagaraPhysicalSurfaceEffects",
+			"mapping_type": {
+				"type": "MapProperty",
+				"key_type": {
+					"type": "NameProperty"
+				},
+				"value_type": {
+					"type": "SoftObjectProperty"
+				}
+			}
+		},
+		{
+			"index": 13,
+			"name": "AnimTrailsOffhandFirstSocketName",
+			"mapping_type": {
+				"type": "NameProperty"
+			}
+		},
+		{
+			"index": 14,
+			"name": "AnimTrailsOffhandSecondSocketName",
+			"mapping_type": {
+				"type": "NameProperty"
+			}
+		},
+		{
+			"index": 16,
+			"name": "bUseAnimTrailsOffhand",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 17,
+			"name": "bAttachAnimTrailsOffhandToWeapon",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 19,
+			"name": "SwingFXOffhandSocketName",
+			"mapping_type": {
+				"type": "NameProperty"
+			}
+		},
+		{
+			"index": 22,
+			"name": "IdleEffectNiagara",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 23,
+			"name": "IdleFXSocketName",
+			"mapping_type": {
+				"type": "NameProperty"
+			}
+		},
+		{
+			"index": 24,
+			"name": "SwingEffect",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 25,
+			"name": "SwingEffectNiagara",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 26,
+			"name": "SwingFXSocketName",
+			"mapping_type": {
+				"type": "NameProperty"
+			}
+		},
+		{
+			"index": 27,
+			"name": "AnimTrails",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 28,
+			"name": "AnimTrailsNiagara",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 30,
+			"name": "AnimTrailsFirstSocketName",
+			"mapping_type": {
+				"type": "NameProperty"
+			}
+		},
+		{
+			"index": 31,
+			"name": "AnimTrailsSecondSocketName",
+			"mapping_type": {
+				"type": "NameProperty"
+			}
+		},
+		{
+			"index": 33,
+			"name": "bUseAnimTrails",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 34,
+			"name": "bAttachAnimTrailsToWeapon",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 35,
+			"name": "ImpactPhysicalSurfaceEffectsMap",
+			"mapping_type": {
+				"type": "MapProperty",
+				"key_type": {
+					"type": "NameProperty"
+				},
+				"value_type": {
+					"type": "SoftObjectProperty"
+				}
+			}
+		},
+		{
+			"index": 37,
+			"name": "ImpactNiagaraPhysicalSurfaceEffectsMap",
+			"mapping_type": {
+				"type": "MapProperty",
+				"key_type": {
+					"type": "NameProperty"
+				},
+				"value_type": {
+					"type": "SoftObjectProperty"
+				}
+			}
+		},
+		{
+			"index": 40,
+			"name": "AnimClass",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 42,
+			"name": "ImpactPhysicalSurfaceSoundsMap",
+			"mapping_type": {
+				"type": "MapProperty",
+				"key_type": {
+					"type": "NameProperty"
+				},
+				"value_type": {
+					"type": "SoftObjectProperty"
+				}
+			}
+		},
+		{
+			"index": 43,
+			"name": "ReloadSoundsMap",
+			"mapping_type": {
+				"type": "MapProperty",
+				"key_type": {
+					"type": "NameProperty"
+				},
+				"value_type": {
+					"type": "SoftObjectProperty"
+				}
+			}
+		},
+		{
+			"index": 44,
+			"name": "PrimaryFireSoundMap",
+			"mapping_type": {
+				"type": "MapProperty",
+				"key_type": {
+					"type": "NameProperty"
+				},
+				"value_type": {
+					"type": "SoftObjectProperty"
+				}
+			}
+		},
+		{
+			"index": 45,
+			"name": "GenericImpactSound",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 49,
+			"name": "WeaponActorClass",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 50,
+			"name": "WeaponMeshOverride",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 52,
+			"name": "WeaponStatHandle",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "DataTableRowHandle"
+			}
+		},
+		{
+			"index": 58,
+			"name": "BaseAlteration",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 59,
+			"name": "BaseCosmeticAlteration",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 60,
+			"name": "PrimaryFireAbility",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 68,
+			"name": "AdditionalData",
+			"mapping_type": {
+				"type": "ObjectProperty"
+			}
+		},
+		{
+			"index": 70,
+			"name": "TriggerType",
+			"mapping_type": {
+				"type": "ByteProperty"
+			}
+		},
+		{
+			"index": 92,
+			"name": "AnalyticTags",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "GameplayTagContainer"
+			}
+		},
+		{
+			"index": 93,
+			"name": "PlayerGrantedGameplayTags",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "GameplayTagContainer"
+			}
+		},
+		{
+			"index": 94,
+			"name": "ActualAnalyticFNames",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "NameProperty"
+				}
+			}
+		},
+		{
+			"index": 110,
+			"name": "bShowDirectionalArrowWhenFarOff",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 111,
+			"name": "bCanBeDropped",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 113,
+			"name": "bItemCanBeStolen",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 114,
+			"name": "bCanBeDepositedInStorageVault",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 115,
+			"name": "bItemHasDurability",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 125,
+			"name": "MiniMapViewableDistance",
+			"mapping_type": {
+				"type": "FloatProperty"
+			}
+		},
+		{
+			"index": 126,
+			"name": "MiniMapIconBrush",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "SlateBrush"
+			}
+		},
+		{
+			"index": 128,
+			"name": "LootLevelData",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "DataTableCategoryHandle"
+			}
+		},
+		{
+			"index": 142,
+			"name": "PickupSkeletalMesh",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 146,
+			"name": "DropSound",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 150,
+			"name": "DisassembleDurabilityDegradeMinLootPercent",
+			"mapping_type": {
+				"type": "FloatProperty"
+			}
+		},
+		{
+			"index": 151,
+			"name": "DisassembleDurabilityDegradeMaxLootPercent",
+			"mapping_type": {
+				"type": "FloatProperty"
+			}
+		},
+		{
+			"index": 153,
+			"name": "MinLevel",
+			"mapping_type": {
+				"type": "IntProperty"
+			}
+		},
+		{
+			"index": 157,
+			"name": "Rarity",
+			"mapping_type": {
+				"type": "EnumProperty",
+				"enum_type": "EFortRarity"
+			}
+		},
+		{
+			"index": 158,
+			"name": "ItemType",
+			"mapping_type": {
+				"type": "EnumProperty",
+				"enum_type": "EFortItemType"
+			}
+		},
+		{
+			"index": 160,
+			"name": "FilterOverride",
+			"mapping_type": {
+				"type": "EnumProperty",
+				"enum_type": "EFortInventoryFilter"
+			}
+		},
+		{
+			"index": 165,
+			"name": "bNeverPersisted",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 166,
+			"name": "bAllowMultipleStacks",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 169,
+			"name": "bInventorySizeLimited",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 171,
+			"name": "DisplayName",
+			"mapping_type": {
+				"type": "TextProperty"
+			}
+		},
+		{
+			"index": 176,
+			"name": "GameplayTags",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "GameplayTagContainer"
+			}
+		},
+		{
+			"index": 187,
+			"name": "SmallPreviewImage",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 188,
+			"name": "LargePreviewImage",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 190,
+			"name": "Series",
+			"mapping_type": {
+				"type": "ObjectProperty"
+			}
+		}
+	]
+}

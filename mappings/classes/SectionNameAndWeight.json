@@ -1,0 +1,19 @@
+{
+	"name": "SectionNameAndWeight",
+	"properties": [
+		{
+			"index": 0,
+			"name": "SectionName",
+			"mapping_type": {
+				"type": "NameProperty"
+			}
+		},
+		{
+			"index": 1,
+			"name": "SectionWeight",
+			"mapping_type": {
+				"type": "FloatProperty"
+			}
+		}
+	]
+}

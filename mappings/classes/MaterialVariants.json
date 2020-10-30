@@ -1,1 +1,35 @@
-{"name":"MaterialVariants","properties":[{"index":0,"name":"MaterialToSwap","mapping_type":{"type":"SoftObjectProperty"}},{"index":1,"name":"ComponentToOverride","mapping_type":{"type":"NameProperty"}},{"index":2,"name":"CascadeMaterialName","mapping_type":{"type":"NameProperty"}},{"index":3,"name":"MaterialOverrideIndex","mapping_type":{"type":"IntProperty"}},{"index":4,"name":"OverrideMaterial","mapping_type":{"type":"SoftObjectProperty"}}]}
+{
+    "name": "MaterialVariants",
+    "properties": [{
+            "index": 0,
+            "name": "MaterialToSwap",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }, {
+            "index": 1,
+            "name": "ComponentToOverride",
+            "mapping_type": {
+                "type": "NameProperty"
+            }
+        }, {
+            "index": 2,
+            "name": "CascadeMaterialName",
+            "mapping_type": {
+                "type": "NameProperty"
+            }
+        }, {
+            "index": 3,
+            "name": "MaterialOverrideIndex",
+            "mapping_type": {
+                "type": "IntProperty"
+            }
+        }, {
+            "index": 4,
+            "name": "OverrideMaterial",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }
+    ]
+}

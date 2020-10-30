@@ -1,0 +1,35 @@
+{
+	"name": "StaticSwitchParameter",
+	"properties": [
+		{
+			"index": 0,
+			"name": "Value",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 1,
+			"name": "ParameterInfo",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "MaterialParameterInfo"
+			}
+		},
+		{
+			"index": 2,
+			"name": "bOverride",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 3,
+			"name": "ExpressionGUID",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "Guid"
+			}
+		}
+	]
+}

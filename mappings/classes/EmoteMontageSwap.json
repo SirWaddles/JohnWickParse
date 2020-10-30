@@ -1,0 +1,19 @@
+{
+	"name": "EmoteMontageSwap",
+	"properties": [
+		{
+			"index": 0,
+			"name": "ToSwapFrom",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 1,
+			"name": "ToSwapTo",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		}
+	]
+}

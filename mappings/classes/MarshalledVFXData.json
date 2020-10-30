@@ -1,0 +1,58 @@
+{
+	"name": "MarshalledVFXData",
+	"properties": [
+		{
+			"index": 0,
+			"name": "ParameterGroups",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "GameplayTagContainer"
+			}
+		},
+		{
+			"index": 1,
+			"name": "Type",
+			"mapping_type": {
+				"type": "EnumProperty",
+				"enum_type": "EFXType"
+			}
+		},
+		{
+			"index": 2,
+			"name": "Asset",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 3,
+			"name": "AttachAtBone",
+			"mapping_type": {
+				"type": "NameProperty"
+			}
+		},
+		{
+			"index": 4,
+			"name": "RelativeOffset",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "Transform"
+			}
+		},
+		{
+			"index": 5,
+			"name": "EffectIdTag",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "GameplayTag"
+			}
+		},
+		{
+			"index": 6,
+			"name": "bAutoActivate",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		}
+	]
+}

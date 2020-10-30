@@ -1,0 +1,35 @@
+{
+	"name": "AthenaSkyDiveContrailItemDefinition",
+	"properties": [
+		{
+			"index": 0,
+			"name": "ContrailEffect",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 17,
+			"name": "PreviewPawnRotationOffset",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "Rotator"
+			}
+		},
+		{
+			"index": 68,
+			"name": "ShortDescription",
+			"mapping_type": {
+				"type": "TextProperty"
+			}
+		},
+		{
+			"index": 72,
+			"name": "GameplayTags",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "GameplayTagContainer"
+			}
+		}
+	]
+}

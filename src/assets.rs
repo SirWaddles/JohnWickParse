@@ -882,6 +882,7 @@ pub struct FText {
     namespace: String,
     key: String,
     source_string: String,
+    invariant: String,
 }
 
 impl Newable for FText {
@@ -891,13 +892,14 @@ impl Newable for FText {
 
         match history_type {
             -1 => {
-                reader.read_u32::<LittleEndian>()?;
+                let invariant = reader.read_u32::<LittleEndian>()? != 0;
                 Ok(Self {
                     flags,
                     history_type,
                     namespace: "".to_owned(),
                     key: "".to_owned(),
                     source_string: "".to_owned(),
+                    invariant: if invariant { read_string(reader)? } else { "".to_owned() } 
                 })
             },
             0 => Ok(Self {
@@ -906,6 +908,7 @@ impl Newable for FText {
                 namespace: read_string(reader)?,
                 key: read_string(reader)?,
                 source_string: read_string(reader)?,
+                invariant: "".to_owned()
             }),
             _ => Err(ParserError::new(format!("Could not read history type: {}", history_type))),
         }
@@ -1954,7 +1957,22 @@ impl UScriptMap {
     }
 
     fn new_unversioned(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, key_type: &TagMapping, value_type: &TagMapping) -> ParserResult<Self> {
-        Err(ParserError::new(format!("Map Property Not done yet lol")))
+        let remove_keys = reader.read_u32::<LittleEndian>()?;
+        let element_count = reader.read_u32::<LittleEndian>()?;
+        let rpos = reader.position();
+
+        let mut map_data = Vec::new();
+        for i in 0..element_count {
+            let err_f = |v| ParserError::add(v, format!("MapProperty error, types: {} of {} {} {:#?} {:#?} {}", i, element_count, remove_keys, key_type, value_type, rpos));
+            map_data.push((
+                read_unversioned_tag(reader, name_map, import_map, key_type).map_err(err_f)?,
+                read_unversioned_tag(reader, name_map, import_map, value_type).map_err(err_f)?
+            ));
+        }
+
+        Ok(Self {
+            map_data
+        })
     }
 }
 
@@ -2241,6 +2259,7 @@ fn read_unversioned_tag(reader: &mut ReaderCursor, name_map: &NameMap, import_ma
         TagMapping::ByteProperty => FPropertyTagType::ByteProperty(reader.read_u8()?),
         TagMapping::IntProperty => FPropertyTagType::IntProperty(reader.read_i32::<LittleEndian>()?),
         TagMapping::FloatProperty => FPropertyTagType::FloatProperty(reader.read_f32::<LittleEndian>()?),
+        TagMapping::DebugProperty => return Err(ParserError::new(format!("Encountered DebugProperty - Stopping"))),
         _ => return Err(ParserError::new(format!("Unsupported Property Type: {:#?}", mapping))),
     })
 }
@@ -2248,7 +2267,7 @@ fn read_unversioned_tag(reader: &mut ReaderCursor, name_map: &NameMap, import_ma
 fn read_unversioned_property(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, mapping: &PropertyMapping) -> ParserResult<FPropertyTag> {
     let start_pos = reader.position();
 
-    let err = |v| ParserError::add(v, format!("Property: {}", mapping.get_name()));
+    let err = |v| ParserError::add(v, format!("Property: {} at {}", mapping.get_name(), start_pos));
     let tag = read_unversioned_tag(reader, name_map, import_map, &mapping.get_type()).map_err(err)?;
 
     let size = (reader.position() - start_pos) as i32;
@@ -2327,7 +2346,7 @@ impl Serialize for FByteBulkData {
 }
 
 impl FByteBulkData {
-    fn new(reader: &mut ReaderCursor, ubulk: &mut Option<ReaderCursor>, bulk_offset: i64) -> ParserResult<Self> {
+    fn new(reader: &mut ReaderCursor, ubulk: &mut Option<ReaderCursor>) -> ParserResult<Self> {
         let header = FByteBulkDataHeader::new(reader)?;
         let mut data: Vec<u8> = Vec::new();
 
@@ -2342,7 +2361,7 @@ impl FByteBulkData {
                 None => return Err(ParserError::new(format!("No ubulk specified for texture"))),
             };
             // Archive seems "kind of" appended.
-            let offset = header.offset_in_file + bulk_offset;
+            let offset = header.offset_in_file;
             data.resize(header.element_count as usize, 0u8);
             ubulk_reader.seek(SeekFrom::Start(offset as u64)).unwrap();
             ubulk_reader.read_exact(&mut data).unwrap();
@@ -2363,9 +2382,9 @@ pub struct FTexture2DMipMap {
 }
 
 impl FTexture2DMipMap {
-    fn new(reader: &mut ReaderCursor, ubulk: &mut Option<ReaderCursor>, bulk_offset: i64) -> ParserResult<Self> {
+    fn new(reader: &mut ReaderCursor, ubulk: &mut Option<ReaderCursor>) -> ParserResult<Self> {
         let cooked = reader.read_i32::<LittleEndian>()?;
-        let data = FByteBulkData::new(reader, ubulk, bulk_offset)?;
+        let data = FByteBulkData::new(reader, ubulk)?;
         let size_x = reader.read_i32::<LittleEndian>()?;
         let size_y = reader.read_i32::<LittleEndian>()?;
         let size_z = reader.read_i32::<LittleEndian>()?;
@@ -2410,7 +2429,7 @@ pub struct FTexturePlatformData {
 }
 
 impl FTexturePlatformData {
-    fn new(reader: &mut ReaderCursor, ubulk: &mut Option<ReaderCursor>, bulk_offset: i64) -> ParserResult<Self> {
+    fn new(reader: &mut ReaderCursor, ubulk: &mut Option<ReaderCursor>) -> ParserResult<Self> {
         let size_x = reader.read_i32::<LittleEndian>()?;
         let size_y = reader.read_i32::<LittleEndian>()?;
         let num_slices = reader.read_i32::<LittleEndian>()?;
@@ -2419,7 +2438,7 @@ impl FTexturePlatformData {
         let length = reader.read_u32::<LittleEndian>()?;
         let mut mips = Vec::new();
         for _i in 0..length {
-            mips.push(FTexture2DMipMap::new(reader, ubulk, bulk_offset)?);
+            mips.push(FTexture2DMipMap::new(reader, ubulk)?);
         }
 
         let is_virtual = reader.read_u32::<LittleEndian>()? != 0;
@@ -2580,7 +2599,7 @@ struct FExportBundle {
 
 impl FExportBundle {
     fn get_export_order(&self) -> Vec<u32> {
-        self.entries.iter().filter(|v| v.command_type == 1).map(|v| v.export_index).collect()
+        self.entries.iter().filter(|v| v.command_type == 1).map(|v| std::cmp::min(self.header.export_count - 1, v.export_index)).collect()
     }
 }
 
@@ -2700,7 +2719,7 @@ pub struct Texture2D {
 
 #[allow(dead_code)]
 impl Texture2D {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, export_size: i64, ubulk: &mut Option<ReaderCursor>, export_index: Option<FPackageObjectIndex>) -> ParserResult<Self> {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, ubulk: &mut Option<ReaderCursor>, export_index: Option<FPackageObjectIndex>) -> ParserResult<Self> {
         let object = UObject::new(reader, name_map, import_map, "Texture2D", export_index)?;
 
         let _serialize_guid = reader.read_u32::<LittleEndian>()?;
@@ -2714,7 +2733,7 @@ impl Texture2D {
             let mut pixel_format = read_fname(reader, name_map)?;
             while pixel_format != "None" {
                 let _skip_offset = reader.read_i64::<LittleEndian>()?;
-                let texture = FTexturePlatformData::new(reader, ubulk, export_size)?;
+                let texture = FTexturePlatformData::new(reader, ubulk)?;
                 // Seems to be always wrong, can't work out what it's referring to.
                 /*if reader.position() != skip_offset as u64 {
                     panic!("Texture read incorrectly {} {}", reader.position(), skip_offset);
@@ -2876,7 +2895,7 @@ impl PackageExport for UCurveTable {
 fn select_export(export_name: &str, reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, export: &FExportMapEntry, ubulk: &mut Option<ReaderCursor>) -> ParserResult<Box<dyn Any>> {
     let export_index = Some(export.global_import_index.clone());
     Ok(match export_name {
-        "Texture2D" => Box::new(Texture2D::new(reader, name_map, import_map, export.serial_size as i64, ubulk, export_index)?),
+        "Texture2D" => Box::new(Texture2D::new(reader, name_map, import_map, ubulk, export_index)?),
         _ => Box::new(UObject::new(reader, name_map, import_map, export_name, export_index)?),
     })
 }

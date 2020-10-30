@@ -1,0 +1,26 @@
+{
+	"name": "MaterialParameterInfo",
+	"properties": [
+		{
+			"index": 0,
+			"name": "Name",
+			"mapping_type": {
+				"type": "NameProperty"
+			}
+		},
+		{
+			"index": 1,
+			"name": "Assocation",
+			"mapping_type": {
+				"type": "ByteProperty"
+			}
+		},
+		{
+			"index": 2,
+			"name": "Index",
+			"mapping_type": {
+				"type": "IntProperty"
+			}
+		}
+	]
+}

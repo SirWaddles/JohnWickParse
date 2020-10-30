@@ -21,6 +21,7 @@ pub enum TagMapping {
     ObjectProperty,
     SoftObjectProperty,
     StructProperty { struct_type: String },
+    DebugProperty,
 }
 
 #[derive(Debug, Clone, Deserialize)]

@@ -1,0 +1,414 @@
+{
+	"name": "AthenaDanceItemDefinition",
+	"properties": [
+		{
+			"index": 0,
+			"name": "bMovingEmote",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 1,
+			"name": "bMovingEmoteSkipLandingFX",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 2,
+			"name": "bMoveForwardOnly",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 4,
+			"name": "bGroupEmote",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 5,
+			"name": "bUseHighPreviewCamera",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 6,
+			"name": "bGroupAnimationSync",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 7,
+			"name": "WalkForwardSpeed",
+			"mapping_type": {
+				"type": "FloatProperty"
+			}
+		},
+		{
+			"index": 8,
+			"name": "GroupEmoteToStartLeader",
+			"mapping_type": {
+				"type": "ObjectProperty"
+			}
+		},
+		{
+			"index": 9,
+			"name": "GroupEmoteToStartFollower",
+			"mapping_type": {
+				"type": "ObjectProperty"
+			}
+		},
+		{
+			"index": 10,
+			"name": "GroupEmoteToStartLeaderIfBothOwn",
+			"mapping_type": {
+				"type": "ObjectProperty"
+			}
+		},
+		{
+			"index": 11,
+			"name": "GroupEmoteToStartFollowerIfBothOwn",
+			"mapping_type": {
+				"type": "ObjectProperty"
+			}
+		},
+		{
+			"index": 12,
+			"name": "MontageSelectionGroups",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "StructProperty",
+					"struct_type": "VariantSwapMontageData"
+				}
+			}
+		},
+		{
+			"index": 13,
+			"name": "GroupEmotePositionOffset",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "Vector"
+			}
+		},
+		{
+			"index": 14,
+			"name": "bLockGroupEmoteLeaderRotation",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 15,
+			"name": "GroupEmoteLeaderRotationYawOffset",
+			"mapping_type": {
+				"type": "FloatProperty"
+			}
+		},
+		{
+			"index": 16,
+			"name": "GroupEmoteFollowerRotationYawOffset",
+			"mapping_type": {
+				"type": "FloatProperty"
+			}
+		},
+		{
+			"index": 17,
+			"name": "FrontEndAnimation",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 18,
+			"name": "FrontEndAnimationFemaleOverride",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 19,
+			"name": "CustomDanceAbility",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 21,
+			"name": "Animation",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 22,
+			"name": "AnimationFemaleOverride",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 23,
+			"name": "AnimationOverrides",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "StructProperty",
+					"struct_type": "FortEmoteMapping"
+				}
+			}
+		},
+		{
+			"index": 24,
+			"name": "PreviewLoops",
+			"mapping_type": {
+				"type": "IntProperty"
+			}
+		},
+		{
+			"index": 25,
+			"name": "PreviewLength",
+			"mapping_type": {
+				"type": "FloatProperty"
+			}
+		},
+		{
+			"index": 26,
+			"name": "EmoteCooldownSecs",
+			"mapping_type": {
+				"type": "FloatProperty"
+			}
+		},
+		{
+			"index": 27,
+			"name": "bMontageContainsFacialAnimation",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 28,
+			"name": "bPlayRandomSection",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 29,
+			"name": "PlayRandomSectionByName",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "StructProperty",
+					"struct_type": "SectionNameAndWeight"
+				}
+			}
+		},
+		{
+			"index": 30,
+			"name": "bSwitchToHarvestingToolOnUse",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 31,
+			"name": "bHolsterWeapon",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 32,
+			"name": "bHolsterWeaponIfDualWieldPickaxe",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 33,
+			"name": "AccessData",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "StructProperty",
+					"struct_type": "MontageItemAccessData"
+				}
+			}
+		},
+		{
+			"index": 34,
+			"name": "VisibilityData",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "StructProperty",
+					"struct_type": "MontageVisibilityData"
+				}
+			}
+		},
+		{
+			"index": 35,
+			"name": "EmoteWheelExclusiveTags",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "GameplayTagContainer"
+			}
+		},
+		{
+			"index": 36,
+			"name": "RequiredEmoteParent",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 37,
+			"name": "TagsWhichIndicateEmoteParent",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "GameplayTagContainer"
+			}
+		},
+		{
+			"index": 47,
+			"name": "PreviewPawnRotationOffset",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "Rotator"
+			}
+		},
+		{
+			"index": 50,
+			"name": "MetaTags",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "GameplayTagContainer"
+			}
+		},
+		{
+			"index": 55,
+			"name": "ItemVariants",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "ObjectProperty"
+				}
+			}
+		},
+		{
+			"index": 62,
+			"name": "ItemPreviewActorClass",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 66,
+			"name": "ItemPreviewHero",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 72,
+			"name": "ExclusiveIcon",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 83,
+			"name": "Rarity",
+			"mapping_type": {
+				"type": "EnumProperty",
+				"enum_type": "EFortRarity"
+			}
+		},
+		{
+			"index": 91,
+			"name": "bNeverPersisted",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 97,
+			"name": "DisplayName",
+			"mapping_type": {
+				"type": "TextProperty"
+			}
+		},
+		{
+			"index": 98,
+			"name": "ShortDescription",
+			"mapping_type": {
+				"type": "TextProperty"
+			}
+		},
+		{
+			"index": 99,
+			"name": "Description",
+			"mapping_type": {
+				"type": "TextProperty"
+			}
+		},
+		{
+			"index": 102,
+			"name": "GameplayTags",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "GameplayTagContainer"
+			}
+		},
+		{
+			"index": 108,
+			"name": "FrontendPreviewScale",
+			"mapping_type": {
+				"type": "FloatProperty"
+			}
+		},
+		{
+			"index": 113,
+			"name": "SmallPreviewImage",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 114,
+			"name": "LargePreviewImage",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 115,
+			"name": "DisplayAssetPath",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 116,
+			"name": "Series",
+			"mapping_type": {
+				"type": "ObjectProperty"
+			}
+		},
+		{
+			"index": 117,
+			"name": "FrontendPreviewPivotOffset",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "Vector"
+			}
+		}
+	]
+}

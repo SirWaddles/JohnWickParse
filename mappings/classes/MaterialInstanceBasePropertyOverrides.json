@@ -1,0 +1,26 @@
+{
+	"name": "MaterialInstanceBasePropertyOverrides",
+	"properties": [
+		{
+			"index": 9,
+			"name": "BlendMode",
+			"mapping_type": {
+				"type": "ByteProperty"
+			}
+		},
+		{
+			"index": 10,
+			"name": "ShadingModel",
+			"mapping_type": {
+				"type": "ByteProperty"
+			}
+		},
+		{
+			"index": 11,
+			"name": "OpacityMaskClipValue",
+			"mapping_type": {
+				"type": "FloatProperty"
+			}
+		}
+	]
+}

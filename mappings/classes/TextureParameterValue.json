@@ -1,0 +1,28 @@
+{
+	"name": "TextureParameterValue",
+	"properties": [
+		{
+			"index": 0,
+			"name": "ParameterInfo",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "MaterialParameterInfo"
+			}
+		},
+		{
+			"index": 1,
+			"name": "ParameterValue",
+			"mapping_type": {
+				"type": "ObjectProperty"
+			}
+		},
+		{
+			"index": 2,
+			"name": "ExpressionGUID",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "Guid"
+			}
+		}
+	]
+}

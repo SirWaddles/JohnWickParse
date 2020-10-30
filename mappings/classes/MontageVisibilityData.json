@@ -1,0 +1,20 @@
+{
+	"name": "MontageVisibilityData",
+	"properties": [
+		{
+			"index": 0,
+			"name": "Rule",
+			"mapping_type": {
+				"type": "EnumProperty",
+				"enum_type": "EMontageVisibilityRule"
+			}
+		},
+		{
+			"index": 1,
+			"name": "Item",
+			"mapping_type": {
+				"type": "ObjectProperty"
+			}
+		}
+	]
+}

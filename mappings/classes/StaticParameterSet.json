@@ -1,0 +1,16 @@
+{
+	"name": "StaticParameterSet",
+	"properties": [
+		{
+			"index": 0,
+			"name": "StaticSwitchParameters",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "StructProperty",
+					"struct_type": "StaticSwitchParameter"
+				}
+			}
+		}
+	]
+}

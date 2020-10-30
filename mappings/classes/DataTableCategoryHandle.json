@@ -1,0 +1,26 @@
+{
+	"name": "DataTableCategoryHandle",
+	"properties": [
+		{
+			"index": 0,
+			"name": "DataTable",
+			"mapping_type": {
+				"type": "ObjectProperty"
+			}
+		},
+		{
+			"index": 1,
+			"name": "ColumnName",
+			"mapping_type": {
+				"type": "NameProperty"
+			}
+		},
+		{
+			"index": 2,
+			"name": "RowContents",
+			"mapping_type": {
+				"type": "NameProperty"
+			}
+		}
+	]
+}

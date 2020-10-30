@@ -1,47 +1,16 @@
 {
-	"name": "AthenaPickaxeItemDefinition",
+	"name": "AthenaGliderItemDefinition",
 	"properties": [
 		{
 			"index": 0,
-			"name": "WeaponDefinition",
+			"name": "GliderType",
 			"mapping_type": {
-				"type": "ObjectProperty"
+				"type": "EnumProperty",
+				"enum_type": "EFortGliderType"
 			}
 		},
 		{
-			"index": 5,
-			"name": "PickaxeImpactFXPreviewOffset",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "Vector"
-			}
-		},
-		{
-			"index": 6,
-			"name": "PickaxeDualWieldPreviewOffset",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "Vector"
-			}
-		},
-		{
-			"index": 7,
-			"name": "PickaxeDualWieldPreviewRotation",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "Rotator"
-			}
-		},
-		{
-			"index": 10,
-			"name": "CameraFramingBounds",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "FortUICameraFrameTargetBounds"
-			}
-		},
-		{
-			"index": 11,
+			"index": 1,
 			"name": "CameraFramingBoundsCenterOffset",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -49,14 +18,139 @@
 			}
 		},
 		{
-			"index": 12,
-			"name": "bIsShuffleTile",
+			"index": 2,
+			"name": "bActivateTrailsOnRotationalMovement",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 3,
+			"name": "ParachutePrefabClass",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 4,
+			"name": "SkeletalMesh",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 5,
+			"name": "AnimClass",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 6,
+			"name": "CameraClass",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 7,
+			"name": "PlayerAnimSet",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 8,
+			"name": "TrailParticles",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 10,
+			"name": "TrailParamName",
+			"mapping_type": {
+				"type": "NameProperty"
+			}
+		},
+		{
+			"index": 11,
+			"name": "AttachSocket",
+			"mapping_type": {
+				"type": "NameProperty"
+			}
+		},
+		{
+			"index": 13,
+			"name": "Index13",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 15,
+			"name": "Index15",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 19,
+			"name": "bAttachNiagaraEffectToPlayerPawn",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
 			"index": 21,
+			"name": "OpenSound",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 22,
+			"name": "CloseSound",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 23,
+			"name": "ThrustLoopSound",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 24,
+			"name": "ThrustStartSounds",
+			"mapping_type": {
+				"type": "MapProperty",
+				"key_type": {
+					"type": "NameProperty"
+				},
+				"value_type": {
+					"type": "SoftObjectProperty"
+				}
+			}
+		},
+		{
+			"index": 25,
+			"name": "AuthoredData",
+			"mapping_type": {
+				"type": "ObjectProperty"
+			}
+		},
+		{
+			"index": 27,
+			"name": "bIsShuffleTile",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 36,
 			"name": "PreviewPawnRotationOffset",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -64,15 +158,7 @@
 			}
 		},
 		{
-			"index": 24,
-			"name": "MetaTags",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "GameplayTagContainer"
-			}
-		},
-		{
-			"index": 26,
+			"index": 41,
 			"name": "MaterialOverrides",
 			"mapping_type": {
 				"type": "ArrayProperty",
@@ -83,15 +169,7 @@
 			}
 		},
 		{
-			"index": 27,
-			"name": "ObservedPlayerStats",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "GameplayTagContainer"
-			}
-		},
-		{
-			"index": 29,
+			"index": 44,
 			"name": "ItemVariants",
 			"mapping_type": {
 				"type": "ArrayProperty",
@@ -101,15 +179,7 @@
 			}
 		},
 		{
-			"index": 30,
-			"name": "VariantChannelToUseForThumbnails",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "GameplayTag"
-			}
-		},
-		{
-			"index": 31,
+			"index": 46,
 			"name": "ItemVariantPreviews",
 			"mapping_type": {
 				"type": "ArrayProperty",
@@ -120,28 +190,28 @@
 			}
 		},
 		{
-			"index": 34,
-			"name": "UnlockRequirements",
+			"index": 50,
+			"name": "UnlockingItemDef",
 			"mapping_type": {
-				"type": "TextProperty"
+				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 36,
+			"index": 51,
 			"name": "ItemPreviewActorClass",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 40,
+			"index": 55,
 			"name": "ItemPreviewHero",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 43,
+			"index": 58,
 			"name": "ExclusiveRequiresOutfitTags",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -149,28 +219,21 @@
 			}
 		},
 		{
-			"index": 44,
+			"index": 59,
 			"name": "CustomExclusiveCallout",
 			"mapping_type": {
 				"type": "TextProperty"
 			}
 		},
 		{
-			"index": 45,
+			"index": 60,
 			"name": "ExclusiveDescription",
 			"mapping_type": {
 				"type": "TextProperty"
 			}
 		},
 		{
-			"index": 46,
-			"name": "ExclusiveIcon",
-			"mapping_type": {
-				"type": "SoftObjectProperty"
-			}
-		},
-		{
-			"index": 57,
+			"index": 72,
 			"name": "Rarity",
 			"mapping_type": {
 				"type": "EnumProperty",
@@ -178,35 +241,35 @@
 			}
 		},
 		{
-			"index": 65,
+			"index": 80,
 			"name": "bNeverPersisted",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
-			"index": 71,
+			"index": 86,
 			"name": "DisplayName",
 			"mapping_type": {
 				"type": "TextProperty"
 			}
 		},
 		{
-			"index": 72,
+			"index": 87,
 			"name": "ShortDescription",
 			"mapping_type": {
 				"type": "TextProperty"
 			}
 		},
 		{
-			"index": 73,
+			"index": 88,
 			"name": "Description",
 			"mapping_type": {
 				"type": "TextProperty"
 			}
 		},
 		{
-			"index": 76,
+			"index": 91,
 			"name": "GameplayTags",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -214,28 +277,28 @@
 			}
 		},
 		{
-			"index": 82,
+			"index": 97,
 			"name": "FrontendPreviewScale",
 			"mapping_type": {
 				"type": "FloatProperty"
 			}
 		},
 		{
-			"index": 87,
+			"index": 102,
 			"name": "SmallPreviewImage",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 88,
+			"index": 103,
 			"name": "LargePreviewImage",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 89,
+			"index": 104,
 			"name": "DisplayAssetPath",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -243,14 +306,14 @@
 			}
 		},
 		{
-			"index": 90,
+			"index": 105,
 			"name": "Series",
 			"mapping_type": {
 				"type": "ObjectProperty"
 			}
 		},
 		{
-			"index": 91,
+			"index": 106,
 			"name": "FrontendPreviewPivotOffset",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -258,7 +321,7 @@
 			}
 		},
 		{
-			"index": 92,
+			"index": 107,
 			"name": "FrontendPreviewInitialRotation",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -266,7 +329,7 @@
 			}
 		},
 		{
-			"index": 93,
+			"index": 108,
 			"name": "FrontendPreviewMeshOverride",
 			"mapping_type": {
 				"type": "SoftObjectProperty"

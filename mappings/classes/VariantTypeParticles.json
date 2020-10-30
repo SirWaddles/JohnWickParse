@@ -1,0 +1,16 @@
+{
+	"name": "VariantTypeParticles",
+	"properties": [
+		{
+			"index": 0,
+			"name": "VariantMaterials",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "StructProperty",
+					"struct_type": "ParticleVariant"
+				}
+			}
+		}
+	]
+}

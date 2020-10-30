@@ -42,21 +42,15 @@
             }
         }, {
             "index": 15,
-            "name": "FrontEndBackPreviewRotationOffset",
-            "mapping_type": {
-                "type": "FloatProperty"
-            }
-        }, {
-            "index": 16,
-            "name": "Subtype",
-            "mapping_type": {
-                "type": "TextProperty"
-            }
-        }, {
-            "index": 17,
             "name": "FrontendAnimMontageIdleOverride",
             "mapping_type": {
                 "type": "SoftObjectProperty"
+            }
+        }, {
+            "index": 16,
+            "name": "FrontEndBackPreviewRotationOffset",
+            "mapping_type": {
+                "type": "FloatProperty"
             }
         }, {
             "index": 18,
@@ -72,6 +66,18 @@
                 "type": "StructProperty",
                 "struct_type": "DataTableRowHandle"
             }
+		}, {
+			"index": 20,
+			"name": "ItemPreviewMontage_Male",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		}, {
+			"index": 21,
+			"name": "ItemPreviewMontage_Female",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
         }, {
             "index": 22,
             "name": "Gender",
@@ -103,8 +109,11 @@
             "index": 34,
             "name": "ConversionRecipes",
             "mapping_type": {
-                "type": "StructProperty",
-                "struct_type": "DataTableRowHandle"
+                "type": "ArrayProperty",
+				"sub_type": {
+					"type": "StructProperty",
+					"struct_type": "DataTableRowHandle"
+				}
             }
         }, {
             "index": 36,
@@ -181,6 +190,13 @@
             "mapping_type": {
                 "type": "SoftObjectProperty"
             }
-        }
+        }, {
+			"index": 74,
+			"name": "FrontendPreviewPivotOffset",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "Vector"
+			}
+		}
     ]
 }

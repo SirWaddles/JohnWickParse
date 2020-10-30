@@ -1,45 +1,50 @@
 {
-	"name": "FortTokenType",
+	"name": "AthenaMusicPackItemDefinition",
 	"properties": [
 		{
 			"index": 0,
-			"name": "ScriptedAction",
+			"name": "FrontEndLobbyMusic",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
 			"index": 1,
-			"name": "NodeTintColour",
+			"name": "CoverArtImage",
 			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "SlateColor"
+				"type": "SoftObjectProperty"
 			}
 		},
 		{
 			"index": 2,
-			"name": "bPercentageRepresentation",
+			"name": "bIsDefaultMusicPack",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
 			"index": 3,
-			"name": "ProfileType",
+			"name": "MusicPreviewStartTime",
 			"mapping_type": {
-				"type": "EnumProperty",
-				"enum_type": "EItemProfileType"
+				"type": "FloatProperty"
 			}
 		},
 		{
 			"index": 4,
+			"name": "bIsShuffleTile",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 28,
 			"name": "ItemPreviewActorClass",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 15,
+			"index": 49,
 			"name": "Rarity",
 			"mapping_type": {
 				"type": "EnumProperty",
@@ -47,50 +52,35 @@
 			}
 		},
 		{
-			"index": 21,
-			"name": "Access",
-			"mapping_type": {
-				"type": "EnumProperty",
-				"enum_type": "EFortTemplateAccess"
-			}
-		},
-		{
-			"index": 23,
+			"index": 57,
 			"name": "bNeverPersisted",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
-			"index": 24,
-			"name": "bAllowMultipleStacks",
-			"mapping_type": {
-				"type": "BoolProperty"
-			}
-		},
-		{
-			"index": 29,
+			"index": 63,
 			"name": "DisplayName",
 			"mapping_type": {
 				"type": "TextProperty"
 			}
 		},
 		{
-			"index": 30,
+			"index": 64,
 			"name": "ShortDescription",
 			"mapping_type": {
 				"type": "TextProperty"
 			}
 		},
 		{
-			"index": 31,
+			"index": 65,
 			"name": "Description",
 			"mapping_type": {
 				"type": "TextProperty"
 			}
 		},
 		{
-			"index": 34,
+			"index": 68,
 			"name": "GameplayTags",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -98,51 +88,36 @@
 			}
 		},
 		{
-			"index": 38,
-			"name": "MaxStackSize",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "ScalableFloat"
-			}
-		},
-		{
-			"index": 39,
-			"name": "PurchaseItemLimit",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "ScalableFloat"
-			}
-		},
-		{
-			"index": 40,
-			"name": "FrontendPreviewScale",
-			"mapping_type": {
-				"type": "FloatProperty"
-			}
-		},
-		{
-			"index": 45,
+			"index": 79,
 			"name": "SmallPreviewImage",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 46,
+			"index": 80,
 			"name": "LargePreviewImage",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 48,
+			"index": 81,
+			"name": "DisplayAssetPath",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "SoftObjectPath"
+			}
+		},
+		{
+			"index": 82,
 			"name": "Series",
 			"mapping_type": {
 				"type": "ObjectProperty"
 			}
 		},
 		{
-			"index": 49,
+			"index": 83,
 			"name": "FrontendPreviewPivotOffset",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -150,7 +125,7 @@
 			}
 		},
 		{
-			"index": 50,
+			"index": 84,
 			"name": "FrontendPreviewInitialRotation",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -158,7 +133,7 @@
 			}
 		},
 		{
-			"index": 51,
+			"index": 85,
 			"name": "FrontendPreviewMeshOverride",
 			"mapping_type": {
 				"type": "SoftObjectProperty"

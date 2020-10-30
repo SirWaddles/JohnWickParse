@@ -1,0 +1,12 @@
+{
+	"name": "MarshalledVFX_AuthoredDataConfig",
+	"properties": [
+		{
+			"index": 0,
+			"name": "Index0",
+			"mapping_type": {
+				"type": "ByteProperty"
+			}
+		}
+	]
+}

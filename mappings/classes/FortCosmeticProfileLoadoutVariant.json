@@ -1,0 +1,24 @@
+{
+	"name": "FortCosmeticProfileLoadoutVariant",
+	"properties": [
+		{
+			"index": 0,
+			"name": "LoadoutAugmentations",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "StructProperty",
+					"struct_type": "LoadoutVariantDef"
+				}
+			}
+		},
+		{
+			"index": 1,
+			"name": "VariantChannelTag",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "GameplayTag"
+			}
+		}
+	]
+}

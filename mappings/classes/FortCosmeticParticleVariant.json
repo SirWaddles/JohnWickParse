@@ -1,0 +1,31 @@
+{
+	"name": "FortCosmeticParticleVariant",
+	"properties": [
+		{
+			"index": 0,
+			"name": "ParticleOptions",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "StructProperty",
+					"struct_type": "ParticleVariantDef"
+				}
+			}
+		},
+		{
+			"index": 1,
+			"name": "VariantChannelTag",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "GameplayTag"
+			}
+		},
+		{
+			"index": 2,
+			"name": "VariantChannelName",
+			"mapping_type": {
+				"type": "TextProperty"
+			}
+		}
+	]
+}

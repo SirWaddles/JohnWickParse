@@ -1,0 +1,23 @@
+{
+	"name": "MarshalledVFXAuthoredData",
+	"properties": [
+		{
+			"index": 0,
+			"name": "NiagaraVFX",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "StructProperty",
+					"struct_type": "MarshalledVFXData"
+				}
+			}
+		},
+		{
+			"index": 1,
+			"name": "Unknown",
+			"mapping_type": {
+				"type": "ByteProperty"
+			}
+		}
+	]
+}

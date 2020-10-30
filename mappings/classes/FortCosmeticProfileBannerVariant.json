@@ -1,0 +1,22 @@
+{
+	"name": "FortCosmeticProfileBannerVariant",
+	"properties": [
+		{
+			"index": 0,
+			"name": "MaterialsToAlter",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "SoftObjectProperty"
+				}
+			}
+		},
+		{
+			"index": 6,
+			"name": "VariantChannelName",
+			"mapping_type": {
+				"type": "TextProperty"
+			}
+		}
+	]
+}

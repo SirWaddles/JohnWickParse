@@ -1,0 +1,136 @@
+{
+	"name": "ParticleVariantDef",
+	"properties": [
+		{
+			"index": 0,
+			"name": "VariantMaterials",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "StructProperty",
+					"struct_type": "MaterialVariants"
+				}
+			}
+		},
+		{
+			"index": 1,
+			"name": "VariantMaterialParams",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "StructProperty",
+					"struct_type": "MaterialParamterDef"
+				}
+			}
+		},
+		{
+			"index": 2,
+			"name": "InitialParticleSystemData",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "StructProperty",
+					"struct_type": "VariantParticleSystemInitializerData"
+				}
+			}
+		},
+		{
+			"index": 3,
+			"name": "VariantParticles",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "StructProperty",
+					"struct_type": "ParticleVariant"
+				}
+			}
+		},
+		{
+			"index": 4,
+			"name": "VariantParticleParams",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "StructProperty",
+					"struct_type": "ParticleParamterVariant"
+				}
+			}
+		},
+		{
+			"index": 5,
+			"name": "VariantAlteredParticleParams",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "StructProperty",
+					"struct_type": "ManagedParticleParamVariant"
+				}
+			}
+		},
+		{
+			"index": 6,
+			"name": "MetaTags",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "CosmeticMetaTagContainer"
+			}
+		},
+		{
+			"index": 7,
+			"name": "bStartUnlocked",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 8,
+			"name": "bIsDefault",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 9,
+			"name": "bHideIfNotOwned",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 10,
+			"name": "CustomizationVariantTag",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "GameplayTag"
+			}
+		},
+		{
+			"index": 11,
+			"name": "VariantName",
+			"mapping_type": {
+				"type": "TextProperty"
+			}
+		},
+		{
+			"index": 12,
+			"name": "PreviewImage",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 13,
+			"name": "UnlockRequirements",
+			"mapping_type": {
+				"type": "TextProperty"
+			}
+		},
+		{
+			"index": 14,
+			"name": "UnlockingItemDef",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		}
+	]
+}

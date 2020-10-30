@@ -1,0 +1,57 @@
+{
+	"name": "FortWeaponAdditionalData_SingleWieldState",
+	"properties": [
+		{
+			"index": 0,
+			"name": "PrimaryFireAbility_InState",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 1,
+			"name": "AnimSet_InState",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 2,
+			"name": "EquipMontage_InState",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 4,
+			"name": "ImpactFxPreviewOffset",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "Vector"
+			}
+		},
+		{
+			"index": 7,
+			"name": "InitialPreviewRotation",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "Rotator"
+			}
+		},
+		{
+			"index": 8,
+			"name": "FrontendPreviewScale",
+			"mapping_type": {
+				"type": "FloatProperty"
+			}
+		},
+		{
+			"index": 9,
+			"name": "CameraFramingBounds",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "FortUICameraFrameTargetBounds"
+			}
+		}
+	]
+}

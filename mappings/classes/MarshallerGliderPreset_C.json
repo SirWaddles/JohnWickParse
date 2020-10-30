@@ -1,0 +1,13 @@
+{
+	"name": "MarshallerGliderPreset_C",
+	"properties": [
+		{
+			"index": 1,
+			"name": "Data",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "MarshalledVFXAuthoredData"
+			}
+		}
+	]
+}

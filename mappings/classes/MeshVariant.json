@@ -1,0 +1,26 @@
+{
+	"name": "MeshVariant",
+	"properties": [
+		{
+			"index": 0,
+			"name": "MeshToSwap",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 1,
+			"name": "ComponentToOverride",
+			"mapping_type": {
+				"type": "NameProperty"
+			}
+		},
+		{
+			"index": 2,
+			"name": "OverrideMesh",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		}
+	]
+}

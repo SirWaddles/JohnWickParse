@@ -1,0 +1,42 @@
+{
+	"name": "RichColorVariantDef",
+	"properties": [
+		{
+			"index": 1,
+			"name": "RichColorVar",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "RichColorVariant"
+			}
+		},
+		{
+			"index": 2,
+			"name": "bStartUnlocked",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 3,
+			"name": "bIsDefault",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 5,
+			"name": "CustomizationVariantTag",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "GameplayTag"
+			}
+		},
+		{
+			"index": 6,
+			"name": "VariantName",
+			"mapping_type": {
+				"type": "TextProperty"
+			}
+		}
+	]
+}

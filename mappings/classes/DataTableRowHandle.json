@@ -1,1 +1,17 @@
-{"name":"DataTableRowHandle","properties":[{"index":0,"name":"DataTable","mapping_type":{"type":"ObjectProperty"}},{"index":1,"name":"RowName","mapping_type":{"type":"NameProperty"}}]}
+{
+    "name": "DataTableRowHandle",
+    "properties": [{
+            "index": 0,
+            "name": "DataTable",
+            "mapping_type": {
+                "type": "ObjectProperty"
+            }
+        }, {
+            "index": 1,
+            "name": "RowName",
+            "mapping_type": {
+                "type": "NameProperty"
+            }
+        }
+    ]
+}

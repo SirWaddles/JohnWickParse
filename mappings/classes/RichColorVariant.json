@@ -1,0 +1,47 @@
+{
+	"name": "RichColorVariant",
+	"properties": [
+		{
+			"index": 0,
+			"name": "DefaultStartingColor",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "LinearColor"
+			}
+		},
+		{
+			"index": 1,
+			"name": "ColorSwatchForChoices",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 3,
+			"name": "MaterialsToAlter",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "SoftObjectProperty"
+				}
+			}
+		},
+		{
+			"index": 4,
+			"name": "ParticlesToAlter",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "SoftObjectProperty"
+				}
+			}
+		},
+		{
+			"index": 5,
+			"name": "ColorParamName",
+			"mapping_type": {
+				"type": "NameProperty"
+			}
+		}
+	]
+}

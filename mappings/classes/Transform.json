@@ -1,0 +1,29 @@
+{
+	"name": "Transform",
+	"properties": [
+		{
+			"index": 0,
+			"name": "Rotation",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "Quat"
+			}
+		},
+		{
+			"index": 1,
+			"name": "Translation",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "Vector"
+			}
+		},
+		{
+			"index": 2,
+			"name": "Scale3D",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "Vector"
+			}
+		}
+	]
+}

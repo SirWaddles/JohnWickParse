@@ -1,0 +1,44 @@
+{
+	"name": "FortCosmeticFloatSliderVariant",
+	"properties": [
+		{
+			"index": 0,
+			"name": "DefaultStartingValue",
+			"mapping_type": {
+				"type": "FloatProperty"
+			}
+		},
+		{
+			"index": 3,
+			"name": "MaterialParamName",
+			"mapping_type": {
+				"type": "NameProperty"
+			}
+		},
+		{
+			"index": 4,
+			"name": "MaterialsToAlter",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "SoftObjectProperty"
+				}
+			}
+		},
+		{
+			"index": 5,
+			"name": "VariantChannelTag",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "GameplayTag"
+			}
+		},
+		{
+			"index": 6,
+			"name": "VariantChannelName",
+			"mapping_type": {
+				"type": "TextProperty"
+			}
+		}
+	]
+}
