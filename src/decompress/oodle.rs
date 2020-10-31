@@ -3,7 +3,11 @@ use libloading as lib;
 type DecompressFunc = unsafe fn(*const u8, u64, *mut u8, u64, u32, u32, u32, u64, u64, u64, u64, u64, u64, u32) -> i32;
 
 pub fn decompress_stream(uncompressed_size: u64, bytes: &[u8]) -> lib::Result<Vec<u8>> {
-    let library = lib::Library::new("./oo2core_8_win64.dll")?;
+    let library = if cfg!(windows) {
+        lib::Library::new("./oo2core_8_win64.dll")?
+    } else {
+        lib::Library::new("./oo2core_8_win64.so")?
+    };
     let mut output = vec![0u8; uncompressed_size as usize];
     let check;
     unsafe {

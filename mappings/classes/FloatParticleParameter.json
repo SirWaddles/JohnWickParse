@@ -1,0 +1,19 @@
+{
+	"name": "FloatParticleParameter",
+		"properties": [
+		{
+			"index": 0,
+			"name": "Value",
+			"mapping_type": {
+				"type": "FloatProperty"
+			}
+		},
+		{
+			"index": 1,
+			"name": "ParameterName",
+			"mapping_type": {
+				"type": "NameProperty"
+			}
+		}
+	]
+}

@@ -9,6 +9,13 @@
 			}
 		},
 		{
+			"index": 2,
+			"name": "IdleEffectNiagara",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
 			"index": 3,
 			"name": "IdleFXSocketName",
 			"mapping_type": {
@@ -23,6 +30,13 @@
 			}
 		},
 		{
+			"index": 5,
+			"name": "SwingEffectNiagara",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
 			"index": 6,
 			"name": "SwingFXSocketName",
 			"mapping_type": {
@@ -32,6 +46,13 @@
 		{
 			"index": 7,
 			"name": "AnimTrails",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 8,
+			"name": "AnimTrailsNiagara",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
@@ -98,6 +119,17 @@
 			}
 		},
 		{
+			"index": 18,
+			"name": "ParticleComponentsDefs",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "StructProperty",
+					"struct_type": "AttachedParticleComponentDef"
+				}
+			}
+		},
+		{
 			"index": 19,
 			"name": "WeaponMaterialOverrides",
 			"mapping_type": {
@@ -110,6 +142,13 @@
 		{
 			"index": 20,
 			"name": "AnimClass",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 21,
+			"name": "SingleAnimationToPlay",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
@@ -470,6 +509,13 @@
 		{
 			"index": 173,
 			"name": "FrontendPreviewMeshOverride",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 174,
+			"name": "FrontendPreviewSkeletalMeshOverride",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}

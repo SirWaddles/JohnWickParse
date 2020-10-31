@@ -1,66 +1,59 @@
 {
-	"name": "AthenaSkyDiveContrailItemDefinition",
+	"name": "AthenaBackpackItemDefinition",
 	"properties": [
 		{
 			"index": 0,
-			"name": "ContrailEffect",
+			"name": "CharacterParts",
 			"mapping_type": {
-				"type": "SoftObjectProperty"
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "ObjectProperty"
+				}
 			}
 		},
 		{
 			"index": 1,
-			"name": "FrontEndContrailEffect",
-			"mapping_type": {
-				"type": "SoftObjectProperty"
-			}
-		},
-		{
-			"index": 2,
-			"name": "NiagaraContrailEffect",
-			"mapping_type": {
-				"type": "SoftObjectProperty"
-			}
-		},
-		{
-			"index": 6,
-			"name": "VectorParameters",
-			"mapping_type": {
-				"type": "ArrayProperty",
-				"sub_type": {
-					"type": "StructProperty",
-					"struct_type": "VectorParticleParameter"
-				}
-			}
-		},
-		{
-			"index": 7,
-			"name": "FloatParameters",
-			"mapping_type": {
-				"type": "ArrayProperty",
-				"sub_type": {
-					"type": "StructProperty",
-					"struct_type": "FloatParticleParameter"
-				}
-			}
-		},
-		{
-			"index": 8,
 			"name": "bIsShuffleTile",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
-			"index": 17,
-			"name": "PreviewPawnRotationOffset",
+			"index": 2,
+			"name": "bIsOwnedByCampaignHero",
 			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "Rotator"
+				"type": "BoolProperty"
 			}
 		},
 		{
-			"index": 25,
+			"index": 13,
+			"name": "MetaTags",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "GameplayTagContainer"
+			}
+		},
+		{
+			"index": 14,
+			"name": "VariantChannelsToNeverSendToMCP",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "StructProperty",
+					"struct_type": "GameplayTag"
+				}
+			}
+		},
+		{
+			"index": 16,
+			"name": "ObservedPlayerStats",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "GameplayTagContainer"
+			}
+		},
+		{
+			"index": 18,
 			"name": "ItemVariants",
 			"mapping_type": {
 				"type": "ArrayProperty",
@@ -70,7 +63,7 @@
 			}
 		},
 		{
-			"index": 27,
+			"index": 20,
 			"name": "ItemVariantPreviews",
 			"mapping_type": {
 				"type": "ArrayProperty",
@@ -81,21 +74,50 @@
 			}
 		},
 		{
-			"index": 32,
+			"index": 23,
+			"name": "UnlockRequirements",
+			"mapping_type": {
+				"type": "TextProperty"
+			}
+		},
+		{
+			"index": 25,
 			"name": "ItemPreviewActorClass",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 36,
+			"index": 29,
 			"name": "ItemPreviewHero",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 53,
+			"index": 32,
+			"name": "ExclusiveRequriesOutfitTags",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "GameplayTagContainer"
+			}
+		},
+		{
+			"index": 33,
+			"name": "CustomExclusiveCallout",
+			"mapping_type": {
+				"type": "TextProperty"
+			}
+		},
+		{
+			"index": 35,
+			"name": "ExclusiveIcon",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
+			"index": 46,
 			"name": "Rarity",
 			"mapping_type": {
 				"type": "EnumProperty",
@@ -103,28 +125,35 @@
 			}
 		},
 		{
-			"index": 67,
+			"index": 54,
+			"name": "bNeverPersisted",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 60,
 			"name": "DisplayName",
 			"mapping_type": {
 				"type": "TextProperty"
 			}
 		},
 		{
-			"index": 68,
+			"index": 61,
 			"name": "ShortDescription",
 			"mapping_type": {
 				"type": "TextProperty"
 			}
 		},
 		{
-			"index": 69,
+			"index": 62,
 			"name": "Description",
 			"mapping_type": {
 				"type": "TextProperty"
 			}
 		},
 		{
-			"index": 72,
+			"index": 65,
 			"name": "GameplayTags",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -132,21 +161,21 @@
 			}
 		},
 		{
-			"index": 83,
+			"index": 76,
 			"name": "SmallPreviewImage",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 84,
+			"index": 77,
 			"name": "LargePreviewImage",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 85,
+			"index": 78,
 			"name": "DisplayAssetPath",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -154,14 +183,14 @@
 			}
 		},
 		{
-			"index": 86,
+			"index": 79,
 			"name": "Series",
 			"mapping_type": {
 				"type": "ObjectProperty"
 			}
 		},
 		{
-			"index": 87,
+			"index": 80,
 			"name": "FrontendPreviewPivotOffset",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -169,15 +198,15 @@
 			}
 		},
 		{
-			"index": 88,
-			"name": "FrontendPreviewInitialRotation",
+			"index": 81,
+			"name": "StructProperty",
 			"mapping_type": {
 				"type": "StructProperty",
 				"struct_type": "Rotator"
 			}
 		},
 		{
-			"index": 89,
+			"index": 82,
 			"name": "FrontendPreviewMeshOverride",
 			"mapping_type": {
 				"type": "SoftObjectProperty"

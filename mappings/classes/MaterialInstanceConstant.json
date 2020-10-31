@@ -27,6 +27,17 @@
 			}
 		},
 		{
+			"index": 14,
+			"name": "VectorParameterValues",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "StructProperty",
+					"struct_type": "VectorParameterValue"
+				}
+			}
+		},
+		{
 			"index": 15,
 			"name": "TextureParameterValues",
 			"mapping_type": {

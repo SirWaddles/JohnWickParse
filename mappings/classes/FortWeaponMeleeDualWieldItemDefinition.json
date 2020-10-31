@@ -9,6 +9,13 @@
 			}
 		},
 		{
+			"index": 1,
+			"name": "IdleEffectOffhand",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		},
+		{
 			"index": 2,
 			"name": "IdleEffectOffhandNiagara",
 			"mapping_type": {
@@ -44,6 +51,19 @@
 			}
 		},
 		{
+			"index": 8,
+			"name": "OffhandImpactPhysicalSurfaceSoundsMap",
+			"mapping_type": {
+				"type": "MapProperty",
+				"key_type": {
+					"type": "NameProperty"
+				},
+				"value_type": {
+					"type": "SoftObjectProperty"
+				}
+			}
+		},
+		{
 			"index": 9,
 			"name": "OffhandImpactPhysicalSurfaceEffects",
 			"mapping_type": {
@@ -70,6 +90,19 @@
 			}
 		},
 		{
+			"index": 11,
+			"name": "OffhandPrimaryFireSoundMap",
+			"mapping_type": {
+				"type": "MapProperty",
+				"key_type": {
+					"type": "NameProperty"
+				},
+				"value_type": {
+					"type": "SoftObjectProperty"
+				}
+			}
+		},
+		{
 			"index": 13,
 			"name": "AnimTrailsOffhandFirstSocketName",
 			"mapping_type": {
@@ -81,6 +114,13 @@
 			"name": "AnimTrailsOffhandSecondSocketName",
 			"mapping_type": {
 				"type": "NameProperty"
+			}
+		},
+		{
+			"index": 15,
+			"name": "AnimTrailsOffhandWidth",
+			"mapping_type": {
+				"type": "FloatProperty"
 			}
 		},
 		{
@@ -98,10 +138,24 @@
 			}
 		},
 		{
+			"index": 18,
+			"name": "IdleFXOffhandSocketName",
+			"mapping_type": {
+				"type": "NameProperty"
+			}
+		},
+		{
 			"index": 19,
 			"name": "SwingFXOffhandSocketName",
 			"mapping_type": {
 				"type": "NameProperty"
+			}
+		},
+		{
+			"index": 21,
+			"name": "IdleEffect",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
 			}
 		},
 		{
@@ -168,6 +222,13 @@
 			}
 		},
 		{
+			"index": 32,
+			"name": "AnimTrailsWidth",
+			"mapping_type": {
+				"type": "FloatProperty"
+			}
+		},
+		{
 			"index": 33,
 			"name": "bUseAnimTrails",
 			"mapping_type": {
@@ -203,6 +264,16 @@
 					"type": "NameProperty"
 				},
 				"value_type": {
+					"type": "SoftObjectProperty"
+				}
+			}
+		},
+		{
+			"index": 39,
+			"name": "WeaponMaterialOverrides",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
 					"type": "SoftObjectProperty"
 				}
 			}
@@ -515,6 +586,14 @@
 			"name": "Series",
 			"mapping_type": {
 				"type": "ObjectProperty"
+			}
+		},
+		{
+			"index": 192,
+			"name": "FrontendPreviewInitialRotation",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "Rotator"
 			}
 		}
 	]

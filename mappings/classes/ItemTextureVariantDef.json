@@ -18,6 +18,13 @@
 			}
 		},
 		{
+			"index": 5,
+			"name": "bAllowClear",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
 			"index": 7,
 			"name": "bIsDefault",
 			"mapping_type": {

@@ -1,29 +1,44 @@
 {
-	"name": "AthenaItemWrapDefinition",
+	"name": "AthenaPetCarrierItemDefinition",
 	"properties": [
 		{
 			"index": 0,
-			"name": "ItemWrapModifierBlueprint",
+			"name": "DefaultPet",
 			"mapping_type": {
-				"type": "SoftObjectProperty"
+				"type": "ObjectProperty"
 			}
 		},
 		{
 			"index": 1,
-			"name": "ItemWrapMaterial",
+			"name": "CameraFramingBounds",
 			"mapping_type": {
-				"type": "SoftObjectProperty"
+				"type": "StructProperty",
+				"struct_type": "FortUICameraFrameTargetBounds"
 			}
 		},
 		{
 			"index": 2,
-			"name": "bIsShuffleTile",
+			"name": "CharacterParts",
 			"mapping_type": {
-				"type": "BoolProperty"
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "ObjectProperty"
+				}
 			}
 		},
 		{
 			"index": 17,
+			"name": "MaterialOverrides",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "StructProperty",
+					"struct_type": "AthenaCosmeticMaterialOverride"
+				}
+			}
+		},
+		{
+			"index": 18,
 			"name": "ObservedPlayerStats",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -31,14 +46,24 @@
 			}
 		},
 		{
-			"index": 26,
-			"name": "ItemPreviewActorClass",
+			"index": 20,
+			"name": "ItemVariants",
+			"mapping_type": {
+				"type": "ArrayProperty",
+				"sub_type": {
+					"type": "ObjectProperty"
+				}
+			}
+		},
+		{
+			"index": 31,
+			"name": "ItemPreviewHero",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 47,
+			"index": 48,
 			"name": "Rarity",
 			"mapping_type": {
 				"type": "EnumProperty",
@@ -46,35 +71,28 @@
 			}
 		},
 		{
-			"index": 55,
-			"name": "bNeverPersisted",
-			"mapping_type": {
-				"type": "BoolProperty"
-			}
-		},
-		{
-			"index": 61,
+			"index": 62,
 			"name": "DisplayName",
 			"mapping_type": {
 				"type": "TextProperty"
 			}
 		},
 		{
-			"index": 62,
+			"index": 63,
 			"name": "ShortDescription",
 			"mapping_type": {
 				"type": "TextProperty"
 			}
 		},
 		{
-			"index": 63,
+			"index": 64,
 			"name": "Description",
 			"mapping_type": {
 				"type": "TextProperty"
 			}
 		},
 		{
-			"index": 66,
+			"index": 67,
 			"name": "GameplayTags",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -82,21 +100,21 @@
 			}
 		},
 		{
-			"index": 77,
+			"index": 78,
 			"name": "SmallPreviewImage",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 78,
+			"index": 79,
 			"name": "LargePreviewImage",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 79,
+			"index": 80,
 			"name": "DisplayAssetPath",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -104,33 +122,10 @@
 			}
 		},
 		{
-			"index": 80,
+			"index": 81,
 			"name": "Series",
 			"mapping_type": {
 				"type": "ObjectProperty"
-			}
-		},
-		{
-			"index": 81,
-			"name": "FrontendPreviewPivotOffset",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "Vector"
-			}
-		},
-		{
-			"index": 82,
-			"name": "FrontendPreviewInitialRotation",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "Rotator"
-			}
-		},
-		{
-			"index": 83,
-			"name": "FrontendPreviewMeshOverride",
-			"mapping_type": {
-				"type": "SoftObjectProperty"
 			}
 		}
 	]
