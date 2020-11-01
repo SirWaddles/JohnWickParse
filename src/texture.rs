@@ -1,6 +1,7 @@
 use std::io::{Cursor, Read};
 use byteorder::{ReadBytesExt};
-use image::{dxt, png, ImageDecoder, ImageError, ImageBuffer, Bgra, Rgba, ConvertBuffer};
+use image::{ImageDecoder, ImageError, ImageBuffer, Bgra, Rgba, buffer::ConvertBuffer, ColorType};
+use image::codecs::{dxt, png};
 use bitreader::BitReader;
 use crate::assets::{Texture2D, ParserResult, ParserError};
 
@@ -40,16 +41,16 @@ pub fn decode_texture(texture: Texture2D) -> ParserResult<Vec<u8>> {
     };
 
     let colour_type = match pixel_format.as_ref() {
-        "PF_DXT1" => image::RGB(8),
-        "PF_B8G8R8A8" => image::RGBA(8),
-        "PF_BC5" => image::RGB(8),
-        "PF_G8" => image::Gray(8),
-        _ => image::RGBA(8),
+        "PF_DXT1" => ColorType::Rgb8,
+        "PF_B8G8R8A8" => ColorType::Rgba8,
+        "PF_BC5" => ColorType::Rgb8,
+        "PF_G8" => ColorType::L8,
+        _ => ColorType::Rgba8,
     };
 
     let mut png_data: Vec<u8> = Vec::new();
 
-    let encoder = png::PNGEncoder::new(&mut png_data);
+    let encoder = png::PngEncoder::new(&mut png_data);
     match encoder.encode(&bytes, width, height, colour_type) {
         Ok(data) => data,
         Err(_) => return Err(ParserError::new(format!("PNG conversion failed"))),
@@ -66,25 +67,27 @@ fn decode_texture_bgra(data: TextureData) -> ParserResult<Vec<u8>> {
 
 fn decode_texture_dxt5(data: TextureData) -> ParserResult<Vec<u8>> {
     let reader = Cursor::new(data.data);
-    let decoder = dxt::DXTDecoder::new(reader, data.width, data.height, dxt::DXTVariant::DXT5)?;
+    let decoder = dxt::DxtDecoder::new(reader, data.width, data.height, dxt::DxtVariant::DXT5)?;
+    let mut buf = vec![0u8; decoder.total_bytes() as usize];
 
-    let bytes = decoder.read_image()?;
+    decoder.read_image(&mut buf)?;
 
-    Ok(bytes)
+    Ok(buf)
 }
 
 fn decode_texture_dxt1(data: TextureData) -> ParserResult<Vec<u8>> {
     let reader = Cursor::new(data.data);
-    let decoder = dxt::DXTDecoder::new(reader, data.width, data.height, dxt::DXTVariant::DXT1)?;
+    let decoder = dxt::DxtDecoder::new(reader, data.width, data.height, dxt::DxtVariant::DXT1)?;
+    let mut buf = vec![0u8; decoder.total_bytes() as usize];
 
-    let bytes = decoder.read_image()?;
+    decoder.read_image(&mut buf)?;
 
-    Ok(bytes)
+    Ok(buf)
 }
 
 #[allow(dead_code)]
 pub fn save_texture(path: &str, bytes: &Vec<u8>, width: u32, height: u32) {
-    image::save_buffer(path, bytes, width, height, image::RGBA(8)).unwrap()
+    image::save_buffer(path, bytes, width, height, ColorType::Rgba8).unwrap()
 }
 
 fn get_pixel_loc(width: u32, x: usize, y: usize, off: usize) -> usize {

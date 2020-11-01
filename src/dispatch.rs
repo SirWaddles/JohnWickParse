@@ -867,8 +867,6 @@ impl Extractor {
                 let chunk = &self.utoc.offsets[i];
                 let mut data = vec![0u8; chunk.length as usize];
 
-                println!("Chunk: {:#?}", chunk);
-
                 self.reader.seek(SeekFrom::Start(chunk.offset))?;
                 self.reader.read_exact(&mut data)?;
 
