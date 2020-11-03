@@ -332,6 +332,13 @@
 			}
 		},
 		{
+			"index": 46,
+			"name": "Index46",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
 			"index": 49,
 			"name": "WeaponActorClass",
 			"mapping_type": {
@@ -369,27 +376,34 @@
 		},
 		{
 			"index": 60,
+			"name": "Index60",
+			"mapping_type": {
+				"type": "DebugProperty"
+			}
+		},
+		{
+			"index": 61,
 			"name": "PrimaryFireAbility",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 68,
+			"index": 69,
 			"name": "AdditionalData",
 			"mapping_type": {
 				"type": "ObjectProperty"
 			}
 		},
 		{
-			"index": 70,
+			"index": 71,
 			"name": "TriggerType",
 			"mapping_type": {
 				"type": "ByteProperty"
 			}
 		},
 		{
-			"index": 92,
+			"index": 93,
 			"name": "AnalyticTags",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -397,7 +411,7 @@
 			}
 		},
 		{
-			"index": 93,
+			"index": 94,
 			"name": "PlayerGrantedGameplayTags",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -405,7 +419,7 @@
 			}
 		},
 		{
-			"index": 94,
+			"index": 95,
 			"name": "ActualAnalyticFNames",
 			"mapping_type": {
 				"type": "ArrayProperty",
@@ -415,49 +429,49 @@
 			}
 		},
 		{
-			"index": 110,
+			"index": 111,
 			"name": "bShowDirectionalArrowWhenFarOff",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
-			"index": 111,
+			"index": 112,
 			"name": "bCanBeDropped",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
-			"index": 113,
+			"index": 114,
 			"name": "bItemCanBeStolen",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
-			"index": 114,
+			"index": 115,
 			"name": "bCanBeDepositedInStorageVault",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
-			"index": 115,
+			"index": 116,
 			"name": "bItemHasDurability",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
-			"index": 125,
+			"index": 126,
 			"name": "MiniMapViewableDistance",
 			"mapping_type": {
 				"type": "FloatProperty"
 			}
 		},
 		{
-			"index": 126,
+			"index": 127,
 			"name": "MiniMapIconBrush",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -465,7 +479,7 @@
 			}
 		},
 		{
-			"index": 128,
+			"index": 129,
 			"name": "LootLevelData",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -473,42 +487,42 @@
 			}
 		},
 		{
-			"index": 142,
+			"index": 143,
 			"name": "PickupSkeletalMesh",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 146,
+			"index": 147,
 			"name": "DropSound",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 150,
+			"index": 151,
 			"name": "DisassembleDurabilityDegradeMinLootPercent",
 			"mapping_type": {
 				"type": "FloatProperty"
 			}
 		},
 		{
-			"index": 151,
+			"index": 152,
 			"name": "DisassembleDurabilityDegradeMaxLootPercent",
 			"mapping_type": {
 				"type": "FloatProperty"
 			}
 		},
 		{
-			"index": 153,
+			"index": 154,
 			"name": "MinLevel",
 			"mapping_type": {
 				"type": "IntProperty"
 			}
 		},
 		{
-			"index": 157,
+			"index": 158,
 			"name": "Rarity",
 			"mapping_type": {
 				"type": "EnumProperty",
@@ -516,7 +530,7 @@
 			}
 		},
 		{
-			"index": 158,
+			"index": 159,
 			"name": "ItemType",
 			"mapping_type": {
 				"type": "EnumProperty",
@@ -524,7 +538,7 @@
 			}
 		},
 		{
-			"index": 160,
+			"index": 161,
 			"name": "FilterOverride",
 			"mapping_type": {
 				"type": "EnumProperty",
@@ -532,35 +546,35 @@
 			}
 		},
 		{
-			"index": 165,
+			"index": 166,
 			"name": "bNeverPersisted",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
-			"index": 166,
+			"index": 167,
 			"name": "bAllowMultipleStacks",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
-			"index": 169,
+			"index": 170,
 			"name": "bInventorySizeLimited",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
-			"index": 171,
+			"index": 172,
 			"name": "DisplayName",
 			"mapping_type": {
 				"type": "TextProperty"
 			}
 		},
 		{
-			"index": 176,
+			"index": 177,
 			"name": "GameplayTags",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -568,28 +582,28 @@
 			}
 		},
 		{
-			"index": 187,
+			"index": 188,
 			"name": "SmallPreviewImage",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 188,
+			"index": 189,
 			"name": "LargePreviewImage",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 190,
+			"index": 191,
 			"name": "Series",
 			"mapping_type": {
 				"type": "ObjectProperty"
 			}
 		},
 		{
-			"index": 192,
+			"index": 193,
 			"name": "FrontendPreviewInitialRotation",
 			"mapping_type": {
 				"type": "StructProperty",

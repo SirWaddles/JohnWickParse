@@ -98,63 +98,63 @@
 			}
 		},
 		{
-			"index": 14,
+			"index": 15,
 			"name": "bLockGroupEmoteLeaderRotation",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
-			"index": 15,
+			"index": 16,
 			"name": "GroupEmoteLeaderRotationYawOffset",
 			"mapping_type": {
 				"type": "FloatProperty"
 			}
 		},
 		{
-			"index": 16,
+			"index": 17,
 			"name": "GroupEmoteFollowerRotationYawOffset",
 			"mapping_type": {
 				"type": "FloatProperty"
 			}
 		},
 		{
-			"index": 17,
+			"index": 18,
 			"name": "FrontEndAnimation",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 18,
+			"index": 19,
 			"name": "FrontEndAnimationFemaleOverride",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 19,
+			"index": 20,
 			"name": "CustomDanceAbility",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 21,
+			"index": 22,
 			"name": "Animation",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 22,
+			"index": 23,
 			"name": "AnimationFemaleOverride",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 23,
+			"index": 24,
 			"name": "AnimationOverrides",
 			"mapping_type": {
 				"type": "ArrayProperty",
@@ -165,42 +165,42 @@
 			}
 		},
 		{
-			"index": 24,
+			"index": 25,
 			"name": "PreviewLoops",
 			"mapping_type": {
 				"type": "IntProperty"
 			}
 		},
 		{
-			"index": 25,
+			"index": 26,
 			"name": "PreviewLength",
 			"mapping_type": {
 				"type": "FloatProperty"
 			}
 		},
 		{
-			"index": 26,
+			"index": 27,
 			"name": "EmoteCooldownSecs",
 			"mapping_type": {
 				"type": "FloatProperty"
 			}
 		},
 		{
-			"index": 27,
+			"index": 28,
 			"name": "bMontageContainsFacialAnimation",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
-			"index": 28,
+			"index": 29,
 			"name": "bPlayRandomSection",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
-			"index": 29,
+			"index": 30,
 			"name": "PlayRandomSectionByName",
 			"mapping_type": {
 				"type": "ArrayProperty",
@@ -211,28 +211,28 @@
 			}
 		},
 		{
-			"index": 30,
+			"index": 31,
 			"name": "bSwitchToHarvestingToolOnUse",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
-			"index": 31,
+			"index": 32,
 			"name": "bHolsterWeapon",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
-			"index": 32,
+			"index": 33,
 			"name": "bHolsterWeaponIfDualWieldPickaxe",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
-			"index": 33,
+			"index": 34,
 			"name": "AccessData",
 			"mapping_type": {
 				"type": "ArrayProperty",
@@ -243,7 +243,7 @@
 			}
 		},
 		{
-			"index": 34,
+			"index": 35,
 			"name": "VisibilityData",
 			"mapping_type": {
 				"type": "ArrayProperty",
@@ -254,7 +254,7 @@
 			}
 		},
 		{
-			"index": 35,
+			"index": 36,
 			"name": "EmoteWheelExclusiveTags",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -262,14 +262,14 @@
 			}
 		},
 		{
-			"index": 36,
+			"index": 37,
 			"name": "RequiredEmoteParent",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 37,
+			"index": 38,
 			"name": "TagsWhichIndicateEmoteParent",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -277,7 +277,7 @@
 			}
 		},
 		{
-			"index": 47,
+			"index": 48,
 			"name": "PreviewPawnRotationOffset",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -285,7 +285,7 @@
 			}
 		},
 		{
-			"index": 50,
+			"index": 51,
 			"name": "MetaTags",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -293,7 +293,7 @@
 			}
 		},
 		{
-			"index": 55,
+			"index": 56,
 			"name": "ItemVariants",
 			"mapping_type": {
 				"type": "ArrayProperty",
@@ -303,28 +303,28 @@
 			}
 		},
 		{
-			"index": 62,
+			"index": 63,
 			"name": "ItemPreviewActorClass",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 66,
+			"index": 67,
 			"name": "ItemPreviewHero",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 72,
+			"index": 73,
 			"name": "ExclusiveIcon",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 83,
+			"index": 84,
 			"name": "Rarity",
 			"mapping_type": {
 				"type": "EnumProperty",
@@ -332,35 +332,35 @@
 			}
 		},
 		{
-			"index": 91,
+			"index": 92,
 			"name": "bNeverPersisted",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
-			"index": 97,
+			"index": 98,
 			"name": "DisplayName",
 			"mapping_type": {
 				"type": "TextProperty"
 			}
 		},
 		{
-			"index": 98,
+			"index": 99,
 			"name": "ShortDescription",
 			"mapping_type": {
 				"type": "TextProperty"
 			}
 		},
 		{
-			"index": 99,
+			"index": 100,
 			"name": "Description",
 			"mapping_type": {
 				"type": "TextProperty"
 			}
 		},
 		{
-			"index": 102,
+			"index": 103,
 			"name": "GameplayTags",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -368,42 +368,42 @@
 			}
 		},
 		{
-			"index": 108,
+			"index": 109,
 			"name": "FrontendPreviewScale",
 			"mapping_type": {
 				"type": "FloatProperty"
 			}
 		},
 		{
-			"index": 113,
+			"index": 114,
 			"name": "SmallPreviewImage",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 114,
+			"index": 115,
 			"name": "LargePreviewImage",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 115,
+			"index": 116,
 			"name": "DisplayAssetPath",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 116,
+			"index": 117,
 			"name": "Series",
 			"mapping_type": {
 				"type": "ObjectProperty"
 			}
 		},
 		{
-			"index": 117,
+			"index": 118,
 			"name": "FrontendPreviewPivotOffset",
 			"mapping_type": {
 				"type": "StructProperty",

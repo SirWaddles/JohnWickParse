@@ -258,20 +258,27 @@
 		},
 		{
 			"index": 40,
+			"name": "Index40",
+			"mapping_type": {
+				"type": "DebugProperty"
+			}
+		},
+		{
+			"index": 41,
 			"name": "PrimaryFireAbility",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 50,
+			"index": 51,
 			"name": "TriggerType",
 			"mapping_type": {
 				"type": "ByteProperty"
 			}
 		},
 		{
-			"index": 72,
+			"index": 73,
 			"name": "AnalyticTags",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -279,7 +286,7 @@
 			}
 		},
 		{
-			"index": 73,
+			"index": 74,
 			"name": "PlayerGrantedGameplayTags",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -287,7 +294,7 @@
 			}
 		},
 		{
-			"index": 74,
+			"index": 75,
 			"name": "ActualAnalyticFNames",
 			"mapping_type": {
 				"type": "ArrayProperty",
@@ -297,49 +304,49 @@
 			}
 		},
 		{
-			"index": 90,
+			"index": 91,
 			"name": "bShowDirectionalArrowWhenFarOff",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
-			"index": 91,
+			"index": 92,
 			"name": "bCanBeDropped",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
-			"index": 93,
+			"index": 94,
 			"name": "bItemCanBeStolen",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
-			"index": 94,
+			"index": 95,
 			"name": "bCanBeDepositedInStorageVault",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
-			"index": 95,
+			"index": 96,
 			"name": "bItemHasDurability",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
-			"index": 105,
+			"index": 106,
 			"name": "MiniMapViewableDistance",
 			"mapping_type": {
 				"type": "FloatProperty"
 			}
 		},
 		{
-			"index": 106,
+			"index": 107,
 			"name": "MiniMapIconBrush",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -347,7 +354,7 @@
 			}
 		},
 		{
-			"index": 108,
+			"index": 109,
 			"name": "LootLevelData",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -355,49 +362,49 @@
 			}
 		},
 		{
-			"index": 121,
+			"index": 122,
 			"name": "PickupStaticMesh",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 122,
+			"index": 123,
 			"name": "PickupSkeletalMesh",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 126,
+			"index": 127,
 			"name": "DropSound",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 130,
+			"index": 131,
 			"name": "DisassembleDurabilityDegradeMinLootPercent",
 			"mapping_type": {
 				"type": "FloatProperty"
 			}
 		},
 		{
-			"index": 131,
+			"index": 132,
 			"name": "DisassembleDurabilityDegradeMaxLootPercent",
 			"mapping_type": {
 				"type": "FloatProperty"
 			}
 		},
 		{
-			"index": 133,
+			"index": 134,
 			"name": "MinLevel",
 			"mapping_type": {
 				"type": "IntProperty"
 			}
 		},
 		{
-			"index": 137,
+			"index": 138,
 			"name": "Rarity",
 			"mapping_type": {
 				"type": "EnumProperty",
@@ -405,7 +412,7 @@
 			}
 		},
 		{
-			"index": 138,
+			"index": 139,
 			"name": "ItemType",
 			"mapping_type": {
 				"type": "EnumProperty",
@@ -413,7 +420,7 @@
 			}
 		},
 		{
-			"index": 140,
+			"index": 141,
 			"name": "FilterOverride",
 			"mapping_type": {
 				"type": "EnumProperty",
@@ -421,7 +428,7 @@
 			}
 		},
 		{
-			"index": 141,
+			"index": 142,
 			"name": "Tier",
 			"mapping_type": {
 				"type": "EnumProperty",
@@ -429,56 +436,56 @@
 			}
 		},
 		{
-			"index": 145,
+			"index": 146,
 			"name": "bNeverPersisted",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
-			"index": 146,
+			"index": 147,
 			"name": "bAllowMultipleStacks",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
-			"index": 149,
+			"index": 150,
 			"name": "bInventorySizeLimited",
 			"mapping_type": {
 				"type": "BoolProperty"
 			}
 		},
 		{
-			"index": 151,
+			"index": 152,
 			"name": "DisplayName",
 			"mapping_type": {
 				"type": "TextProperty"
 			}
 		},
 		{
-			"index": 152,
+			"index": 153,
 			"name": "ShortDescription",
 			"mapping_type": {
 				"type": "TextProperty"
 			}
 		},
 		{
-			"index": 153,
+			"index": 154,
 			"name": "Description",
 			"mapping_type": {
 				"type": "TextProperty"
 			}
 		},
 		{
-			"index": 155,
+			"index": 156,
 			"name": "SearchTags",
 			"mapping_type": {
 				"type": "TextProperty"
 			}
 		},
 		{
-			"index": 156,
+			"index": 157,
 			"name": "GameplayTags",
 			"mapping_type": {
 				"type": "StructProperty",
@@ -486,35 +493,35 @@
 			}
 		},
 		{
-			"index": 167,
+			"index": 168,
 			"name": "SmallPreviewImage",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 168,
+			"index": 169,
 			"name": "LargePreviewImage",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 170,
+			"index": 171,
 			"name": "Series",
 			"mapping_type": {
 				"type": "ObjectProperty"
 			}
 		},
 		{
-			"index": 173,
+			"index": 174,
 			"name": "FrontendPreviewMeshOverride",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
 			}
 		},
 		{
-			"index": 174,
+			"index": 175,
 			"name": "FrontendPreviewSkeletalMeshOverride",
 			"mapping_type": {
 				"type": "SoftObjectProperty"
