@@ -102,6 +102,13 @@
 			}
 		},
 		{
+			"index": 20,
+			"name": "UnknownMeshType",
+			"mapping_type": {
+				"type": "NameProperty"
+			}
+		},
+		{
 			"index": 21,
 			"name": "OpenSound",
 			"mapping_type": {
