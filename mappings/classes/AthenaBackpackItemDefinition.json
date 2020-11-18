@@ -1,216 +1,189 @@
 {
-	"name": "AthenaBackpackItemDefinition",
-	"properties": [
-		{
-			"index": 0,
-			"name": "CharacterParts",
-			"mapping_type": {
-				"type": "ArrayProperty",
-				"sub_type": {
-					"type": "ObjectProperty"
-				}
-			}
-		},
-		{
-			"index": 1,
-			"name": "bIsShuffleTile",
-			"mapping_type": {
-				"type": "BoolProperty"
-			}
-		},
-		{
-			"index": 2,
-			"name": "bIsOwnedByCampaignHero",
-			"mapping_type": {
-				"type": "BoolProperty"
-			}
-		},
-		{
-			"index": 13,
-			"name": "MetaTags",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "GameplayTagContainer"
-			}
-		},
-		{
-			"index": 14,
-			"name": "VariantChannelsToNeverSendToMCP",
-			"mapping_type": {
-				"type": "ArrayProperty",
-				"sub_type": {
-					"type": "StructProperty",
-					"struct_type": "GameplayTag"
-				}
-			}
-		},
-		{
-			"index": 16,
-			"name": "ObservedPlayerStats",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "GameplayTagContainer"
-			}
-		},
-		{
-			"index": 18,
-			"name": "ItemVariants",
-			"mapping_type": {
-				"type": "ArrayProperty",
-				"sub_type": {
-					"type": "ObjectProperty"
-				}
-			}
-		},
-		{
-			"index": 20,
-			"name": "ItemVariantPreviews",
-			"mapping_type": {
-				"type": "ArrayProperty",
-				"sub_type": {
-					"type": "StructProperty",
-					"struct_type": "FortCosmeticVariantPreview"
-				}
-			}
-		},
-		{
-			"index": 23,
-			"name": "UnlockRequirements",
-			"mapping_type": {
-				"type": "TextProperty"
-			}
-		},
-		{
-			"index": 25,
-			"name": "ItemPreviewActorClass",
-			"mapping_type": {
-				"type": "SoftObjectProperty"
-			}
-		},
-		{
-			"index": 29,
-			"name": "ItemPreviewHero",
-			"mapping_type": {
-				"type": "SoftObjectProperty"
-			}
-		},
-		{
-			"index": 32,
-			"name": "ExclusiveRequriesOutfitTags",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "GameplayTagContainer"
-			}
-		},
-		{
-			"index": 33,
-			"name": "CustomExclusiveCallout",
-			"mapping_type": {
-				"type": "TextProperty"
-			}
-		},
-		{
-			"index": 35,
-			"name": "ExclusiveIcon",
-			"mapping_type": {
-				"type": "SoftObjectProperty"
-			}
-		},
-		{
-			"index": 46,
-			"name": "Rarity",
-			"mapping_type": {
-				"type": "EnumProperty",
-				"enum_type": "EFortRarity"
-			}
-		},
-		{
-			"index": 54,
-			"name": "bNeverPersisted",
-			"mapping_type": {
-				"type": "BoolProperty"
-			}
-		},
-		{
-			"index": 60,
-			"name": "DisplayName",
-			"mapping_type": {
-				"type": "TextProperty"
-			}
-		},
-		{
-			"index": 61,
-			"name": "ShortDescription",
-			"mapping_type": {
-				"type": "TextProperty"
-			}
-		},
-		{
-			"index": 62,
-			"name": "Description",
-			"mapping_type": {
-				"type": "TextProperty"
-			}
-		},
-		{
-			"index": 65,
-			"name": "GameplayTags",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "GameplayTagContainer"
-			}
-		},
-		{
-			"index": 76,
-			"name": "SmallPreviewImage",
-			"mapping_type": {
-				"type": "SoftObjectProperty"
-			}
-		},
-		{
-			"index": 77,
-			"name": "LargePreviewImage",
-			"mapping_type": {
-				"type": "SoftObjectProperty"
-			}
-		},
-		{
-			"index": 78,
-			"name": "DisplayAssetPath",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "SoftObjectPath"
-			}
-		},
-		{
-			"index": 79,
-			"name": "Series",
-			"mapping_type": {
-				"type": "ObjectProperty"
-			}
-		},
-		{
-			"index": 80,
-			"name": "FrontendPreviewPivotOffset",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "Vector"
-			}
-		},
-		{
-			"index": 81,
-			"name": "StructProperty",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "Rotator"
-			}
-		},
-		{
-			"index": 82,
-			"name": "FrontendPreviewMeshOverride",
-			"mapping_type": {
-				"type": "SoftObjectProperty"
-			}
-		}
-	]
+    "name": "AthenaBackpackItemDefinition",
+    "properties": [{
+            "index": 0,
+            "name": "CharacterParts",
+            "mapping_type": {
+                "type": "ArrayProperty",
+                "sub_type": {
+                    "type": "ObjectProperty"
+                }
+            }
+        }, {
+            "index": 1,
+            "name": "bIsShuffleTile",
+            "mapping_type": {
+                "type": "BoolProperty"
+            }
+        }, {
+            "index": 2,
+            "name": "bIsOwnedByCampaignHero",
+            "mapping_type": {
+                "type": "BoolProperty"
+            }
+        }, {
+            "index": 16,
+            "name": "MetaTags",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "GameplayTagContainer"
+            }
+        }, {
+            "index": 17,
+            "name": "VariantChannelsToNeverSendToMCP",
+            "mapping_type": {
+                "type": "ArrayProperty",
+                "sub_type": {
+                    "type": "StructProperty",
+                    "struct_type": "GameplayTag"
+                }
+            }
+        }, {
+            "index": 19,
+            "name": "ObservedPlayerStats",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "GameplayTagContainer"
+            }
+        }, {
+            "index": 21,
+            "name": "ItemVariants",
+            "mapping_type": {
+                "type": "ArrayProperty",
+                "sub_type": {
+                    "type": "ObjectProperty"
+                }
+            }
+        }, {
+            "index": 23,
+            "name": "ItemVariantPreviews",
+            "mapping_type": {
+                "type": "ArrayProperty",
+                "sub_type": {
+                    "type": "StructProperty",
+                    "struct_type": "FortCosmeticVariantPreview"
+                }
+            }
+        }, {
+            "index": 26,
+            "name": "UnlockRequirements",
+            "mapping_type": {
+                "type": "TextProperty"
+            }
+        }, {
+            "index": 28,
+            "name": "ItemPreviewActorClass",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }, {
+            "index": 32,
+            "name": "ItemPreviewHero",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }, {
+            "index": 35,
+            "name": "ExclusiveRequriesOutfitTags",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "GameplayTagContainer"
+            }
+        }, {
+            "index": 36,
+            "name": "CustomExclusiveCallout",
+            "mapping_type": {
+                "type": "TextProperty"
+            }
+        }, {
+            "index": 38,
+            "name": "ExclusiveIcon",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }, {
+            "index": 49,
+            "name": "Rarity",
+            "mapping_type": {
+                "type": "EnumProperty",
+                "enum_type": "EFortRarity"
+            }
+        }, {
+            "index": 57,
+            "name": "bNeverPersisted",
+            "mapping_type": {
+                "type": "BoolProperty"
+            }
+        }, {
+            "index": 63,
+            "name": "DisplayName",
+            "mapping_type": {
+                "type": "TextProperty"
+            }
+        }, {
+            "index": 64,
+            "name": "ShortDescription",
+            "mapping_type": {
+                "type": "TextProperty"
+            }
+        }, {
+            "index": 65,
+            "name": "Description",
+            "mapping_type": {
+                "type": "TextProperty"
+            }
+        }, {
+            "index": 68,
+            "name": "GameplayTags",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "GameplayTagContainer"
+            }
+        }, {
+            "index": 79,
+            "name": "SmallPreviewImage",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }, {
+            "index": 80,
+            "name": "LargePreviewImage",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }, {
+            "index": 81,
+            "name": "DisplayAssetPath",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "SoftObjectPath"
+            }
+        }, {
+            "index": 82,
+            "name": "Series",
+            "mapping_type": {
+                "type": "ObjectProperty"
+            }
+        }, {
+            "index": 83,
+            "name": "FrontendPreviewPivotOffset",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "Vector"
+            }
+        }, {
+            "index": 84,
+            "name": "StructProperty",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "Rotator"
+            }
+        }, {
+            "index": 85,
+            "name": "FrontendPreviewMeshOverride",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }
+    ]
 }

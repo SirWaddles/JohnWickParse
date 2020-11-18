@@ -1,143 +1,124 @@
 {
-	"name": "AthenaMusicPackItemDefinition",
-	"properties": [
-		{
-			"index": 0,
-			"name": "FrontEndLobbyMusic",
-			"mapping_type": {
-				"type": "SoftObjectProperty"
-			}
-		},
-		{
-			"index": 1,
-			"name": "CoverArtImage",
-			"mapping_type": {
-				"type": "SoftObjectProperty"
-			}
-		},
-		{
-			"index": 2,
-			"name": "bIsDefaultMusicPack",
-			"mapping_type": {
-				"type": "BoolProperty"
-			}
-		},
-		{
-			"index": 3,
-			"name": "MusicPreviewStartTime",
-			"mapping_type": {
-				"type": "FloatProperty"
-			}
-		},
-		{
-			"index": 4,
-			"name": "bIsShuffleTile",
-			"mapping_type": {
-				"type": "BoolProperty"
-			}
-		},
-		{
-			"index": 28,
-			"name": "ItemPreviewActorClass",
-			"mapping_type": {
-				"type": "SoftObjectProperty"
-			}
-		},
-		{
-			"index": 49,
-			"name": "Rarity",
-			"mapping_type": {
-				"type": "EnumProperty",
-				"enum_type": "EFortRarity"
-			}
-		},
-		{
-			"index": 57,
-			"name": "bNeverPersisted",
-			"mapping_type": {
-				"type": "BoolProperty"
-			}
-		},
-		{
-			"index": 63,
-			"name": "DisplayName",
-			"mapping_type": {
-				"type": "TextProperty"
-			}
-		},
-		{
-			"index": 64,
-			"name": "ShortDescription",
-			"mapping_type": {
-				"type": "TextProperty"
-			}
-		},
-		{
-			"index": 65,
-			"name": "Description",
-			"mapping_type": {
-				"type": "TextProperty"
-			}
-		},
-		{
-			"index": 68,
-			"name": "GameplayTags",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "GameplayTagContainer"
-			}
-		},
-		{
-			"index": 79,
-			"name": "SmallPreviewImage",
-			"mapping_type": {
-				"type": "SoftObjectProperty"
-			}
-		},
-		{
-			"index": 80,
-			"name": "LargePreviewImage",
-			"mapping_type": {
-				"type": "SoftObjectProperty"
-			}
-		},
-		{
-			"index": 81,
-			"name": "DisplayAssetPath",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "SoftObjectPath"
-			}
-		},
-		{
-			"index": 82,
-			"name": "Series",
-			"mapping_type": {
-				"type": "ObjectProperty"
-			}
-		},
-		{
-			"index": 83,
-			"name": "FrontendPreviewPivotOffset",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "Vector"
-			}
-		},
-		{
-			"index": 84,
-			"name": "FrontendPreviewInitialRotation",
-			"mapping_type": {
-				"type": "StructProperty",
-				"struct_type": "Rotator"
-			}
-		},
-		{
-			"index": 85,
-			"name": "FrontendPreviewMeshOverride",
-			"mapping_type": {
-				"type": "SoftObjectProperty"
-			}
-		}
-	]
+    "name": "AthenaMusicPackItemDefinition",
+    "properties": [{
+            "index": 0,
+            "name": "FrontEndLobbyMusic",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }, {
+            "index": 1,
+            "name": "CoverArtImage",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }, {
+            "index": 2,
+            "name": "bIsDefaultMusicPack",
+            "mapping_type": {
+                "type": "BoolProperty"
+            }
+        }, {
+            "index": 3,
+            "name": "MusicPreviewStartTime",
+            "mapping_type": {
+                "type": "FloatProperty"
+            }
+        }, {
+            "index": 4,
+            "name": "bIsShuffleTile",
+            "mapping_type": {
+                "type": "BoolProperty"
+            }
+        }, {
+            "index": 31,
+            "name": "ItemPreviewActorClass",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }, {
+            "index": 52,
+            "name": "Rarity",
+            "mapping_type": {
+                "type": "EnumProperty",
+                "enum_type": "EFortRarity"
+            }
+        }, {
+            "index": 60,
+            "name": "bNeverPersisted",
+            "mapping_type": {
+                "type": "BoolProperty"
+            }
+        }, {
+            "index": 66,
+            "name": "DisplayName",
+            "mapping_type": {
+                "type": "TextProperty"
+            }
+        }, {
+            "index": 67,
+            "name": "ShortDescription",
+            "mapping_type": {
+                "type": "TextProperty"
+            }
+        }, {
+            "index": 68,
+            "name": "Description",
+            "mapping_type": {
+                "type": "TextProperty"
+            }
+        }, {
+            "index": 71,
+            "name": "GameplayTags",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "GameplayTagContainer"
+            }
+        }, {
+            "index": 82,
+            "name": "SmallPreviewImage",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }, {
+            "index": 83,
+            "name": "LargePreviewImage",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }, {
+            "index": 84,
+            "name": "DisplayAssetPath",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "SoftObjectPath"
+            }
+        }, {
+            "index": 85,
+            "name": "Series",
+            "mapping_type": {
+                "type": "ObjectProperty"
+            }
+        }, {
+            "index": 86,
+            "name": "FrontendPreviewPivotOffset",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "Vector"
+            }
+        }, {
+            "index": 87,
+            "name": "FrontendPreviewInitialRotation",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "Rotator"
+            }
+        }, {
+            "index": 88,
+            "name": "FrontendPreviewMeshOverride",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }
+    ]
 }
