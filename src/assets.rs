@@ -661,7 +661,6 @@ impl FPackageObjectIndex {
                 Some(n) => Ok(n),
                 None => return Err(ParserError::new(format!("No package class found"))),
             },
-            // FPackageObjectIndex_Type::PackageImport => self.get_object_name(name_map),
             _ => return Err(ParserError::new(format!("Unknown Import Type"))),
         }
     }
@@ -851,7 +850,11 @@ struct FExportMapEntry {
 
 impl FExportMapEntry {
     fn get_export_name<'a>(&self, global_map: &'a LoaderGlobalData, name_map: &'a NameMap) -> ParserResult<&'a str> {
-        self.class_index.get_export_name(global_map, name_map)
+        match self.class_index.index_type {
+            FPackageObjectIndex_Type::ScriptImport => self.class_index.get_export_name(global_map, name_map),
+            FPackageObjectIndex_Type::PackageImport => self.get_object_name(name_map),
+            _ => Err(ParserError::new(format!("Unknown Export Map Type"))),
+        }
     }
 
     fn get_object_name<'a>(&self, name_map: &'a NameMap) -> ParserResult<&'a str> {
