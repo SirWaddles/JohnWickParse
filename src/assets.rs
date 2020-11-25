@@ -2616,8 +2616,6 @@ impl UDataTable {
             None => return Err(ParserError::new(format!("Import not found in Import Map"))),
         };
         let struct_name = object_index.get_export_name(global_map, name_map)?;
-        println!("Struct Name: {}", struct_name);
-        println!("Pos: {}", reader.position());
 
         let _zero_data = reader.read_i32::<LittleEndian>()?;
         let num_rows = reader.read_i32::<LittleEndian>()?;
