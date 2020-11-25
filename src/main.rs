@@ -87,7 +87,7 @@ fn texture(params: &[String]) -> CommandResult {
     let global_data = dispatch.read_global()?;
 
     let package = assets::Package::from_file(path, &global_data)?;
-    let package_export = package.get_export_move(0)?;
+    let package_export = package.get_export_move(0)?.into_any();
     let texture = match package_export.downcast::<assets::Texture2D>() {
         Ok(data) => data,
         Err(_) => return cerr("Package not exporting texture"),

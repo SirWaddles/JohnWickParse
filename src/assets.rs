@@ -654,6 +654,19 @@ pub struct FPackageObjectIndex {
     index_type: FPackageObjectIndex_Type,
 }
 
+impl FPackageObjectIndex {
+    fn get_export_name<'a>(&self, global_map: &'a LoaderGlobalData, name_map: &'a NameMap) -> ParserResult<&'a str> {
+        match self.index_type {
+            FPackageObjectIndex_Type::ScriptImport => match global_map.get_package_name(&self) {
+                Some(n) => Ok(n),
+                None => return Err(ParserError::new(format!("No package class found"))),
+            },
+            // FPackageObjectIndex_Type::PackageImport => self.get_object_name(name_map),
+            _ => return Err(ParserError::new(format!("Unknown Import Type"))),
+        }
+    }
+}
+
 impl Newable for FPackageObjectIndex {
     fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
         let data = reader.read_u64::<LittleEndian>()?;
@@ -838,14 +851,7 @@ struct FExportMapEntry {
 
 impl FExportMapEntry {
     fn get_export_name<'a>(&self, global_map: &'a LoaderGlobalData, name_map: &'a NameMap) -> ParserResult<&'a str> {
-        match self.class_index.index_type {
-            FPackageObjectIndex_Type::ScriptImport => match global_map.get_package_name(&self.class_index) {
-                Some(n) => Ok(n),
-                None => return Err(ParserError::new(format!("No package class found"))),
-            },
-            FPackageObjectIndex_Type::PackageImport => self.get_object_name(name_map),
-            _ => return Err(ParserError::new(format!("Unknown Import Type"))),
-        }
+        self.class_index.get_export_name(global_map, name_map)
     }
 
     fn get_object_name<'a>(&self, name_map: &'a NameMap) -> ParserResult<&'a str> {
@@ -1053,20 +1059,7 @@ struct FStructFallback {
 
 impl NewableWithNameMap for FStructFallback {
     fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
-        let mut properties = Vec::new();
-        loop {
-            let tag = read_property_tag(reader, name_map, import_map, true)?;
-            let tag = match tag {
-                Some(data) => data,
-                None => break,
-            };
-
-            properties.push(tag);
-        }
-
-        Ok(Self {
-            properties: properties,
-        })
+        panic!("Unimplemented");
     }
 
     fn get_properties(&self) -> ParserResult<&Vec<FPropertyTag>> {
@@ -1845,43 +1838,6 @@ pub struct UScriptArray {
 }
 
 impl UScriptArray {
-    fn new(reader: &mut ReaderCursor, inner_type: &str, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
-        let element_count = reader.read_u32::<LittleEndian>()?;
-        let mut array_tag: Option<Box<FPropertyTag>> = None;
-        if inner_type == "StructProperty" || inner_type == "ArrayProperty" {
-            array_tag = match read_property_tag(reader, name_map, import_map, false)? {
-                Some(data) => Some(Box::new(data)),
-                None => panic!("Could not read file"),
-            };
-        }
-        let inner_tag_data = match &array_tag {
-            Some(data) => Some(&data.tag_data),
-            None => None,
-        };
-
-        let mut contents: Vec<FPropertyTagType> = Vec::new();
-        for _i in 0..element_count {
-            if inner_type == "BoolProperty" {
-                contents.push(FPropertyTagType::BoolProperty(reader.read_u8()? != 0));
-                continue;
-            }
-            if inner_type == "ByteProperty" {
-                contents.push(FPropertyTagType::ByteProperty(reader.read_u8()?));
-                continue;
-            }
-            if inner_type == "EnumProperty" {
-                contents.push(FPropertyTagType::EnumProperty(Some(read_fname(reader, name_map)?)));
-                continue;
-            }
-            contents.push(FPropertyTagType::new(reader, name_map, import_map, &inner_type, inner_tag_data)?);
-        }
-
-        Ok(Self {
-            tag: array_tag,
-            data: contents,
-        })
-    }
-
     fn new_unversioned(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, mapping: &TagMapping) -> ParserResult<Self> {
         let element_count = reader.read_u32::<LittleEndian>()?;
 
@@ -1918,44 +1874,7 @@ pub struct UScriptMap {
     map_data: Vec<(FPropertyTagType, FPropertyTagType)>,
 }
 
-fn read_map_value(reader: &mut ReaderCursor, inner_type: &str, struct_type: &str, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<FPropertyTagType> {
-    Ok(match inner_type {
-        "BoolProperty" => FPropertyTagType::BoolProperty(reader.read_u8()? != 1),
-        "ByteProperty" => FPropertyTagType::ByteProperty(reader.read_u32::<LittleEndian>()? as u8),
-        "EnumProperty" => FPropertyTagType::EnumProperty(Some(read_fname(reader, name_map)?)),
-        "IntProperty" => FPropertyTagType::IntProperty(reader.read_i32::<LittleEndian>()?),
-        "UInt32Property" => FPropertyTagType::UInt32Property(reader.read_u32::<LittleEndian>()?),
-        "StructProperty" => FPropertyTagType::StructProperty(UScriptStruct::new(reader, name_map, import_map, struct_type)?),
-        "NameProperty" => FPropertyTagType::NameProperty(read_fname(reader, name_map)?),
-        "ObjectProperty" => FPropertyTagType::ObjectProperty(FPackageIndex::new_n(reader, name_map, import_map)?),
-        "SoftObjectProperty" => FPropertyTagType::SoftObjectPropertyMap(FGuid::new_n(reader, name_map, import_map)?),
-		"StrProperty" => FPropertyTagType::StrProperty(read_string(reader)?),
-		"TextProperty" => FPropertyTagType::TextProperty(FText::new(reader)?),
-        _ => FPropertyTagType::StructProperty(UScriptStruct::new(reader, name_map, import_map, inner_type)?),
-    })
-}
-
 impl UScriptMap {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, key_type: &str, value_type: &str) -> ParserResult<Self> {
-        let num_keys_to_remove = reader.read_i32::<LittleEndian>()?;
-        for _i in 0..num_keys_to_remove {
-            // I have no clue what to do with these.
-            let _key = read_map_value(reader, key_type, "StructProperty", name_map, import_map)?;
-        }
-        let num = reader.read_i32::<LittleEndian>()?;
-        let mut map_data: Vec<(FPropertyTagType, FPropertyTagType)> = Vec::new();
-        let err_f = |v| ParserError::add(v, format!("MapProperty error, types: {} {}", key_type, value_type));
-        for _i in 0..num {
-            map_data.push((
-                read_map_value(reader, key_type, "StructProperty", name_map, import_map).map_err(err_f)?,
-                read_map_value(reader, value_type, "StructProperty", name_map, import_map).map_err(err_f)?,
-            ));
-        }
-        Ok(Self {
-            map_data,
-        })
-    }
-
     fn new_unversioned(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, key_type: &TagMapping, value_type: &TagMapping) -> ParserResult<Self> {
         let remove_keys = reader.read_u32::<LittleEndian>()?;
         let element_count = reader.read_u32::<LittleEndian>()?;
@@ -2035,18 +1954,6 @@ impl NewableWithNameMap for FFieldPath {
     }
 }
 
-#[derive(Debug)]
-enum FPropertyTagData {
-    StructProperty (String, FGuid),
-    BoolProperty (bool),
-    ByteProperty (String),
-    EnumProperty (String),
-    ArrayProperty (String),
-    MapProperty (String, String),
-    SetProperty (String),
-    NoData,
-}
-
 #[derive(Debug, Serialize)]
 #[serde(untagged)]
 pub enum FPropertyTagType {
@@ -2073,79 +1980,11 @@ pub enum FPropertyTagType {
     FieldPathProperty(FFieldPath),
 }
 
-impl FPropertyTagType {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap,
-                    property_type: &str, tag_data: Option<&FPropertyTagData>) -> ParserResult<Self> {
-        Ok(match property_type {
-            "BoolProperty" => FPropertyTagType::BoolProperty(
-                match tag_data.unwrap() {
-                    FPropertyTagData::BoolProperty(val) => val.clone(),
-                    _ => panic!("Bool property does not have bool data"),
-                }
-            ),
-            "StructProperty" => FPropertyTagType::StructProperty(
-                match tag_data.unwrap() {
-                    FPropertyTagData::StructProperty(name, _guid) => UScriptStruct::new(reader, name_map, import_map, name)?,
-                    _ => panic!("Struct does not have struct data"),
-                }
-            ),
-            "ObjectProperty" => FPropertyTagType::ObjectProperty(FPackageIndex::new_n(reader, name_map, import_map)?),
-            "InterfaceProperty" => FPropertyTagType::InterfaceProperty(UInterfaceProperty::new_n(reader, name_map, import_map)?),
-            "FloatProperty" =>  FPropertyTagType::FloatProperty(reader.read_f32::<LittleEndian>()?),
-            "TextProperty" => FPropertyTagType::TextProperty(FText::new(reader)?),
-            "StrProperty" => FPropertyTagType::StrProperty(read_string(reader)?),
-            "NameProperty" => FPropertyTagType::NameProperty(read_fname(reader, name_map)?),
-            "IntProperty" => FPropertyTagType::IntProperty(reader.read_i32::<LittleEndian>()?),
-            "UInt16Property" => FPropertyTagType::UInt16Property(reader.read_u16::<LittleEndian>()?),
-            "UInt32Property" => FPropertyTagType::UInt32Property(reader.read_u32::<LittleEndian>()?),
-            "UInt64Property" => FPropertyTagType::UInt64Property(reader.read_u64::<LittleEndian>()?),
-            "ArrayProperty" => match tag_data.unwrap() {
-                FPropertyTagData::ArrayProperty(inner_type) => FPropertyTagType::ArrayProperty(
-                    UScriptArray::new(reader, inner_type, name_map, import_map)?
-                ),
-                _ => panic!("Could not read array from non-array"),
-            },
-            "MapProperty" => match tag_data.unwrap() {
-                FPropertyTagData::MapProperty(key_type, value_type) => FPropertyTagType::MapProperty(
-                    UScriptMap::new(reader, name_map, import_map, key_type, value_type)?,
-                ),
-                _ => panic!("Map needs map data"),
-            },
-            "ByteProperty" => match tag_data.unwrap() {
-                FPropertyTagData::ByteProperty(name) => {
-                    if name == "None" { FPropertyTagType::ByteProperty(reader.read_u8()?) } else { FPropertyTagType::NameProperty(read_fname(reader, name_map)?) }
-                },
-                _ => panic!("Byte needs byte data"),
-            },
-            "EnumProperty" => FPropertyTagType::EnumProperty(
-                match tag_data {
-                    Some(FPropertyTagData::EnumProperty(val)) => {
-                        if val == "None" { None } else { Some(read_fname(reader, name_map)?) }
-                    },
-                    None => {
-                        None
-                    },
-                    _ => panic!("Enum property does not have enum data"),
-                }
-            ),
-            "DelegateProperty" => FPropertyTagType::DelegateProperty(FScriptDelegate::new_n(reader, name_map, import_map)?),
-            "MulticastDelegateProperty" => FPropertyTagType::MulticastDelegateProperty(read_tarray_n(reader, name_map, import_map)?),
-            "MulticastSparseDelegateProperty" => FPropertyTagType::MulticastDelegateProperty(read_tarray_n(reader, name_map, import_map)?),
-            "MulticastInlineDelegateProperty" => FPropertyTagType::MulticastDelegateProperty(read_tarray_n(reader, name_map, import_map)?),
-            "SoftObjectProperty" => FPropertyTagType::SoftObjectProperty(FSoftObjectPath::new_n(reader, name_map, import_map)?),
-            "FieldPathProperty" => FPropertyTagType::FieldPathProperty(FFieldPath::new_n(reader, name_map, import_map)?),
-            _ => return Err(ParserError::new(format!("Could not read property type: {} at pos {}", property_type, reader.position()))),
-        })
-    }
-}
-
 #[derive(Debug)]
 pub struct FPropertyTag {
     name: String,
-    tag_data: FPropertyTagData,
     size: i32,
-    property_guid: Option<FGuid>,
-    tag: Option<FPropertyTagType>,
+    tag: FPropertyTagType,
 }
 
 impl FPropertyTag {
@@ -2154,86 +1993,8 @@ impl FPropertyTag {
     }
 
     pub fn get_data(&self) -> &FPropertyTagType {
-        match &self.tag {
-            Some(data) => data,
-            None => panic!("no data"),
-        }
+        &self.tag
     }
-}
-
-// I have no idea how to do this properly.
-fn tag_data_overrides(tag_name: &str) -> Option<FPropertyTagData> {
-    match tag_name {
-        "BindingIdToReferences" => Some(FPropertyTagData::MapProperty("Guid".to_owned(), "LevelSequenceBindingReferenceArray".to_owned())),
-        "Tracks" => Some(FPropertyTagData::MapProperty("MovieSceneTrackIdentifier".to_owned(), "MovieSceneEvaluationTrack".to_owned())),
-        "SubTemplateSerialNumbers" => Some(FPropertyTagData::MapProperty("MovieSceneSequenceID".to_owned(), "UInt32Property".to_owned())),
-        "SubSequences" => Some(FPropertyTagData::MapProperty("MovieSceneSequenceID".to_owned(), "MovieSceneSubSequenceData".to_owned())),
-        "Hierarchy" => Some(FPropertyTagData::MapProperty("MovieSceneSequenceID".to_owned(), "MovieSceneSequenceHierarchyNode".to_owned())),
-        "TrackSignatureToTrackIdentifier" => Some(FPropertyTagData::MapProperty("Guid".to_owned(), "MovieSceneTrackIdentifier".to_owned())),
-        "SubSectionRanges" => Some(FPropertyTagData::MapProperty("Guid".to_owned(), "MovieSceneFrameRange".to_owned())),
-        _ => None,
-    }
-}
-
-fn read_property_tag(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, read_data: bool) -> ParserResult<Option<FPropertyTag>> {
-    let name = read_fname(reader, name_map)?;
-    if name == "None" {
-        return Ok(None);
-    }
-
-    let property_type = read_fname(reader, name_map)?.trim().to_owned();
-    let size = reader.read_i32::<LittleEndian>()?;
-    let _array_index = reader.read_i32::<LittleEndian>()?;
-
-    let mut tag_data = match property_type.as_ref() {
-        "StructProperty" => FPropertyTagData::StructProperty(read_fname(reader, name_map)?, FGuid::new(reader)?),
-        "BoolProperty" => FPropertyTagData::BoolProperty(reader.read_u8()? != 0),
-        "EnumProperty" => FPropertyTagData::EnumProperty(read_fname(reader, name_map)?),
-        "ByteProperty" => FPropertyTagData::ByteProperty(read_fname(reader, name_map)?),
-        "ArrayProperty" => FPropertyTagData::ArrayProperty(read_fname(reader, name_map)?),
-        "MapProperty" => FPropertyTagData::MapProperty(read_fname(reader, name_map)?, read_fname(reader, name_map)?),
-        "SetProperty" => FPropertyTagData::SetProperty(read_fname(reader, name_map)?),
-        _ => FPropertyTagData::NoData,
-    };
-
-    // MapProperty doesn't seem to store the inner types as their types when they're UStructs.
-    if property_type == "MapProperty" {
-        tag_data = match tag_data_overrides(&name) {
-            Some(data) => data,
-            None => tag_data,
-        };
-    }
-
-    let has_property_guid = reader.read_u8()? != 0;
-    let property_guid = match has_property_guid {
-        true => Some(FGuid::new(reader)?),
-        false => None,
-    };
-
-    let property_desc = format!("Property Tag: {} ({}) {}", name, property_type, size);
-
-    let pos = reader.position();
-    let tag = match read_data {
-        true => Some(FPropertyTagType::new(reader, name_map, import_map, property_type.as_ref(), Some(&tag_data)).map_err(|v| ParserError::add(v, property_desc))?),
-        false => None,
-    };
-    let final_pos = pos + (size as u64);
-
-    if read_data && final_pos != reader.position() {
-        // println!("Could not read entire property: {} ({}) - {} {}", name, property_type, (final_pos as i64) - (reader.position() as i64), reader.position());
-    }
-
-    if read_data {
-        reader.seek(SeekFrom::Start(final_pos as u64)).expect("Could not seek to size");
-    }
-
-    Ok(Some(FPropertyTag {
-        name,
-        tag_data,
-        size,
-        property_guid,
-        tag,
-    }))
 }
 
 fn read_unversioned_tag(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, mapping: &TagMapping) -> ParserResult<FPropertyTagType> {
@@ -2270,13 +2031,13 @@ fn read_unversioned_property(reader: &mut ReaderCursor, name_map: &NameMap, impo
     let err = |v| ParserError::add(v, format!("Property: {} at {}", mapping.get_name(), start_pos));
     let tag = read_unversioned_tag(reader, name_map, import_map, &mapping.get_type()).map_err(err)?;
 
+    // println!("Tag: {} {} {:#?}", start_pos, mapping.get_name(), tag);
+
     let size = (reader.position() - start_pos) as i32;
     Ok(FPropertyTag {
         name: mapping.get_name().to_owned(),
-        tag_data: FPropertyTagData::NoData,
         size,
-        property_guid: None,
-        tag: Some(tag),
+        tag,
     })
 }
 
@@ -2454,9 +2215,33 @@ impl FTexturePlatformData {
 
 pub trait PackageExport: std::fmt::Debug + TraitSerialize {
     fn get_export_type(&self) -> &str;
+    fn into_any(self: Box<Self>) -> Box<dyn Any>;
 }
 
 serialize_trait_object!(PackageExport);
+
+#[derive(Debug, Serialize)]
+struct EmptyPackage {
+
+}
+
+impl PackageExport for EmptyPackage {
+    fn get_export_type(&self) -> &str {
+        "EmptyPackage"
+    }
+
+    fn into_any(self: Box<Self>) -> Box<dyn Any> {
+        self
+    }
+}
+
+impl EmptyPackage {
+    fn new() -> Self {
+        Self {
+
+        }
+    }
+}
 
 #[derive(Debug)]
 struct FFragment {
@@ -2499,6 +2284,13 @@ impl Newable for FUnversionedHeader {
     fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
         let mut fragments = Vec::new();
         let mut zero_mask_num = 0;
+
+        /*if reader.position() == 0 {
+            return Ok(Self {
+                fragments: Vec::new(),
+                zero_data: BitVec::new(),
+            });
+        }*/
 
         loop {
             let property_header = FFragment::new(reader)?;
@@ -2655,21 +2447,6 @@ impl UObject {
         })
     }
 
-    fn serialize_properties(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Vec<FPropertyTag>> {
-        let mut properties = Vec::new();
-        loop {
-            let tag = read_property_tag(reader, name_map, import_map, true)?;
-            let tag = match tag {
-                Some(data) => data,
-                None => break,
-            };
-
-            properties.push(tag);
-        }
-
-        Ok(properties)
-    }
-
     pub fn get_properties(&self) -> &Vec<FPropertyTag> {
         &self.properties
     }
@@ -2706,6 +2483,10 @@ impl Serialize for UObject {
 impl PackageExport for UObject {
     fn get_export_type(&self) -> &str {
         &self.export_type
+    }
+
+    fn into_any(self: Box<Self>) -> Box<dyn Any> {
+        self
     }
 }
 
@@ -2786,6 +2567,10 @@ impl PackageExport for Texture2D {
     fn get_export_type(&self) -> &str {
         "Texture2D"
     }
+
+    fn into_any(self: Box<Self>) -> Box<dyn Any> {
+        self
+    }
 }
 
 impl Serialize for Texture2D {
@@ -2794,7 +2579,7 @@ impl Serialize for Texture2D {
     }
 }
 
-/*#[derive(Debug)]
+#[derive(Debug)]
 pub struct UDataTable {
     super_object: UObject,
     rows: Vec<(String, UObject)>,
@@ -2804,21 +2589,41 @@ impl PackageExport for UDataTable {
     fn get_export_type(&self) -> &str {
         "DataTable"
     }
+
+    fn into_any(self: Box<Self>) -> Box<dyn Any> {
+        self
+    }
 }
 
 impl UDataTable {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
-        let super_object = UObject::new(reader, name_map, import_map, "RowStruct")?;
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, global_map: &LoaderGlobalData) -> ParserResult<Self> {
+        let super_object = UObject::new(reader, name_map, import_map, "DataTable", None)?;
+
+        // Find the RowStruct type
+        let row_prop = match super_object.properties.iter().find(|v| v.name == "RowStruct") {
+            Some(p) => p,
+            None => return Err(ParserError::new(format!("RowStruct not found"))),
+        };
+        let package_index = match row_prop.get_data() {
+            FPropertyTagType::ObjectProperty(index) => index,
+            _ => return Err(ParserError::new(format!("RowStruct is not ObjectProperty"))),
+        };
+        let object_index = match package_index.get_import() {
+            Some(import) => import,
+            None => return Err(ParserError::new(format!("Import not found in Import Map"))),
+        };
+        let struct_name = object_index.get_export_name(global_map, name_map)?;
+        println!("Struct Name: {}", struct_name);
+        println!("Pos: {}", reader.position());
+
+        let _zero_data = reader.read_i32::<LittleEndian>()?;
         let num_rows = reader.read_i32::<LittleEndian>()?;
 
         let mut rows = Vec::new();
 
         for _i in 0..num_rows {
             let row_name = read_fname(reader, name_map)?;
-            let row_object = UObject {
-                properties: UObject::serialize_properties(reader, name_map, import_map)?,
-                export_type: "RowStruct".to_owned(),
-            };
+            let row_object = UObject::new(reader, name_map, import_map, &struct_name, None)?;
             rows.push((row_name, row_object));
         }
 
@@ -2839,7 +2644,7 @@ impl Serialize for UDataTable {
     }
 }
 
-#[derive(Debug, Serialize)]
+/*#[derive(Debug, Serialize)]
 enum ECurveTableMode {
     Empty,
     SimpleCurves,
@@ -2892,10 +2697,11 @@ impl PackageExport for UCurveTable {
     }
 }*/
 
-fn select_export(export_name: &str, reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, export: &FExportMapEntry, ubulk: &mut Option<ReaderCursor>) -> ParserResult<Box<dyn Any>> {
+fn select_export(export_name: &str, reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, global_map: &LoaderGlobalData, export: &FExportMapEntry, ubulk: &mut Option<ReaderCursor>) -> ParserResult<Box<dyn PackageExport>> {
     let export_index = Some(export.global_import_index.clone());
     Ok(match export_name {
         "Texture2D" => Box::new(Texture2D::new(reader, name_map, import_map, ubulk, export_index)?),
+        "DataTable" => Box::new(UDataTable::new(reader, name_map, import_map, global_map)?),
         _ => Box::new(UObject::new(reader, name_map, import_map, export_name, export_index)?),
     })
 }
@@ -2906,7 +2712,7 @@ fn select_export(export_name: &str, reader: &mut ReaderCursor, name_map: &NameMa
 /// Note that exports are of type `dyn Any` and will need to be downcasted to their appropriate types before being usable
 pub struct Package {
     summary: FPackageSummary,
-    exports: Vec<Box<dyn Any>>,
+    exports: Vec<Box<dyn PackageExport>>,
 }
 
 #[allow(dead_code)]
@@ -2946,17 +2752,17 @@ impl Package {
             None => None,
         };
 
-        let mut exports: Vec<Box<dyn Any>> = Vec::new();
+        let mut exports: Vec<Box<dyn PackageExport>> = Vec::new();
 
         for export_idx in &export_order {
             let export = &export_map[*export_idx as usize];
             let export_name = export.get_export_name(global_map, &name_map)?;
-            exports.push(select_export(&export_name, &mut cursor, &name_map, &import_map, &export, &mut ubulk_cursor)?);
+            exports.push(select_export(&export_name, &mut cursor, &name_map, &import_map, global_map, &export, &mut ubulk_cursor)?);
         }
 
-        let mut order_exports: Vec<Box<dyn Any>> = Vec::new();
+        let mut order_exports: Vec<Box<dyn PackageExport>> = Vec::new();
         for export_idx in &export_order {
-            let mut export: Box<dyn Any> = Box::new(());
+            let mut export: Box<dyn PackageExport> = Box::new(EmptyPackage::new());
             std::mem::swap(&mut export, &mut exports[*export_idx as usize]);
             order_exports.push(export);
         }
@@ -3027,21 +2833,21 @@ impl Package {
         }
     }
 
-    pub fn get_exports(self) -> Vec<Box<dyn Any>> {
+    pub fn get_exports(self) -> Vec<Box<dyn PackageExport>> {
         self.exports
     }
 
     /// Returns a reference to an export
     ///
     /// Export will live as long as the underlying Package
-    pub fn get_export(&self, index: usize) -> ParserResult<&dyn Any> {
+    pub fn get_export(&self, index: usize) -> ParserResult<&dyn PackageExport> {
         Ok(match self.exports.get(index) {
             Some(data) => data,
             None => return Err(ParserError::new(format!("index {} out of range", index))),
         }.as_ref())
     }
 
-    pub fn get_export_move(mut self, index: usize) -> ParserResult<Box<dyn Any>> {
+    pub fn get_export_move(mut self, index: usize) -> ParserResult<Box<dyn PackageExport>> {
         if index < self.exports.len() {
             Ok(self.exports.swap_remove(index))
         } else {
@@ -3060,55 +2866,17 @@ impl Package {
 impl fmt::Debug for Package {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for export in &self.exports {
-            if let Some(obj) = get_export(export) {
-                write!(f, "Export: {:#?}\n", obj)?
-            }
+            write!(f, "Export: {:#?}\n", export)?
         }
         write!(f, "Package Summary: {:#?}\n", self.summary)
     }
-}
-
-// Still working out how I would ever do this properly. An enum doesn't seem quite right.
-fn get_export(export: &Box<dyn Any>) -> Option<&dyn PackageExport> {
-    if let Some(obj) = export.downcast_ref::<UObject>() {
-        return Some(obj);
-    }
-    if let Some(texture) = export.downcast_ref::<Texture2D>() {
-        return Some(texture);
-    }
-    /*if let Some(table) = export.downcast_ref::<UDataTable>() {
-        return Some(table);
-    }
-    if let Some(mesh) = export.downcast_ref::<USkeletalMesh>() {
-        return Some(mesh);
-    }
-    if let Some(animation) = export.downcast_ref::<UAnimSequence>() {
-        return Some(animation);
-    }
-    if let Some(skeleton) = export.downcast_ref::<USkeleton>() {
-        return Some(skeleton);
-    }
-    if let Some(curve_table) = export.downcast_ref::<UCurveTable>() {
-        return Some(curve_table);
-    }
-    if let Some(sound_wave) = export.downcast_ref::<USoundWave>() {
-        return Some(sound_wave);
-    }
-    if let Some(material) = export.downcast_ref::<material_instance::UMaterialInstanceConstant>() {
-        return Some(material);
-    }*/
-    None
 }
 
 impl Serialize for Package {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
         let mut seq = serializer.serialize_seq(Some(self.exports.len()))?;
         for e in &self.exports {
-            if let Some(obj) = get_export(e) {
-                seq.serialize_element(obj)?;
-                continue;
-            }
-            seq.serialize_element("None")?;
+            seq.serialize_element(e)?;
         }
         seq.end()
     }

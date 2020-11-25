@@ -27,7 +27,7 @@ pub fn read_asset_from_file(file: &str) -> ParserResult<Package> {
 }
 
 pub fn read_texture(package: Package) -> ParserResult<Vec<u8>> {
-    let package_export = package.get_export_move(0)?;
+    let package_export = package.get_export_move(0)?.into_any();
     let texture = match package_export.downcast::<Texture2D>() {
         Ok(data) => data,
         Err(_) => return Err(ParserError::new(format!("Export is not texture"))),
