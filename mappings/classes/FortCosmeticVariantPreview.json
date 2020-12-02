@@ -1,1 +1,37 @@
-{"name":"FortCosmeticVariantPreview","properties":[{"index":0,"name":"UnlockCondition","mapping_type":{"type":"TextProperty"}},{"index":1,"name":"PreviewTime","mapping_type":{"type":"FloatProperty"}},{"index":2,"name":"VariantOptions","mapping_type":{"type":"ArrayProperty","sub_type":{"type":"StructProperty","struct_type":"McpVariantChannelInfo"}}},{"index":3,"name":"AdditionalItems","mapping_type":{"type":"ArrayProperty","sub_type":{"type":"StructProperty","struct_type":"FortCosmeticVariantPreviewElement"}}}]}
+{
+    "name": "FortCosmeticVariantPreview",
+    "properties": [{
+            "index": 0,
+            "name": "UnlockCondition",
+            "mapping_type": {
+                "type": "TextProperty"
+            }
+        }, {
+            "index": 1,
+            "name": "PreviewTime",
+            "mapping_type": {
+                "type": "FloatProperty"
+            }
+        }, {
+            "index": 2,
+            "name": "VariantOptions",
+            "mapping_type": {
+                "type": "ArrayProperty",
+                "sub_type": {
+                    "type": "StructProperty",
+                    "struct_type": "McpVariantChannelInfo"
+                }
+            }
+        }, {
+            "index": 3,
+            "name": "AdditionalItems",
+            "mapping_type": {
+                "type": "ArrayProperty",
+                "sub_type": {
+                    "type": "StructProperty",
+                    "struct_type": "FortCosmeticVariantPreviewElement"
+                }
+            }
+        }
+    ]
+}

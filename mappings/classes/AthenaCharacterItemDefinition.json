@@ -74,14 +74,27 @@
                 }
             }
         }, {
-            "index": 26,
+			"index": 25,
+			"name": "Index25",
+			"mapping_type": {
+				"type": "MapProperty",
+				"key_type": {
+					"type": "StructProperty",
+					"struct_type": "WeirdVariantStruct"
+				},
+				"value_type": {
+					"type": "SoftObjectProperty"
+				}
+			}
+		}, {
+            "index": 27,
             "name": "ObservedPlayerStats",
             "mapping_type": {
                 "type": "StructProperty",
                 "struct_type": "GameplayTagContainer"
             }
         }, {
-            "index": 27,
+            "index": 28,
             "name": "BuiltInEmotes",
             "mapping_type": {
                 "type": "ArrayProperty",
@@ -90,7 +103,7 @@
                 }
             }
         }, {
-            "index": 28,
+            "index": 29,
             "name": "ItemVariants",
             "mapping_type": {
                 "type": "ArrayProperty",
@@ -99,14 +112,14 @@
                 }
             }
         }, {
-            "index": 29,
+            "index": 30,
             "name": "VariantChannelToUseForThumbnails",
             "mapping_type": {
                 "type": "StructProperty",
                 "struct_type": "GameplayTag"
             }
         }, {
-            "index": 30,
+            "index": 31,
             "name": "ItemVariantPreviews",
             "mapping_type": {
                 "type": "ArrayProperty",
@@ -116,89 +129,107 @@
                 }
             }
         }, {
-            "index": 35,
+			"index": 34,
+			"name": "Index34",
+			"mapping_type": {
+				"type": "TextProperty"
+			}
+		}, {
+            "index": 36,
             "name": "ItemPreviewActorClass",
             "mapping_type": {
                 "type": "SoftObjectProperty"
             }
         }, {
-            "index": 56,
+			"index": 45,
+			"name": "Index45",
+			"mapping_type": {
+				"type": "TextProperty"
+			}
+		}, {
+			"index": 46,
+			"name": "Index46",
+			"mapping_type": {
+				"type": "SoftObjectProperty"
+			}
+		}, {
+            "index": 57,
             "name": "Rarity",
             "mapping_type": {
                 "type": "EnumProperty",
                 "enum_type": "EFortRarity"
             }
         }, {
-            "index": 64,
+            "index": 65,
             "name": "bNeverPersisted",
             "mapping_type": {
                 "type": "BoolProperty"
             }
         }, {
-            "index": 70,
+            "index": 71,
             "name": "DisplayName",
             "mapping_type": {
                 "type": "TextProperty"
             }
         }, {
-            "index": 71,
+            "index": 72,
             "name": "ShortDescription",
             "mapping_type": {
                 "type": "TextProperty"
             }
         }, {
-            "index": 72,
+            "index": 73,
             "name": "Description",
             "mapping_type": {
                 "type": "TextProperty"
             }
         }, {
-            "index": 75,
+            "index": 76,
             "name": "GameplayTags",
             "mapping_type": {
                 "type": "StructProperty",
                 "struct_type": "GameplayTagContainer"
             }
         }, {
-            "index": 86,
+            "index": 87,
             "name": "SmallPreviewImage",
             "mapping_type": {
                 "type": "SoftObjectProperty"
             }
         }, {
-            "index": 87,
+            "index": 88,
             "name": "LargePreviewImage",
             "mapping_type": {
                 "type": "SoftObjectProperty"
             }
         }, {
-            "index": 88,
+            "index": 89,
             "name": "DisplayAssetPath",
             "mapping_type": {
                 "type": "SoftObjectProperty"
             }
         }, {
-            "index": 89,
+            "index": 90,
             "name": "Series",
             "mapping_type": {
                 "type": "ObjectProperty"
             }
         }, {
-            "index": 90,
+            "index": 91,
             "name": "FrontendPreviewPivotOffset",
             "mapping_type": {
                 "type": "StructProperty",
                 "struct_type": "Vector"
             }
         }, {
-            "index": 91,
+            "index": 92,
             "name": "FrontendPreviewInitialRotation",
             "mapping_type": {
                 "type": "StructProperty",
                 "struct_type": "Rotator"
             }
         }, {
-            "index": 92,
+            "index": 93,
             "name": "FrontendPreviewMeshOverride",
             "mapping_type": {
                 "type": "SoftObjectProperty"

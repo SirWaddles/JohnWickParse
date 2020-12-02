@@ -254,7 +254,7 @@
                 "struct_type": "GameplayTagContainer"
             }
         }, {
-            "index": 59,
+            "index": 60,
             "name": "ItemVariants",
             "mapping_type": {
                 "type": "ArrayProperty",
@@ -263,93 +263,93 @@
                 }
             }
         }, {
-            "index": 66,
+            "index": 67,
             "name": "ItemPreviewActorClass",
             "mapping_type": {
                 "type": "SoftObjectProperty"
             }
         }, {
-            "index": 70,
+            "index": 71,
             "name": "ItemPreviewHero",
             "mapping_type": {
                 "type": "SoftObjectProperty"
             }
         }, {
-            "index": 76,
+            "index": 77,
             "name": "ExclusiveIcon",
             "mapping_type": {
                 "type": "SoftObjectProperty"
             }
         }, {
-            "index": 87,
+            "index": 88,
             "name": "Rarity",
             "mapping_type": {
                 "type": "EnumProperty",
                 "enum_type": "EFortRarity"
             }
         }, {
-            "index": 95,
+            "index": 96,
             "name": "bNeverPersisted",
             "mapping_type": {
                 "type": "BoolProperty"
             }
         }, {
-            "index": 101,
+            "index": 102,
             "name": "DisplayName",
             "mapping_type": {
                 "type": "TextProperty"
             }
         }, {
-            "index": 102,
+            "index": 103,
             "name": "ShortDescription",
             "mapping_type": {
                 "type": "TextProperty"
             }
         }, {
-            "index": 103,
+            "index": 104,
             "name": "Description",
             "mapping_type": {
                 "type": "TextProperty"
             }
         }, {
-            "index": 106,
+            "index": 107,
             "name": "GameplayTags",
             "mapping_type": {
                 "type": "StructProperty",
                 "struct_type": "GameplayTagContainer"
             }
         }, {
-            "index": 112,
+            "index": 113,
             "name": "FrontendPreviewScale",
             "mapping_type": {
                 "type": "FloatProperty"
             }
         }, {
-            "index": 117,
+            "index": 118,
             "name": "SmallPreviewImage",
             "mapping_type": {
                 "type": "SoftObjectProperty"
             }
         }, {
-            "index": 118,
+            "index": 119,
             "name": "LargePreviewImage",
             "mapping_type": {
                 "type": "SoftObjectProperty"
             }
         }, {
-            "index": 119,
+            "index": 120,
             "name": "DisplayAssetPath",
             "mapping_type": {
                 "type": "SoftObjectProperty"
             }
         }, {
-            "index": 120,
+            "index": 121,
             "name": "Series",
             "mapping_type": {
                 "type": "ObjectProperty"
             }
         }, {
-            "index": 121,
+            "index": 122,
             "name": "FrontendPreviewPivotOffset",
             "mapping_type": {
                 "type": "StructProperty",

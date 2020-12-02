@@ -1,0 +1,21 @@
+{
+	"name": "WeirdVariantStruct",
+	"properties": [
+		{
+			"index": 0,
+			"name": "Index2",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "GameplayTag"
+			}
+		},
+		{
+			"index": 1,
+			"name": "Index2",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "GameplayTag"
+			}
+		}
+	]
+}

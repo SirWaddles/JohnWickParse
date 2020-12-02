@@ -16,59 +16,59 @@
             }
         }, {
             "name": "DisplayName",
-            "index": 67,
+            "index": 64,
             "mapping_type": {
                 "type": "TextProperty"
             }
         }, {
             "name": "ShortDescription",
-            "index": 68,
+            "index": 65,
             "mapping_type": {
                 "type": "TextProperty"
             }
         }, {
             "name": "Description",
-            "index": 69,
+            "index": 66,
             "mapping_type": {
                 "type": "TextProperty"
             }
         }, {
             "name": "GameplayTags",
-            "index": 72,
+            "index": 69,
             "mapping_type": {
                 "type": "StructProperty",
                 "struct_type": "GameplayTagContainer"
             }
         }, {
             "name": "FrontendPreviewScale",
-            "index": 78,
+            "index": 75,
             "mapping_type": {
                 "type": "FloatProperty"
             }
         }, {
             "name": "SmallPreviewImage",
-            "index": 83,
+            "index": 80,
             "mapping_type": {
                 "type": "StructProperty",
                 "struct_type": "SoftObjectPath"
             }
         }, {
             "name": "LargePreviewImage",
-            "index": 84,
+            "index": 81,
             "mapping_type": {
                 "type": "StructProperty",
                 "struct_type": "SoftObjectPath"
             }
         }, {
             "name": "FrontendPreviewPivotOffset",
-            "index": 87,
+            "index": 84,
             "mapping_type": {
                 "type": "StructProperty",
                 "struct_type": "Vector"
             }
         }, {
             "name": "FrontendPreviewInitalRotation",
-            "index": 88,
+            "index": 85,
             "mapping_type": {
                 "type": "StructProperty",
                 "struct_type": "Rotator"
@@ -82,7 +82,7 @@
             }
         }, {
             "name": "Series",
-            "index": 86,
+            "index": 83,
             "mapping_type": {
                 "type": "ObjectProperty"
             }

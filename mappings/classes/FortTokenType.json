@@ -39,6 +39,20 @@
 			}
 		},
 		{
+			"index": 11,
+			"name": "Index11",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
+			"index": 12,
+			"name": "Index12",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		},
+		{
 			"index": 15,
 			"name": "Rarity",
 			"mapping_type": {

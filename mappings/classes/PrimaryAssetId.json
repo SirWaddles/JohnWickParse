@@ -1,0 +1,20 @@
+{
+	"name": "PrimaryAssetId",
+	"properties": [
+		{
+			"index": 0,
+			"name": "PrimaryAssetType",
+			"mapping_type": {
+				"type": "StructProperty",
+				"struct_type": "PrimaryAssetType"
+			}
+		},
+		{
+			"index": 1,
+			"name": "PrimaryAssetName",
+			"mapping_type": {
+				"type": "NameProperty"
+			}
+		}
+	]
+}

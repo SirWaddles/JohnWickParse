@@ -81,6 +81,12 @@
                 "type": "SoftObjectProperty"
             }
         }, {
+			"index": 16,
+			"name": "Index16",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		}, {
             "index": 19,
             "name": "bAttachNiagaraEffectToPlayerPawn",
             "mapping_type": {
@@ -142,7 +148,7 @@
                 "struct_type": "Rotator"
             }
         }, {
-            "index": 44,
+            "index": 45,
             "name": "MaterialOverrides",
             "mapping_type": {
                 "type": "ArrayProperty",
@@ -152,7 +158,7 @@
                 }
             }
         }, {
-            "index": 47,
+            "index": 48,
             "name": "ItemVariants",
             "mapping_type": {
                 "type": "ArrayProperty",
@@ -161,7 +167,7 @@
                 }
             }
         }, {
-            "index": 49,
+            "index": 50,
             "name": "ItemVariantPreviews",
             "mapping_type": {
                 "type": "ArrayProperty",
@@ -171,127 +177,127 @@
                 }
             }
         }, {
-            "index": 53,
+            "index": 54,
             "name": "UnlockingItemDef",
             "mapping_type": {
                 "type": "SoftObjectProperty"
             }
         }, {
-            "index": 54,
+            "index": 55,
             "name": "ItemPreviewActorClass",
             "mapping_type": {
                 "type": "SoftObjectProperty"
             }
         }, {
-            "index": 58,
+            "index": 59,
             "name": "ItemPreviewHero",
             "mapping_type": {
                 "type": "SoftObjectProperty"
             }
         }, {
-            "index": 61,
+            "index": 62,
             "name": "ExclusiveRequiresOutfitTags",
             "mapping_type": {
                 "type": "StructProperty",
                 "struct_type": "GameplayTagContainer"
             }
         }, {
-            "index": 62,
+            "index": 63,
             "name": "CustomExclusiveCallout",
             "mapping_type": {
                 "type": "TextProperty"
             }
         }, {
-            "index": 63,
+            "index": 64,
             "name": "ExclusiveDescription",
             "mapping_type": {
                 "type": "TextProperty"
             }
         }, {
-            "index": 75,
+            "index": 76,
             "name": "Rarity",
             "mapping_type": {
                 "type": "EnumProperty",
                 "enum_type": "EFortRarity"
             }
         }, {
-            "index": 83,
+            "index": 84,
             "name": "bNeverPersisted",
             "mapping_type": {
                 "type": "BoolProperty"
             }
         }, {
-            "index": 89,
+            "index": 90,
             "name": "DisplayName",
             "mapping_type": {
                 "type": "TextProperty"
             }
         }, {
-            "index": 90,
+            "index": 91,
             "name": "ShortDescription",
             "mapping_type": {
                 "type": "TextProperty"
             }
         }, {
-            "index": 91,
+            "index": 92,
             "name": "Description",
             "mapping_type": {
                 "type": "TextProperty"
             }
         }, {
-            "index": 94,
+            "index": 95,
             "name": "GameplayTags",
             "mapping_type": {
                 "type": "StructProperty",
                 "struct_type": "GameplayTagContainer"
             }
         }, {
-            "index": 100,
+            "index": 101,
             "name": "FrontendPreviewScale",
             "mapping_type": {
                 "type": "FloatProperty"
             }
         }, {
-            "index": 105,
+            "index": 106,
             "name": "SmallPreviewImage",
             "mapping_type": {
                 "type": "SoftObjectProperty"
             }
         }, {
-            "index": 106,
+            "index": 107,
             "name": "LargePreviewImage",
             "mapping_type": {
                 "type": "SoftObjectProperty"
             }
         }, {
-            "index": 107,
+            "index": 108,
             "name": "DisplayAssetPath",
             "mapping_type": {
                 "type": "StructProperty",
                 "struct_type": "SoftObjectPath"
             }
         }, {
-            "index": 108,
+            "index": 109,
             "name": "Series",
             "mapping_type": {
                 "type": "ObjectProperty"
             }
         }, {
-            "index": 109,
+            "index": 110,
             "name": "FrontendPreviewPivotOffset",
             "mapping_type": {
                 "type": "StructProperty",
                 "struct_type": "Vector"
             }
         }, {
-            "index": 110,
+            "index": 111,
             "name": "FrontendPreviewInitialRotation",
             "mapping_type": {
                 "type": "StructProperty",
                 "struct_type": "Rotator"
             }
         }, {
-            "index": 111,
+            "index": 112,
             "name": "FrontendPreviewMeshOverride",
             "mapping_type": {
                 "type": "SoftObjectProperty"

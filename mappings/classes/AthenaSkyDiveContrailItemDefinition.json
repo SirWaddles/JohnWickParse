@@ -1,1 +1,170 @@
-{"name":"AthenaSkyDiveContrailItemDefinition","properties":[{"index":0,"name":"ContrailEffect","mapping_type":{"type":"SoftObjectProperty"}},{"index":1,"name":"FrontEndContrailEffect","mapping_type":{"type":"SoftObjectProperty"}},{"index":2,"name":"NiagaraContrailEffect","mapping_type":{"type":"SoftObjectProperty"}},{"index":6,"name":"VectorParameters","mapping_type":{"type":"ArrayProperty","sub_type":{"type":"StructProperty","struct_type":"VectorParticleParameter"}}},{"index":7,"name":"FloatParameters","mapping_type":{"type":"ArrayProperty","sub_type":{"type":"StructProperty","struct_type":"FloatParticleParameter"}}},{"index":8,"name":"bIsShuffleTile","mapping_type":{"type":"BoolProperty"}},{"index":20,"name":"PreviewPawnRotationOffset","mapping_type":{"type":"StructProperty","struct_type":"Rotator"}},{"index":28,"name":"ItemVariants","mapping_type":{"type":"ArrayProperty","sub_type":{"type":"ObjectProperty"}}},{"index":30,"name":"ItemVariantPreviews","mapping_type":{"type":"ArrayProperty","sub_type":{"type":"StructProperty","struct_type":"FortCosmeticVariantPreview"}}},{"index":35,"name":"ItemPreviewActorClass","mapping_type":{"type":"SoftObjectProperty"}},{"index":39,"name":"ItemPreviewHero","mapping_type":{"type":"SoftObjectProperty"}},{"index":56,"name":"Rarity","mapping_type":{"type":"EnumProperty","enum_type":"EFortRarity"}},{"index":70,"name":"DisplayName","mapping_type":{"type":"TextProperty"}},{"index":71,"name":"ShortDescription","mapping_type":{"type":"TextProperty"}},{"index":72,"name":"Description","mapping_type":{"type":"TextProperty"}},{"index":75,"name":"GameplayTags","mapping_type":{"type":"StructProperty","struct_type":"GameplayTagContainer"}},{"index":86,"name":"SmallPreviewImage","mapping_type":{"type":"SoftObjectProperty"}},{"index":87,"name":"LargePreviewImage","mapping_type":{"type":"SoftObjectProperty"}},{"index":88,"name":"DisplayAssetPath","mapping_type":{"type":"StructProperty","struct_type":"SoftObjectPath"}},{"index":89,"name":"Series","mapping_type":{"type":"ObjectProperty"}},{"index":90,"name":"FrontendPreviewPivotOffset","mapping_type":{"type":"StructProperty","struct_type":"Vector"}},{"index":91,"name":"FrontendPreviewInitialRotation","mapping_type":{"type":"StructProperty","struct_type":"Rotator"}},{"index":92,"name":"FrontendPreviewMeshOverride","mapping_type":{"type":"SoftObjectProperty"}}]}
+{
+    "name": "AthenaSkyDiveContrailItemDefinition",
+    "properties": [{
+            "index": 0,
+            "name": "ContrailEffect",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }, {
+            "index": 1,
+            "name": "FrontEndContrailEffect",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }, {
+            "index": 2,
+            "name": "NiagaraContrailEffect",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }, {
+            "index": 6,
+            "name": "VectorParameters",
+            "mapping_type": {
+                "type": "ArrayProperty",
+                "sub_type": {
+                    "type": "StructProperty",
+                    "struct_type": "VectorParticleParameter"
+                }
+            }
+        }, {
+            "index": 7,
+            "name": "FloatParameters",
+            "mapping_type": {
+                "type": "ArrayProperty",
+                "sub_type": {
+                    "type": "StructProperty",
+                    "struct_type": "FloatParticleParameter"
+                }
+            }
+        }, {
+			"index": 8,
+			"name": "Index8",
+			"mapping_type": {
+				"type": "BoolProperty"
+			}
+		}, {
+            "index": 9,
+            "name": "bIsShuffleTile",
+            "mapping_type": {
+                "type": "BoolProperty"
+            }
+        }, {
+            "index": 21,
+            "name": "PreviewPawnRotationOffset",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "Rotator"
+            }
+        }, {
+            "index": 30,
+            "name": "ItemVariants",
+            "mapping_type": {
+                "type": "ArrayProperty",
+                "sub_type": {
+                    "type": "ObjectProperty"
+                }
+            }
+        }, {
+            "index": 32,
+            "name": "ItemVariantPreviews",
+            "mapping_type": {
+                "type": "ArrayProperty",
+                "sub_type": {
+                    "type": "StructProperty",
+                    "struct_type": "FortCosmeticVariantPreview"
+                }
+            }
+        }, {
+            "index": 37,
+            "name": "ItemPreviewActorClass",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }, {
+            "index": 41,
+            "name": "ItemPreviewHero",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }, {
+            "index": 58,
+            "name": "Rarity",
+            "mapping_type": {
+                "type": "EnumProperty",
+                "enum_type": "EFortRarity"
+            }
+        }, {
+            "index": 72,
+            "name": "DisplayName",
+            "mapping_type": {
+                "type": "TextProperty"
+            }
+        }, {
+            "index": 73,
+            "name": "ShortDescription",
+            "mapping_type": {
+                "type": "TextProperty"
+            }
+        }, {
+            "index": 74,
+            "name": "Description",
+            "mapping_type": {
+                "type": "TextProperty"
+            }
+        }, {
+            "index": 77,
+            "name": "GameplayTags",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "GameplayTagContainer"
+            }
+        }, {
+            "index": 88,
+            "name": "SmallPreviewImage",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }, {
+            "index": 89,
+            "name": "LargePreviewImage",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }, {
+            "index": 90,
+            "name": "DisplayAssetPath",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "SoftObjectPath"
+            }
+        }, {
+            "index": 91,
+            "name": "Series",
+            "mapping_type": {
+                "type": "ObjectProperty"
+            }
+        }, {
+            "index": 92,
+            "name": "FrontendPreviewPivotOffset",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "Vector"
+            }
+        }, {
+            "index": 93,
+            "name": "FrontendPreviewInitialRotation",
+            "mapping_type": {
+                "type": "StructProperty",
+                "struct_type": "Rotator"
+            }
+        }, {
+            "index": 94,
+            "name": "FrontendPreviewMeshOverride",
+            "mapping_type": {
+                "type": "SoftObjectProperty"
+            }
+        }
+    ]
+}
