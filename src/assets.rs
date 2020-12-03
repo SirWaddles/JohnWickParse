@@ -1883,11 +1883,16 @@ impl UScriptMap {
         let element_count = reader.read_u32::<LittleEndian>()?;
         let rpos = reader.position();
 
+        let f_key_type = match key_type {
+            TagMapping::EnumProperty { .. } => TagMapping::NameProperty,
+            _ => key_type.clone(),
+        };
+
         let mut map_data = Vec::new();
         for i in 0..element_count {
             let err_f = |v| ParserError::add(v, format!("MapProperty error, types: {} of {} {} {:#?} {:#?} {}", i, element_count, remove_keys, key_type, value_type, rpos));
             map_data.push((
-                read_unversioned_tag(reader, name_map, import_map, key_type).map_err(err_f)?,
+                read_unversioned_tag(reader, name_map, import_map, &f_key_type).map_err(err_f)?,
                 read_unversioned_tag(reader, name_map, import_map, value_type).map_err(err_f)?
             ));
         }
@@ -2008,17 +2013,17 @@ fn read_unversioned_tag(reader: &mut ReaderCursor, name_map: &NameMap, import_ma
         TagMapping::StructProperty { struct_type } => FPropertyTagType::StructProperty(UScriptStruct::new(reader, name_map, import_map, struct_type)?),
         TagMapping::ObjectProperty => FPropertyTagType::ObjectProperty(FPackageIndex::new_n(reader, name_map, import_map)?),
         TagMapping::SoftObjectProperty => FPropertyTagType::SoftObjectProperty(FSoftObjectPath::new_n(reader, name_map, import_map)?),
-        TagMapping::EnumProperty { enum_type } => {
+        TagMapping::EnumProperty { enum_name } => {
             let val = reader.read_u8()?;
-            let data = match MAPPINGS.get_enum_mapping(enum_type, val as usize) {
+            let data = match MAPPINGS.get_enum_mapping(enum_name, val as usize) {
                 Some(d) => d.to_owned(),
                 None => val.to_string(),
             };
 
             FPropertyTagType::EnumProperty(Some(data))
         },
-        TagMapping::ArrayProperty { sub_type } => FPropertyTagType::ArrayProperty(UScriptArray::new_unversioned(reader, name_map, import_map, sub_type)?),
-        TagMapping::MapProperty { key_type, value_type } => FPropertyTagType::MapProperty(UScriptMap::new_unversioned(reader, name_map, import_map, key_type, value_type)?),
+        TagMapping::ArrayProperty { inner_type } => FPropertyTagType::ArrayProperty(UScriptArray::new_unversioned(reader, name_map, import_map, inner_type)?),
+        TagMapping::MapProperty { inner_type, value_type } => FPropertyTagType::MapProperty(UScriptMap::new_unversioned(reader, name_map, import_map, inner_type, value_type)?),
         TagMapping::BoolProperty => FPropertyTagType::BoolProperty(reader.read_u8()? != 0),
         TagMapping::ByteProperty => FPropertyTagType::ByteProperty(reader.read_u8()?),
         TagMapping::IntProperty => FPropertyTagType::IntProperty(reader.read_i32::<LittleEndian>()?),
@@ -2754,18 +2759,15 @@ impl Package {
         };
 
         let mut exports: Vec<Box<dyn PackageExport>> = Vec::new();
+        for _i in 0..export_map.len() {
+            exports.push(Box::new(EmptyPackage::new()));
+        }
 
         for export_idx in &export_order {
             let export = &export_map[*export_idx as usize];
             let export_name = export.get_export_name(global_map, &name_map)?;
-            exports.push(select_export(&export_name, &mut cursor, &name_map, &import_map, global_map, &export, &mut ubulk_cursor)?);
-        }
-
-        let mut order_exports: Vec<Box<dyn PackageExport>> = Vec::new();
-        for export_idx in &export_order {
-            let mut export: Box<dyn PackageExport> = Box::new(EmptyPackage::new());
-            std::mem::swap(&mut export, &mut exports[*export_idx as usize]);
-            order_exports.push(export);
+            let mut export_data = select_export(&export_name, &mut cursor, &name_map, &import_map, global_map, &export, &mut ubulk_cursor)?;
+            std::mem::swap(&mut export_data, &mut exports[*export_idx as usize]);
         }
 
         /*for v in &export_map {
@@ -2802,7 +2804,7 @@ impl Package {
 
         Ok(Self {
             summary: summary,
-            exports: order_exports,
+            exports: exports,
         })
     }
 

@@ -10,21 +10,49 @@ use crate::assets::{ParserResult, ParserError, ParserType};
 pub enum TagMapping {
     BoolProperty,
     ByteProperty,
-    EnumProperty { enum_type: Option<String> },
-    IntProperty,
-    FloatProperty,
+    #[serde(rename_all="camelCase")]
+    EnumProperty { enum_name: Option<String> },
     TextProperty,
     StrProperty,
     NameProperty,
-    ArrayProperty { sub_type: Box<TagMapping> },
-    MapProperty { key_type: Box<TagMapping>, value_type: Box<TagMapping> },
+    #[serde(rename_all="camelCase")]
+    ArrayProperty { 
+        #[serde(default)]
+        inner_type: Box<TagMapping> 
+    },
+    #[serde(rename_all="camelCase")]
+    MapProperty { inner_type: Box<TagMapping>, value_type: Box<TagMapping> },
     ObjectProperty,
-    SoftObjectProperty,
+    #[serde(rename_all="camelCase")]
     StructProperty { struct_type: String },
     DebugProperty,
+    SetProperty,
+    Int8Property,
+    Int16Property,
+    IntProperty,
+    Int64Property,
+    UInt16Property,
+    UInt32Property,
+    UInt64Property,
+    FloatProperty,
+    DoubleProperty,
+    WeakObjectProperty,
+    LazyObjectProperty,
+    SoftObjectProperty,
+    DelegateProperty,
+    MulticastDelegateProperty,
+    InterfaceProperty,
+    FieldPathProperty,
+}
+
+impl Default for TagMapping {
+    fn default() -> TagMapping {
+        TagMapping::DebugProperty
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all="camelCase")]
 pub struct PropertyMapping {
     index: u32,
     name: String,
@@ -42,14 +70,29 @@ impl PropertyMapping {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all="camelCase")]
 struct ClassMapping {
     name: String,
+    super_type: Option<String>,
     properties: Vec<PropertyMapping>,
+    property_count: u32,
+}
+
+impl ClassMapping {
+    fn get_properties_offset(&self, offset: u32) -> Vec<PropertyMapping> {
+        self.properties.iter().map(|v| {
+            let mut offset_prop = v.clone();
+            offset_prop.index += offset;
+            offset_prop
+        }).collect()
+    }
 }
 
 #[derive(Debug, Deserialize)]
 pub struct EnumMapping {
     name: String,
+    #[serde(rename="type")]
+    enum_type: String,
     values: Vec<String>,
 }
 
@@ -84,10 +127,15 @@ impl MappingStore {
             let mut contents = String::new();
             file.read_to_string(&mut contents)?;
 
-            match serde_json::from_str(&contents) {
-                Ok(m) => class_mappings.push(m),
-                Err(e) => println!("JSON Error: {}", e),
+            let mut store_mappings: Vec<ClassMapping> = match serde_json::from_str(&contents) {
+                Ok(m) => m,
+                Err(e) => {
+                    println!("JSON Error: {}", e);
+                    continue;
+                },
             };
+
+            class_mappings.append(&mut store_mappings);
         }
 
         let enum_files = get_json_files("mappings/enums/")?;
@@ -97,10 +145,15 @@ impl MappingStore {
             let mut contents = String::new();
             file.read_to_string(&mut contents)?;
 
-            match serde_json::from_str(&contents) {
-                Ok(m) => enum_mappings.push(m),
-                Err(e) => println!("JSON Error: {}", e),
+            let mut store_mappings: Vec<EnumMapping> = match serde_json::from_str(&contents) {
+                Ok(m) => m,
+                Err(e) => {
+                    println!("JSON Error: {}", e);
+                    continue;
+                },
             };
+
+            enum_mappings.append(&mut store_mappings);
         }
 
         Ok(Self {
@@ -116,15 +169,41 @@ impl MappingStore {
         }
     }
 
+    fn find_class_mapping(&self, class_name: &str) -> ParserResult<&ClassMapping> {
+        match self.class_mappings.iter().find(|v| v.name == class_name) {
+            Some(map) => Ok(map),
+            None => Err(ParserError::typed(format!("Class not found: {}", class_name), ParserType::ClassMappingMissing)),
+        }
+    }
+
     pub fn get_mappings(&self, class_name: &str, indices: Vec<u32>) -> ParserResult<Vec<PropertyMapping>> {
-        let class_mapping = match self.class_mappings.iter().find(|v| v.name == class_name) {
-            Some(map) => map,
-            None => return Err(ParserError::typed(format!("Class not found: {}", class_name), ParserType::ClassMappingMissing)),
-        };
+        let class_mapping = self.find_class_mapping(class_name)?;
+
+        let mut properties = class_mapping.get_properties_offset(0);
+        let mut total_offset = class_mapping.property_count;
+        let mut target_class = class_mapping.super_type.clone();
+        loop {
+            match target_class {
+                Some(ref target) => {
+                    match self.find_class_mapping(target) {
+                        Ok(mapping) => {
+                            properties.append(&mut mapping.get_properties_offset(total_offset));
+                            total_offset += mapping.property_count;
+                            target_class = mapping.super_type.clone();
+                        },
+                        Err(e) => {
+                            println!("Super Class not found: {}", target);
+                            break;
+                        },
+                    };
+                },
+                None => break,
+            };
+        }
 
         let mut mappings = Vec::new();
         for index in &indices {
-            let mapping = match class_mapping.properties.iter().find(|v| &v.index == index) {
+            let mapping = match properties.iter().find(|v| &v.index == index) {
                 Some(map) => map,
                 None => return Err(ParserError::typed(format!("Index not found: {}-{} of {:#?}", class_name, index, indices), ParserType::PropertyIndexMissing)),
             };
