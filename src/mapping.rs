@@ -5,6 +5,8 @@ use serde::Deserialize;
 use serde_json::Result as JSONResult;
 use crate::assets::{ParserResult, ParserError, ParserType};
 
+mod smrt;
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "type")]
 pub enum TagMapping {
@@ -22,7 +24,10 @@ pub enum TagMapping {
     ObjectProperty,
     StructProperty { struct_type: String },
     DebugProperty,
-    SetProperty,
+    SetProperty { 
+        #[serde(default)]
+        inner_type: Box<TagMapping> 
+    },
     Int8Property,
     Int16Property,
     IntProperty,
@@ -39,6 +44,7 @@ pub enum TagMapping {
     MulticastDelegateProperty,
     InterfaceProperty,
     FieldPathProperty,
+    AssetObjectProperty,
 }
 
 impl Default for TagMapping {
@@ -96,12 +102,12 @@ pub struct MappingStore {
     enum_mappings: Vec<EnumMapping>,
 }
 
-fn get_json_files(path: &str) -> ParserResult<Vec<String>> {
+fn get_files(path: &str, file_ext: &str) -> ParserResult<Vec<String>> {
     let path_dir = Path::new(path);
     let mapping_files: Vec<String> = path_dir.read_dir()?.filter(|v| {
         match v {
             Ok(path) => match path.path().extension() {
-                Some(ext) => ext == "json",
+                Some(ext) => ext == file_ext,
                 None => false,
             },
             _ => false,
@@ -113,7 +119,7 @@ fn get_json_files(path: &str) -> ParserResult<Vec<String>> {
 
 impl MappingStore {
     pub fn build_mappings() -> ParserResult<Self> {
-        let class_files = get_json_files("mappings/classes/")?;
+        let class_files = get_files("mappings/classes/", "json")?;
 
         let mut class_mappings = Vec::new();
         for file in class_files {
@@ -132,7 +138,7 @@ impl MappingStore {
             class_mappings.append(&mut store_mappings);
         }
 
-        let enum_files = get_json_files("mappings/enums/")?;
+        let enum_files = get_files("mappings/enums/", "json")?;
         let mut enum_mappings = Vec::new();
         for file in enum_files {
             let mut file = File::open(file)?;
@@ -148,6 +154,13 @@ impl MappingStore {
             };
 
             enum_mappings.append(&mut store_mappings);
+        }
+
+        let usmap_files = get_files("mappings/", "usmap")?;
+        for file in usmap_files {
+            let (mut n_class_mappings, mut n_enum_mappings) = smrt::read_usmap(std::fs::read(file)?)?;
+            class_mappings.append(&mut n_class_mappings);
+            enum_mappings.append(&mut n_enum_mappings);
         }
 
         Ok(Self {
@@ -172,8 +185,6 @@ impl MappingStore {
 
     pub fn get_mappings(&self, class_name: &str, indices: Vec<u32>) -> ParserResult<Vec<PropertyMapping>> {
         let class_mapping = self.find_class_mapping(class_name)?;
-
-        // println!("indices: {:#?}", indices);
 
         let mut properties = class_mapping.get_properties_offset(0);
         let mut total_offset = class_mapping.property_count;
