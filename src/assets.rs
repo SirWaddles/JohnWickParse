@@ -2829,6 +2829,24 @@ impl Package {
             false => None,
         };
 
+        // this is some real wtfery
+        let uptnl_file = file_path.to_owned() + ".uptnl";
+        let uptnl_path = Path::new(&uptnl_file);
+        let uptnl_buf = match metadata(uptnl_path).is_ok() {
+            true => {
+                let mut uptnl = File::open(uptnl_file)?;
+                let mut uptnl_ibuf = Vec::new();
+                uptnl.read_to_end(&mut uptnl_ibuf)?;
+                Some(uptnl_ibuf)
+            },
+            false => None,
+        };
+
+        let ubulk_buf = match uptnl_buf {
+            Some(b) => Some(b),
+            None => ubulk_buf,
+        };
+
         // ??
         match ubulk_buf {
             Some(data) => Self::from_buffer(&uasset_buf, Some(&data), global_map),

@@ -10,20 +10,16 @@ use crate::assets::{ParserResult, ParserError, ParserType};
 pub enum TagMapping {
     BoolProperty,
     ByteProperty,
-    #[serde(rename_all="camelCase")]
     EnumProperty { enum_name: Option<String> },
     TextProperty,
     StrProperty,
     NameProperty,
-    #[serde(rename_all="camelCase")]
     ArrayProperty { 
         #[serde(default)]
         inner_type: Box<TagMapping> 
     },
-    #[serde(rename_all="camelCase")]
     MapProperty { inner_type: Box<TagMapping>, value_type: Box<TagMapping> },
     ObjectProperty,
-    #[serde(rename_all="camelCase")]
     StructProperty { struct_type: String },
     DebugProperty,
     SetProperty,
@@ -52,7 +48,6 @@ impl Default for TagMapping {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all="camelCase")]
 pub struct PropertyMapping {
     index: u32,
     name: String,
@@ -70,7 +65,6 @@ impl PropertyMapping {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all="camelCase")]
 struct ClassMapping {
     name: String,
     super_type: Option<String>,
@@ -179,6 +173,8 @@ impl MappingStore {
     pub fn get_mappings(&self, class_name: &str, indices: Vec<u32>) -> ParserResult<Vec<PropertyMapping>> {
         let class_mapping = self.find_class_mapping(class_name)?;
 
+        // println!("indices: {:#?}", indices);
+
         let mut properties = class_mapping.get_properties_offset(0);
         let mut total_offset = class_mapping.property_count;
         let mut target_class = class_mapping.super_type.clone();
@@ -192,7 +188,6 @@ impl MappingStore {
                             target_class = mapping.super_type.clone();
                         },
                         Err(e) => {
-                            println!("Super Class not found: {}", target);
                             break;
                         },
                     };
