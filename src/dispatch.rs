@@ -212,10 +212,16 @@ enum EIoChunkType {
 }
 
 #[derive(Debug)]
-struct FIoChunkId {
+pub struct FIoChunkId {
     id: u64,
     index: u32,
     chunk_type: EIoChunkType,
+}
+
+impl FIoChunkId {
+    pub fn get_id(&self) -> u64 {
+        self.id
+    }
 }
 
 impl Newable for FIoChunkId {
@@ -781,6 +787,10 @@ impl UtocManager {
         }
 
         None
+    }
+
+    pub fn get_chunk_ids(&self) -> &Vec<FIoChunkId> {
+        &self.chunk_ids
     }
 }
 

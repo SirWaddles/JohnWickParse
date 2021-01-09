@@ -51,7 +51,6 @@ fn get_usmap_data(mut data: Vec<u8>, header: &UsmapHeader) -> ParserResult<Vec<u
             Ok(data)
         },
         CompressionMethod::Oodle => {
-            let buffer = vec![0u8; header.size as usize];
             Ok(oodle::decompress_stream(header.size as u64, data.as_slice())?)
         },
         _ => return Err(ParserError::new(format!("Unsupported Compression Method"))),
