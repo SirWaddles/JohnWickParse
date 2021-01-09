@@ -871,6 +871,10 @@ impl Extractor {
         self.utoc.get_mount_point()
     }
 
+    pub fn get_chunk_ids(&self) -> &Vec<FIoChunkId> {
+        self.utoc.get_chunk_ids()
+    }
+
     pub fn get_file(&mut self, file: &str) -> ParserResult<Vec<u8>> {
         for i in 0..self.utoc.file_list.len() {
             if file == self.utoc.file_list[i] {
