@@ -1,6 +1,6 @@
-use std::io::{Read, Seek, SeekFrom, Cursor};
+use std::io::{Read, Cursor};
 use byteorder::{LittleEndian, ReadBytesExt};
-use crate::mapping::{MappingStore, ClassMapping, EnumMapping, PropertyMapping, TagMapping};
+use crate::mapping::{ClassMapping, EnumMapping, PropertyMapping, TagMapping};
 use crate::assets::{Newable, ReaderCursor, ParserResult, ParserError};
 use crate::decompress::oodle;
 

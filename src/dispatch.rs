@@ -1,7 +1,7 @@
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::convert::TryInto;
 use std::fs::File;
-use std::io::{Write, Read, BufReader, Seek, SeekFrom, Cursor};
+use std::io::{Read, Seek, SeekFrom, Cursor};
 use std::sync::Arc;
 use block_modes::{BlockMode, Ecb, block_padding::ZeroPadding};
 use aes_soft::Aes256;
@@ -506,7 +506,7 @@ pub struct FContainerHeader {
     package_count: u32,
     names: Vec<u8>,
     name_hashes: Vec<u8>,
-    package_ids: Vec<FPackageObjectIndex>,
+    package_ids: Vec<u64>,
     packages: Vec<FPackageStoreEntry>,
 }
 
@@ -553,7 +553,7 @@ impl Newable for FMinimalName {
 }
 
 #[derive(Debug)]
-struct FScriptObjectEntry {
+pub struct FScriptObjectEntry {
     object_name: FMappedName,
     global_index: FPackageObjectIndex,
     outer_index: FPackageObjectIndex,
@@ -571,19 +571,39 @@ impl Newable for FScriptObjectEntry {
     }
 }
 
+impl FScriptObjectEntry {
+    pub fn get_outer_index(&self) -> &FPackageObjectIndex {
+        &self.outer_index
+    }
+
+    pub fn get_object_name(&self) -> &FMappedName {
+        &self.object_name
+    }
+}
+
 #[derive(Debug)]
 pub struct InitialLoadMetaData {
     script_objects: Vec<FScriptObjectEntry>,
 }
 
 impl InitialLoadMetaData {
-    fn find_object(&self, index: &FPackageObjectIndex) -> Option<&FScriptObjectEntry> {
+    pub fn find_object(&self, index: &FPackageObjectIndex) -> Option<&FScriptObjectEntry> {
         self.script_objects.iter().find(|v| &v.global_index == index)
     }
 
     pub fn empty() -> Self {
         Self {
             script_objects: Vec::new(),
+        }
+    }
+
+    pub fn get_package_name<'a>(&self, object: &FPackageObjectIndex, name_map: &'a FNameMap) -> Option<&'a str> {
+        match self.find_object(object) {
+            Some(obj) => match obj.object_name.get_name(name_map) {
+                Ok(name) => Some(name),
+                Err(_) => None,
+            },
+            None => None,
         }
     }
 }
@@ -641,26 +661,24 @@ impl Newable for FNameMap {
 
 #[derive(Debug)]
 pub struct LoaderGlobalData {
-    names: FNameMap,
-    imports: InitialLoadMetaData,
+    names: Arc<FNameMap>,
+    imports: Arc<InitialLoadMetaData>,
 }
 
 impl LoaderGlobalData {
     pub fn empty() -> Self {
         Self {
-            names: FNameMap::empty(),
-            imports: InitialLoadMetaData::empty(),
+            names: Arc::new(FNameMap::empty()),
+            imports: Arc::new(InitialLoadMetaData::empty()),
         }
     }
 
-    pub fn get_package_name(&self, object: &FPackageObjectIndex) -> Option<&str> {
-        match self.imports.find_object(object) {
-            Some(obj) => match obj.object_name.get_name(&self.names) {
-                Ok(name) => Some(name),
-                Err(_) => None,
-            },
-            None => None,
-        }
+    pub fn get_load_data(&self) -> Arc<InitialLoadMetaData> {
+        Arc::clone(&self.imports)
+    }
+
+    pub fn get_name_map(&self) -> Arc<FNameMap> {
+        Arc::clone(&self.names)
     }
 }
 
@@ -840,8 +858,8 @@ impl Extractor {
         };
 
         Ok(LoaderGlobalData {
-            names: name_map,
-            imports: initial_data,
+            names: Arc::new(name_map),
+            imports: Arc::new(initial_data),
         })
     }
 

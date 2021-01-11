@@ -205,6 +205,25 @@ fn filelist(params: &[String]) -> CommandResult {
     Ok(())
 }
 
+fn idlist(params: &[String]) -> CommandResult {
+    let path = match params.get(0) {
+        Some(data) => data,
+        None => return cerr("No path specified"),
+    };
+    let key = match std::fs::read_to_string("key.txt") {
+        Ok(data) => data,
+        Err(_) => return cerr("Could not read key"),
+    };
+    let dispatch = dispatch::Extractor::new(&path[..(path.len() - 5)], Some(&key))?;
+
+    let file_list: Vec<String> = dispatch.get_chunk_ids().iter().map(|v| v.get_id().to_string()).collect();
+    let file_str = file_list.iter().fold(String::new(), |acc, v| acc + v + "\n");
+    let mut file = fs::File::create(path.to_owned() + ".txt").unwrap();
+    file.write_all(file_str.as_bytes()).unwrap();
+
+    Ok(())
+}
+
 fn read_header(params: &[String]) -> CommandResult {
     let path = match params.get(0) {
         Some(data) => data,
@@ -293,6 +312,7 @@ fn main() {
     let err = match (*command).as_ref() {
         "serialize" => serialize(params),
         "filelist" => filelist(params),
+        "idlist" => idlist(params),
         "extract" => extract(params),
         "texture" => texture(params),
         "locale" => locale(params),

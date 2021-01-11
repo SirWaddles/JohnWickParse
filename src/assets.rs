@@ -3,10 +3,7 @@ use std::io::{Cursor, Read, Seek, SeekFrom};
 use std::fs::{File, metadata};
 use std::path::Path;
 use std::any::Any;
-use std::rc::Rc;
-use std::cell::Cell;
-use std::cmp::Ordering;
-use half::f16;
+use std::sync::Arc;
 use serde::Serialize;
 use serde::ser::{Serializer, SerializeMap, SerializeSeq, SerializeStruct};
 use serde_json::error::Error as JSONError;
@@ -15,7 +12,7 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use bit_vec::BitVec;
 use lazy_static::lazy_static;
 use crate::mapping::{MappingStore, PropertyMapping, TagMapping};
-use crate::dispatch::{LoaderGlobalData, FNameMap};
+use crate::dispatch::{LoaderGlobalData, InitialLoadMetaData, FNameMap};
 
 pub mod locale;
 // mod material_instance;
@@ -655,14 +652,18 @@ pub struct FPackageObjectIndex {
 }
 
 impl FPackageObjectIndex {
-    fn get_export_name<'a>(&self, global_map: &'a LoaderGlobalData, name_map: &'a NameMap) -> ParserResult<&'a str> {
+    fn get_export_name<'a>(&self, name_map: &'a NameMap, import_map: &'a ImportMap) -> ParserResult<&'a str> {
         match self.index_type {
-            FPackageObjectIndex_Type::ScriptImport => match global_map.get_package_name(&self) {
+            FPackageObjectIndex_Type::ScriptImport => match import_map.global.get_package_name(&self, &name_map.global) {
                 Some(n) => Ok(n),
                 None => return Err(ParserError::new(format!("No package class found"))),
             },
             _ => return Err(ParserError::new(format!("Unknown Import Type"))),
         }
+    }
+
+    pub fn get_index(&self) -> u64 {
+        self.index
     }
 }
 
@@ -709,8 +710,15 @@ impl Newable for FNameEntrySerialized {
     }
 }
 
-type NameMap = FNameMap;
-type ImportMap = Vec<FPackageObjectIndex>;
+struct NameMap {
+    names: FNameMap,
+    global: Arc<FNameMap>,
+}
+
+struct ImportMap {
+    imports: Vec<FPackageObjectIndex>,
+    global: Arc<InitialLoadMetaData>,
+}
 
 trait NewableWithNameMap: std::fmt::Debug + TraitSerialize {
     fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self>
@@ -726,7 +734,7 @@ serialize_trait_object!(NewableWithNameMap);
 
 fn read_fname(reader: &mut ReaderCursor, name_map: &NameMap) -> ParserResult<String> {
     let mapped_name = FMappedName::new(reader)?;
-    Ok(mapped_name.get_name(name_map)?.to_owned())
+    Ok(mapped_name.get_name(&name_map.names)?.to_owned())
 }
 
 #[derive(Debug, Clone)]
@@ -738,7 +746,7 @@ pub struct FPackageIndex {
 impl FPackageIndex {
     fn get_package(index: i32, import_map: &ImportMap) -> Option<FPackageObjectIndex> {
         if index < 0 {
-            return match import_map.get((index * -1 - 1) as usize) {
+            return match import_map.imports.get((index * -1 - 1) as usize) {
                 Some(data) => Some(data.clone()),
                 None => None,
             };
@@ -849,16 +857,16 @@ struct FExportMapEntry {
 }
 
 impl FExportMapEntry {
-    fn get_export_name<'a>(&self, global_map: &'a LoaderGlobalData, name_map: &'a NameMap) -> ParserResult<&'a str> {
+    fn get_export_name<'a>(&self, name_map: &'a NameMap, import_map: &'a ImportMap) -> ParserResult<&'a str> {
         match self.class_index.index_type {
-            FPackageObjectIndex_Type::ScriptImport => self.class_index.get_export_name(global_map, name_map),
+            FPackageObjectIndex_Type::ScriptImport => self.class_index.get_export_name(name_map, import_map),
             FPackageObjectIndex_Type::PackageImport => self.get_object_name(name_map),
             _ => Err(ParserError::new(format!("Unknown Export Map Type"))),
         }
     }
 
     fn get_object_name<'a>(&self, name_map: &'a NameMap) -> ParserResult<&'a str> {
-        self.object_name.get_name(name_map)
+        self.object_name.get_name(&name_map.names)
     }
 }
 
@@ -1061,7 +1069,7 @@ struct FStructFallback {
 }
 
 impl NewableWithNameMap for FStructFallback {
-    fn new_n(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
+    fn new_n(_reader: &mut ReaderCursor, _name_map: &NameMap, _import_map: &ImportMap) -> ParserResult<Self> {
         panic!("Unimplemented");
     }
 
@@ -2418,6 +2426,41 @@ impl Newable for FExportBundle {
     }
 }
 
+#[derive(Debug)]
+struct FArc {
+    from_index: u32,
+    to_index: u32,
+}
+
+impl Newable for FArc {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        Ok(Self {
+            from_index: reader.read_u32::<LittleEndian>()?,
+            to_index: reader.read_u32::<LittleEndian>()?,
+        })
+    }
+}
+
+#[derive(Debug)]
+struct FImportedPackage {
+    index: u64,
+    arcs: Vec<FArc>,
+}
+
+impl Newable for FImportedPackage {
+    fn new(reader: &mut ReaderCursor) -> ParserResult<Self> {
+        Ok(Self {
+            index: reader.read_u64::<LittleEndian>()?,
+            arcs: read_tarray(reader)?,
+        })
+    }
+}
+
+impl Serialize for FImportedPackage {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        serializer.serialize_str(&self.index.to_string())
+    }
+}
 
 /// A UObject is a struct for all of the parsed properties of an object
 #[derive(Debug)]
@@ -2604,7 +2647,7 @@ impl PackageExport for UDataTable {
 }
 
 impl UDataTable {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, global_map: &LoaderGlobalData) -> ParserResult<Self> {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap) -> ParserResult<Self> {
         let super_object = UObject::new(reader, name_map, import_map, "DataTable", None)?;
 
         // Find the RowStruct type
@@ -2620,7 +2663,7 @@ impl UDataTable {
             Some(import) => import,
             None => return Err(ParserError::new(format!("Import not found in Import Map"))),
         };
-        let struct_name = object_index.get_export_name(global_map, name_map)?;
+        let struct_name = object_index.get_export_name(name_map, import_map)?;
 
         let _zero_data = reader.read_i32::<LittleEndian>()?;
         let num_rows = reader.read_i32::<LittleEndian>()?;
@@ -2703,11 +2746,11 @@ impl PackageExport for UCurveTable {
     }
 }*/
 
-fn select_export(export_name: &str, reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, global_map: &LoaderGlobalData, export: &FExportMapEntry, ubulk: &mut Option<ReaderCursor>) -> ParserResult<Box<dyn PackageExport>> {
+fn select_export(export_name: &str, reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, export: &FExportMapEntry, ubulk: &mut Option<ReaderCursor>) -> ParserResult<Box<dyn PackageExport>> {
     let export_index = Some(export.global_import_index.clone());
     Ok(match export_name {
         "Texture2D" => Box::new(Texture2D::new(reader, name_map, import_map, ubulk, export_index)?),
-        "DataTable" => Box::new(UDataTable::new(reader, name_map, import_map, global_map)?),
+        "DataTable" => Box::new(UDataTable::new(reader, name_map, import_map)?),
         _ => Box::new(UObject::new(reader, name_map, import_map, export_name, export_index)?),
     })
 }
@@ -2719,6 +2762,7 @@ fn select_export(export_name: &str, reader: &mut ReaderCursor, name_map: &NameMa
 pub struct Package {
     summary: FPackageSummary,
     exports: Vec<Box<dyn PackageExport>>,
+    graph_data: Vec<FImportedPackage>,
 }
 
 #[allow(dead_code)]
@@ -2751,6 +2795,9 @@ impl Package {
         let export_bundle = FExportBundle::new(&mut cursor)?;
         let export_order = export_bundle.get_export_order();
 
+        cursor.seek(SeekFrom::Start(summary.graph_data_offset as u64))?;
+        let graph_data: Vec<FImportedPackage> = read_tarray(&mut cursor)?;
+
         cursor.seek(SeekFrom::Start((summary.graph_data_offset + summary.graph_data_size) as u64))?;
 
         let mut ubulk_cursor = match ubulk {
@@ -2763,10 +2810,20 @@ impl Package {
             exports.push(Box::new(EmptyPackage::new()));
         }
 
+        let import_map = ImportMap {
+            imports: import_map,
+            global: global_map.get_load_data(),
+        };
+
+        let name_map = NameMap {
+            names: name_map,
+            global: global_map.get_name_map(),
+        };
+
         for export_idx in &export_order {
             let export = &export_map[*export_idx as usize];
-            let export_name = export.get_export_name(global_map, &name_map)?;
-            let mut export_data = select_export(&export_name, &mut cursor, &name_map, &import_map, global_map, &export, &mut ubulk_cursor)?;
+            let export_name = export.get_export_name(&name_map, &import_map)?;
+            let mut export_data = select_export(&export_name, &mut cursor, &name_map, &import_map, &export, &mut ubulk_cursor)?;
             std::mem::swap(&mut export_data, &mut exports[*export_idx as usize]);
         }
 
@@ -2805,6 +2862,7 @@ impl Package {
         Ok(Self {
             summary: summary,
             exports: exports,
+            graph_data: graph_data,
         })
     }
 
@@ -2880,6 +2938,7 @@ impl Package {
         Self {
             summary: FPackageSummary::empty(),
             exports: Vec::new(),
+            graph_data: Vec::new(),
         }
     }
 }
@@ -2895,10 +2954,9 @@ impl fmt::Debug for Package {
 
 impl Serialize for Package {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
-        let mut seq = serializer.serialize_seq(Some(self.exports.len()))?;
-        for e in &self.exports {
-            seq.serialize_element(e)?;
-        }
-        seq.end()
+        let mut state = serializer.serialize_struct("Package", 2)?;
+        state.serialize_field("exports", &self.exports)?;
+        state.serialize_field("imported_packages", &self.graph_data)?;
+        state.end()
     }
 }

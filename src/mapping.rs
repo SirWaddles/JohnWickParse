@@ -2,7 +2,6 @@ use std::io::Read;
 use std::fs::File;
 use std::path::Path;
 use serde::Deserialize;
-use serde_json::Result as JSONResult;
 use crate::assets::{ParserResult, ParserError, ParserType};
 
 mod smrt;
@@ -198,7 +197,7 @@ impl MappingStore {
                             total_offset += mapping.property_count;
                             target_class = mapping.super_type.clone();
                         },
-                        Err(e) => {
+                        Err(_e) => {
                             break;
                         },
                     };
