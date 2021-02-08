@@ -2137,11 +2137,14 @@ impl FByteBulkData {
                 Some(data) => data,
                 None => return Err(ParserError::new(format!("No ubulk specified for texture"))),
             };
-            // Archive seems "kind of" appended.
-            let offset = header.offset_in_file;
-            data.resize(header.element_count as usize, 0u8);
-            ubulk_reader.seek(SeekFrom::Start(offset as u64)).unwrap();
-            ubulk_reader.read_exact(&mut data).unwrap();
+
+            // If the header bulk data is for the uptnl, but the buffer isn't long enough, it's *probably* the ubulk.
+            if !(header.bulk_data_flags & (1 << 11) != 0 && ubulk_reader.get_mut().len() < header.element_count as usize) {
+                let offset = header.offset_in_file;
+                data.resize(header.element_count as usize, 0u8);
+                ubulk_reader.seek(SeekFrom::Start(offset as u64)).unwrap();
+                ubulk_reader.read_exact(&mut data).unwrap();
+            }
         }
 
         Ok(Self {
@@ -2215,7 +2218,9 @@ impl FTexturePlatformData {
         let length = reader.read_u32::<LittleEndian>()?;
         let mut mips = Vec::new();
         for _i in 0..length {
-            mips.push(FTexture2DMipMap::new(reader, ubulk)?);
+            let mip = FTexture2DMipMap::new(reader, ubulk)?;
+            if mip.data.data.len() <= 0 { continue; }
+            mips.push(mip);
         }
 
         let is_virtual = reader.read_u32::<LittleEndian>()? != 0;
