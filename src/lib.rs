@@ -13,8 +13,8 @@ mod texture;
 
 lazy_static! {
     static ref GLOBAL_DATA: dispatch::LoaderGlobalData = {
-        let mut dispatch = dispatch::Extractor::new("paks/global", None).unwrap();
-        dispatch.read_global().unwrap()
+        let mut dispatch = dispatch::Extractor::new("paks/global", None).expect("Could not read global");
+        dispatch.read_global().expect("Could not parse global")
     };
 }
 

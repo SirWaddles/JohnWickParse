@@ -2830,7 +2830,8 @@ impl Package {
         for export_idx in &export_order {
             let export = &export_map[*export_idx as usize];
             let export_name = export.get_export_name(&name_map, &import_map)?;
-            let mut export_data = select_export(&export_name, &mut cursor, &name_map, &import_map, &export, &mut ubulk_cursor)?;
+            let mut export_data = select_export(&export_name, &mut cursor, &name_map, &import_map, &export, &mut ubulk_cursor)
+                .map_err(|v| ParserError::add(v, format!("Export Type: {}", export_name)))?;
             std::mem::swap(&mut export_data, &mut exports[*export_idx as usize]);
         }
 
