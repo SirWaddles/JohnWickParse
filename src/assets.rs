@@ -2485,6 +2485,7 @@ impl UObject {
         let indices = prop_indices.iter().map(|v| v.index).collect();
 
         let mappings = MAPPINGS.get_mappings(export_type, indices)?;
+
         let mut properties = Vec::new();
         for i in 0..prop_indices.len() {
             let index = &prop_indices[i];
@@ -2827,45 +2828,18 @@ impl Package {
             global: global_map.get_name_map(),
         };
 
+        let mut export_start = cursor.position();
+
         for export_idx in &export_order {
             let export = &export_map[*export_idx as usize];
             let export_name = export.get_export_name(&name_map, &import_map)?;
             let mut export_data = select_export(&export_name, &mut cursor, &name_map, &import_map, &export, &mut ubulk_cursor)
                 .map_err(|v| ParserError::add(v, format!("Export Type: {}", export_name)))?;
             std::mem::swap(&mut export_data, &mut exports[*export_idx as usize]);
-        }
 
-        /*for v in &export_map {
-            let export_type = match v.class_index.index.cmp(&0) {
-                Ordering::Greater => match export_map.get((v.class_index.index - 1) as usize) {
-                    Some(data) => &data.object_name,
-                    None => "UObject",
-                },
-                Ordering::Less => match &v.class_index.import {
-                    Some(data) => &data.object_name,
-                    None => "UObject",
-                },
-                Ordering::Equal => "UObject",
-            };
-            let position = v.serial_offset as u64;
-            cursor.seek(SeekFrom::Start(position))?;
-            let export: Box<dyn Any> = match export_type.as_ref() {
-                "Texture2D" => Box::new(Texture2D::new(&mut cursor, &name_map, &import_map, asset_length, export_size, &mut ubulk_cursor)?),
-                "DataTable" => Box::new(UDataTable::new(&mut cursor, &name_map, &import_map)?),
-                "SkeletalMesh" => Box::new(USkeletalMesh::new(&mut cursor, &name_map, &import_map)?),
-                "AnimSequence" => Box::new(UAnimSequence::new(&mut cursor, &name_map, &import_map)?),
-                "Skeleton" => Box::new(USkeleton::new(&mut cursor, &name_map, &import_map)?),
-                "CurveTable" => Box::new(UCurveTable::new(&mut cursor, &name_map, &import_map)?),
-                "SoundWave" => Box::new(USoundWave::new(&mut cursor, &name_map, &import_map, asset_length, export_size, &mut ubulk_cursor)?),
-                //"MaterialInstanceConstant" => Box::new(material_instance::UMaterialInstanceConstant::new(&mut cursor, &name_map, &import_map)?),
-                _ => Box::new(UObject::new(&mut cursor, &name_map, &import_map, &export_type)?),
-            };
-            let valid_pos = position + v.serial_size as u64;
-            if cursor.position() != valid_pos {
-                println!("Did not read {} correctly. Current Position: {}, Bytes Remaining: {}", export_type, cursor.position(), valid_pos as i64 - cursor.position() as i64);
-            }
-            exports.push(export);
-        }*/
+            export_start += export.serial_size;
+            cursor.seek(SeekFrom::Start(export_start))?;
+        }
 
         Ok(Self {
             summary: summary,
