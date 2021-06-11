@@ -18,12 +18,12 @@ pub mod locale;
 // mod material_instance;
 // mod anims;
 // mod meshes;
-// mod sound;
+mod sound;
 
 // pub use anims::{USkeleton, UAnimSequence, FTrack};
 // pub use meshes::{USkeletalMesh, FMultisizeIndexContainer, FStaticMeshVertexDataTangent, FSkeletalMeshRenderData,
 //     FSkelMeshRenderSection, FSkeletalMaterial, FSkinWeightVertexBuffer, FMeshBoneInfo, FStaticMeshVertexDataUV, FReferenceSkeleton};
-// pub use sound::USoundWave;
+pub use sound::USoundWave;
 
 lazy_static! {
     static ref MAPPINGS: MappingStore = MappingStore::build_mappings().unwrap();
@@ -2759,6 +2759,7 @@ fn select_export(export_name: &str, reader: &mut ReaderCursor, name_map: &NameMa
     Ok(match export_name {
         "Texture2D" => Box::new(Texture2D::new(reader, name_map, import_map, ubulk, export_index)?),
         "DataTable" => Box::new(UDataTable::new(reader, name_map, import_map)?),
+        "SoundWave" => Box::new(USoundWave::new(reader, name_map, import_map, ubulk, export_index)?),
         _ => Box::new(UObject::new(reader, name_map, import_map, export_name, export_index)?),
     })
 }

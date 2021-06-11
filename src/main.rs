@@ -11,7 +11,7 @@ mod mapping;
 mod assets;
 mod archives;
 mod texture;
-// mod sound;
+mod sound;
 
 use dispatch::{ChunkData, LoaderGlobalData};
 
@@ -102,15 +102,17 @@ fn texture(params: &[String]) -> CommandResult {
     Ok(())
 }
 
-/*fn sound(params: &[String]) -> CommandResult {
+fn sound(params: &[String]) -> CommandResult {
     let path = match params.get(0) {
         Some(data) => data,
         None => return cerr("No path specified"),
     };
 
-    let name_map = LoaderGlobalData::empty();
-    let package = assets::Package::from_file(path, &name_map)?;
-    let package_export = package.get_export_move(0)?;
+    let mut dispatch = dispatch::Extractor::new("paks/global", None)?;
+    let global_data = dispatch.read_global()?;
+
+    let package = assets::Package::from_file(path, &global_data)?;
+    let package_export = package.get_export_move(0)?.into_any();
     let sound = match package_export.downcast::<assets::USoundWave>() {
         Ok(data) => data,
         Err(_) => return cerr("Package not exporting sound"),
@@ -123,7 +125,7 @@ fn texture(params: &[String]) -> CommandResult {
     file.write_all(&sound_data).unwrap();
 
     Ok(())
-}*/
+}
 
 fn dispatch(params: &[String]) -> CommandResult {
     let path = match params.get(0) {
@@ -140,12 +142,17 @@ fn dispatch(params: &[String]) -> CommandResult {
     };
 
     let mut dispatch = dispatch::Extractor::new(&path, Some(&key))?;
-    let data = dispatch.get_file(pattern)?;
+    let entries: Vec<String> = dispatch.get_file_list().into_iter().filter(|v| v.contains(pattern)).map(|v| v.to_owned()).collect();
 
-    let filename = pattern.rsplit("/").next().unwrap();
-
-    let mut file = fs::File::create(filename).unwrap();
-    file.write_all(&data).unwrap();
+    for asset in entries {
+        let file_contents = dispatch.get_file(&asset)?;
+        let path = Path::new(&asset);
+        if let Some(basename) = path.parent() {
+            fs::create_dir_all(basename).expect("Could not create directory");
+        }
+        let mut file = fs::File::create(&asset).unwrap();
+        file.write_all(&file_contents).unwrap();
+    }
 
     Ok(())
 }
@@ -317,7 +324,7 @@ fn main() {
         "texture" => texture(params),
         "locale" => locale(params),
         "debug" => debug(params),
-        //"sound" => sound(params),
+        "sound" => sound(params),
         "dispatch" => dispatch(params),
         "read_header" => read_header(params),
         _ => {

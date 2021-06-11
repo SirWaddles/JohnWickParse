@@ -1,14 +1,14 @@
 #![allow(dead_code)]
 
 use lazy_static::lazy_static;
-use crate::assets::{ParserResult, ParserError, Package, Texture2D};
+use crate::assets::{ParserResult, ParserError, Package, Texture2D, USoundWave};
 
 pub mod assets;
 pub mod archives;
 pub mod dispatch;
 pub mod decompress;
 mod mapping;
-//mod sound;
+mod sound;
 mod texture;
 
 lazy_static! {
@@ -35,12 +35,12 @@ pub fn read_texture(package: Package) -> ParserResult<Vec<u8>> {
     texture::decode_texture(*texture)
 }
 
-/*/// Extracts sounds from a Package struct
+/// Extracts sounds from a Package struct
 pub fn read_sound(package: Package) -> ParserResult<Vec<u8>> {
-    let package_export = package.get_export_move(0)?;
+    let package_export = package.get_export_move(0)?.into_any();
     let sound = match package_export.downcast::<USoundWave>() {
         Ok(data) => data,
         Err(_) => return Err(ParserError::new(format!("Export is not a sound"))),
     };
     sound::decode_sound(*sound)
-}*/
+}

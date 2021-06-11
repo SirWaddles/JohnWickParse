@@ -8,10 +8,10 @@ pub struct FStreamedAudioChunk {
 }
 
 impl FStreamedAudioChunk {
-    fn new(reader: &mut ReaderCursor, ubulk: &mut Option<ReaderCursor>, bulk_offset: i64) -> ParserResult<Self> {
+    fn new(reader: &mut ReaderCursor, ubulk: &mut Option<ReaderCursor>) -> ParserResult<Self> {
         let _cooked = reader.read_u32::<LittleEndian>()?;
         Ok(Self {
-            data: FByteBulkData::new(reader, ubulk, bulk_offset)?,
+            data: FByteBulkData::new(reader, ubulk)?,
             data_size: reader.read_i32::<LittleEndian>()?,
             audio_size: reader.read_i32::<LittleEndian>()?,
         })
@@ -33,10 +33,10 @@ pub struct FFormatContainer {
 }
 
 impl FFormatContainer {
-    fn new(reader: &mut ReaderCursor, name_map: &NameMap, ubulk: &mut Option<ReaderCursor>, bulk_offset: i64) -> ParserResult<Self> {
+    fn new(reader: &mut ReaderCursor, name_map: &NameMap, ubulk: &mut Option<ReaderCursor>) -> ParserResult<Self> {
         Ok(Self {
             name: read_fname(reader, name_map)?,
-            data: FByteBulkData::new(reader, ubulk, bulk_offset)?,
+            data: FByteBulkData::new(reader, ubulk)?,
         })
     }
 
@@ -63,24 +63,28 @@ impl PackageExport for USoundWave {
     fn get_export_type(&self) -> &str {
         "SoundWave"
     }
+
+    fn into_any(self: Box<Self>) -> Box<dyn Any> {
+        self
+    }
 }
 
 impl USoundWave {
-    pub(super) fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, asset_file_size: i32, export_size: i64, ubulk: &mut Option<ReaderCursor>) -> ParserResult<Self> {
-        let super_object = UObject::new(reader, name_map, import_map, "SoundWave")?;
+    pub(super) fn new(reader: &mut ReaderCursor, name_map: &NameMap, import_map: &ImportMap, ubulk: &mut Option<ReaderCursor>, export_index: Option<FPackageObjectIndex>) -> ParserResult<Self> {
+        let super_object = UObject::new(reader, name_map, import_map, "SoundWave", export_index)?;
         let streaming = match super_object.get_boolean("bStreaming") {
             Some(data) => data,
             None => false,
         };
 
+        reader.read_u32::<LittleEndian>()?;
         let _cooked = reader.read_u32::<LittleEndian>()? != 0;
         let mut audio_data = Vec::new();
-        let bulk_offset = export_size + asset_file_size as i64;
 
         if !streaming {
             let num_elements = reader.read_u32::<LittleEndian>()?;
             for _i in 0..num_elements {
-                audio_data.push(FFormatContainer::new(reader, name_map, ubulk, bulk_offset)?);
+                audio_data.push(FFormatContainer::new(reader, name_map, ubulk)?);
             }
         }
 
@@ -92,11 +96,10 @@ impl USoundWave {
             let num_chunks = reader.read_u32::<LittleEndian>()?;
             stream_format = read_fname(reader, name_map)?;
             for _i in 0..num_chunks {
-                let chunk = FStreamedAudioChunk::new(reader, ubulk, bulk_offset)?;
+                let chunk = FStreamedAudioChunk::new(reader, ubulk)?;
                 streamed_audio.push(chunk);
             }
         }
-
 
         Ok(Self {
             super_object, guid, streaming, audio_data, streamed_audio, stream_format,
