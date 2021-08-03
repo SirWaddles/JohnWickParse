@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io::{Read, Seek, SeekFrom, Cursor};
 use std::sync::Arc;
 use block_modes::{BlockMode, Ecb, block_padding::ZeroPadding};
-use aes_soft::Aes256;
+use aes::Aes256;
 use flate2::read::ZlibDecoder;
 use crate::assets::{FMappedName, FGuid, FPackageObjectIndex, Newable, ReaderCursor, read_string, read_short_string, read_tarray, ParserResult, ParserError};
 use crate::decompress::oodle;
@@ -351,7 +351,7 @@ fn get_chunk(file: &mut File, chunk: &FIoStoreTocCompressedBlockEntry, header: &
             None => return Err(ParserError::new(format!("Key not specified"))),
         };
 
-        let decrypt = Ecb::<Aes256, ZeroPadding>::new_var(&hex_key, Default::default()).unwrap();
+        let decrypt = Ecb::<Aes256, ZeroPadding>::new_from_slices(&hex_key, Default::default()).unwrap();
         decrypt.decrypt(&mut buf).unwrap();
     }
 
@@ -755,7 +755,7 @@ impl UtocManager {
                 reader.read_exact(&mut directory_buf)?;
 
                 if header.is_encrypted() {
-                    let decrypt = Ecb::<Aes256, ZeroPadding>::new_var((&hex_key).as_ref().unwrap(), Default::default()).unwrap();
+                    let decrypt = Ecb::<Aes256, ZeroPadding>::new_from_slices((&hex_key).as_ref().unwrap(), Default::default()).unwrap();
                     decrypt.decrypt(&mut directory_buf).unwrap();
                 }
 

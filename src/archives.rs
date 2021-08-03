@@ -2,7 +2,7 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use std::fs::File;
 use std::io::{Read, BufReader, Seek, SeekFrom, Cursor};
 use block_modes::{BlockMode, Ecb, block_padding::ZeroPadding};
-use aes_soft::Aes256;
+use aes::Aes256;
 use flate2::read::ZlibDecoder;
 use crate::assets::{FGuid, Newable, ReaderCursor, read_string, read_tarray, ParserResult, ParserError};
 use crate::decompress::oodle;
@@ -87,7 +87,7 @@ fn get_index(header: &FPakInfo, reader: &mut BufReader<File>, key: &str) -> Vec<
     }
     let key = hex::decode(key).expect("Hex error");
 
-    let decrypt = Ecb::<Aes256, ZeroPadding>::new_var(&key, Default::default()).unwrap();
+    let decrypt = Ecb::<Aes256, ZeroPadding>::new_from_slices(&key, Default::default()).unwrap();
     decrypt.decrypt(&mut ciphertext).unwrap();
     ciphertext
 }
@@ -398,7 +398,7 @@ impl PakExtractor {
         reader.read_exact(&mut dir_index_b)?;
 
         let key = hex::decode(key).expect("Hex error");
-        let decrypt = Ecb::<Aes256, ZeroPadding>::new_var(&key, Default::default()).unwrap();
+        let decrypt = Ecb::<Aes256, ZeroPadding>::new_from_slices(&key, Default::default()).unwrap();
         decrypt.decrypt(&mut dir_index_b).unwrap();
         let mut directory_reader = Cursor::new(dir_index_b.as_slice());
 
@@ -447,7 +447,7 @@ impl PakExtractor {
             let mut enc_buffer = vec![0u8; enc_size as usize];
             self.reader.read_exact(&mut enc_buffer).unwrap();
 
-            let decrypt = Ecb::<Aes256, ZeroPadding>::new_var(&self.key, Default::default()).unwrap();
+            let decrypt = Ecb::<Aes256, ZeroPadding>::new_from_slices(&self.key, Default::default()).unwrap();
             decrypt.decrypt(&mut enc_buffer).unwrap();
 
             buffer.copy_from_slice(&enc_buffer[..file.size as usize]);
