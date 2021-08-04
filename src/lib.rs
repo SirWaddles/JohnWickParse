@@ -7,6 +7,7 @@ pub mod assets;
 pub mod archives;
 pub mod dispatch;
 pub mod decompress;
+pub mod manifest;
 mod mapping;
 mod sound;
 mod texture;

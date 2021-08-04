@@ -12,6 +12,7 @@ mod assets;
 mod archives;
 mod texture;
 mod sound;
+mod manifest;
 
 use dispatch::{ChunkData, LoaderGlobalData};
 
@@ -154,6 +155,15 @@ fn dispatch(params: &[String]) -> CommandResult {
         file.write_all(&file_contents).unwrap();
     }
 
+    Ok(())
+}
+
+fn manifest(params: &[String]) -> CommandResult {
+    let path = match params.get(0) {
+        Some(data) => data,
+        None => return cerr("No path specified"),
+    };
+    let chunk_manifest = manifest::Manifest::from_file(path)?;
     Ok(())
 }
 
@@ -326,6 +336,7 @@ fn main() {
         "debug" => debug(params),
         "sound" => sound(params),
         "dispatch" => dispatch(params),
+        "manifest" => manifest(params),
         "read_header" => read_header(params),
         _ => {
             println!("Invalid command");

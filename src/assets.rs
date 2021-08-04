@@ -112,7 +112,7 @@ pub trait Newable {
     fn new(reader: &mut ReaderCursor) -> ParserResult<Self> where Self: Sized;
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Default)]
 pub struct FGuid {
     a: u32,
     b: u32,
