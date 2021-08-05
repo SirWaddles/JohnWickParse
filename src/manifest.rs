@@ -79,8 +79,8 @@ impl Newable for FManifestMeta {
 #[derive(Debug, Default, Clone)]
 pub struct FChunkInfo {
     pub guid: FGuid,
-    hash: u64,
-    sha_hash: [u8; 20],
+    pub hash: u64,
+    pub sha_hash: [u8; 20],
     pub group_number: u8,
     pub window_size: u32,
     pub file_size: i64,
